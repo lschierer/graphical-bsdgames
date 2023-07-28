@@ -2,9 +2,15 @@ From: Stephen Kitt <skitt@debian.org>
 Date: Mon, 11 Oct 2021 14:30:00 +0200
 Subject: Add missing format strings
 
+---
+ canfield/canfield/canfield.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/canfield/canfield/canfield.c b/canfield/canfield/canfield.c
+index 1aa1d3f..39067cf 100644
 --- a/canfield/canfield/canfield.c
 +++ b/canfield/canfield/canfield.c
-@@ -1647,7 +1647,7 @@
+@@ -1647,7 +1647,7 @@ instruct()
  		return;
  	clear();
  	for (cp = basicinstructions; *cp != 0; cp++)
@@ -13,7 +19,7 @@ Subject: Add missing format strings
  	refresh();
  	getch();
  	clear();
-@@ -1660,7 +1660,7 @@
+@@ -1660,7 +1660,7 @@ instruct()
  		return;
  	clear();
  	for (cp = bettinginstructions; *cp != 0; cp++)

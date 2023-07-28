@@ -7,13 +7,13 @@ Subject: Add Debian acronyms
  1 file changed, 16 insertions(+)
 
 diff --git a/wtf/acronyms.comp b/wtf/acronyms.comp
-index e27697c..026547e 100644
+index a288700..d05feea 100644
 --- a/wtf/acronyms.comp
 +++ b/wtf/acronyms.comp
-@@ -1472,3 +1472,19 @@ ZFOD	zero-filled on demand
- ZIF	zero insertion force
- ZIFS	zero insertion force socket
- ZMA	zone multicast address
+@@ -1895,3 +1895,19 @@ ZOI	zero one infinity
+ ZOI	zone of influence
+ ZPL	ZFS Posix layer
+ ZVOL	ZFS Volume
 +DD	Debian developer
 +DDPO	Debian developer's package overview (https://qa.debian.org/developer.php)
 +IANADD	I am not a Debian developer

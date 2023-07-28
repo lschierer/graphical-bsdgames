@@ -4,18 +4,18 @@ Subject: Update acronyms.
 
 Source: http://cvsweb.netbsd.org/bsdweb.cgi/src/share/misc/
 ---
- wtf/acronyms      |  448 +++++++++++++++---
- wtf/acronyms.comp | 1345 +++++++++++++++++++++++++++++++++++++++++++++++++----
- 2 files changed, 1643 insertions(+), 150 deletions(-)
+ wtf/acronyms      |  519 ++++++++++++++--
+ wtf/acronyms.comp | 1772 ++++++++++++++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 2138 insertions(+), 153 deletions(-)
 
 diff --git a/wtf/acronyms b/wtf/acronyms
-index 5baeef2..07598d1 100644
+index 5baeef2..ba8ae96 100644
 --- a/wtf/acronyms
 +++ b/wtf/acronyms
-@@ -1,252 +1,590 @@
+@@ -1,252 +1,659 @@
 -$NetBSD: acronyms,v 1.145 2005/02/18 01:40:49 jsm Exp $
 -
-+$NetBSD: acronyms,v 1.265 2018/01/13 03:35:40 pgoyette Exp $
++$NetBSD: acronyms,v 1.314 2022/09/26 17:55:35 jschauma Exp $
 +10Q	thank you
 +10X	thanks
 +1337	elite ("leet")
@@ -26,6 +26,7 @@ index 5baeef2..07598d1 100644
 +AAMOF	as a matter of fact
 +ABD	all but dissertation
 +AC	audible chuckle
++ACAB	all cats are beautiful
 +ADD	attention deficit disorder
 +ADHD	attention deficit (and) hyperactivity disorder
 +ADN	any day now
@@ -51,9 +52,12 @@ index 5baeef2..07598d1 100644
  AIU	as I understand
  AIUI	as I understand it
  AKA	also known as
++ALPR	automatic license plate recognition
 +AM	ante meridiem
 +AMA	ask me anything
 +AMOL	a mountain of love
++ANPR	automatic number plate recognition
++APM	alternative payment model
  ASAIC	as soon as I can
  ASAP	as soon as possible
 +ASL	age/sex/location
@@ -61,6 +65,8 @@ index 5baeef2..07598d1 100644
  ATM	at the moment
 +ATM	{automated,automatic} teller machine
 +ATW	around the world
++ABV	alcohol by volume
++AVI	automatic vehicle identification
 +AWK	Aho, Weinberger, [and] Kernighan
  AWOL	absent without official leave
  AYBABTU	all your base are belong to us
@@ -74,6 +80,7 @@ index 5baeef2..07598d1 100644
  B/W	between
 +BAI	goodbye
 +BAK	back at keyboard
++BAU	business as usual
  BBIAB	be back in a bit
  BBL	[I'll] be back later
 +BBR	burnt beyond repair
@@ -83,6 +90,7 @@ index 5baeef2..07598d1 100644
 +BCNU	be seeing you
 +BCNUL8R	be seeing you later
 +BCP	best current practice
++BDFL	benevolent dictator for life
 +BF	best friend
 +BF	boyfriend
 +BFF	best {friend,friends} forever
@@ -115,13 +123,17 @@ index 5baeef2..07598d1 100644
 +CFY	calling for you
 +CG	center of gravity
 +CHANOPS	channel operator status
++CIA	central intelligence agency
  CMIIW	correct me if I'm wrong
  CNP	continued [in my] next post
  COB	close of business [day]
  COTS	commercial off-the-shelf
++CPA	cyproterone acetate
 +CPC	cost per click
 +CPE	customer premises equipment
++CPR	car plate recognition
 +CRM	customer relationship management
++CTF	capture the flag
 +CTN	can't talk now
 +CU	see you
 +CUL	see you later
@@ -132,6 +144,7 @@ index 5baeef2..07598d1 100644
  D/L	download
 +DBA	doing business as
 +DBEYR	don't believe everything you read
++DC	Dreamcast
 +DIAFYO	did I ask for your opinion?
  DIY	do it yourself
  DKDC	don't know, don't care
@@ -144,15 +157,20 @@ index 5baeef2..07598d1 100644
 +DNF	did not finish
 +DNFT	do not feed troll
 +DOA	dead on arrival
++DOTADIW	do one thing and do it well
 +DRY	don't repeat yourself
++DS	Dual Screen
  DSTM	don't shoot the messenger
  DTRT	do the right thing
  DTWT	do the wrong thing
++DW	don't worry
  DWIM	do what I mean
++DYAC	damn you autocorrect
 +DYK	do you know?
 +EA	early adopter
 +ECR	electronic cash register
 +EDS	eternal downward spiral
++EEE	eastern equine encephalitis
 +EFT	electronic funds transfer
  EG	evil grin
 +EIE	enough is enough
@@ -188,6 +206,8 @@ index 5baeef2..07598d1 100644
 +FOC	free of charge
 +FPS	first person shooter
 +FPS	frames per second
++FQA	frequently questioned answer
++FRAND	fair, reasonable, and non-discriminatory
  FSDO	for some definition of
  FSVO	for some value of
 -FTFM	fuck the fuckin' manual!
@@ -212,8 +232,16 @@ index 5baeef2..07598d1 100644
 +GA	go ahead
  GAC	get a clue
  GAL	get a life
++GB	Game Boy
++GBA	Game Boy Advance
++GBC	Game Boy Color
 +GBTW	get back to work
++GC	GameCube
++GCD	greatest common divisor
++GCHQ	Government Communications Headquarters (UK)
++GDPR	General Data Protection Regulation
 +GF	girlfriend
++GFCI	ground-fault circuit interrupter
 +GFU	good for you
 +GFY	good for you
 +GG	good game
@@ -242,7 +270,7 @@ index 5baeef2..07598d1 100644
 +GWS	get well soon
 +H8	hate
  HAND	have a nice day
-+HE	how embarrasing
++HE	how embarrassing
 +HF	have fun
  HHIS	hanging head in shame
 +HHOS	ha ha, only serious
@@ -367,13 +395,19 @@ index 5baeef2..07598d1 100644
 +LOIC	low orbit ion cannon
  LOL	laughing out loud
 +LP	long playing [record]
++LPR	license plate recognition
++LSD	lysergic acid diethylamide
  LTNS	long time no see
 +LWYL	laugh with you later
++M&O	management & operations
 +M8	mate
 +MAD	mutually assured destruction
 +MBA	master of business administration
++MD	Mega Drive
++MDMA	methylenedioxy methamphetamine
 +MFW	my face when
  MIA	missing in action
++MLPR	mobile license plate reader
 +MMB	message me back
 +MO	modus operandi
  MOTAS	member of the appropriate sex
@@ -393,8 +427,11 @@ index 5baeef2..07598d1 100644
 -NFW	no fucking way
 +NE1	anyone
 +NEDM	not even Doom music
++NES	Nintendo Entertainment System
 +NFA	no flaming allowed
 +NFC	no functional change
++NGP	Neo Geo Pocket
++NGPC	Neo Geo Pocket Color
 +NIFOC	naked in front of computer
  NIH	not invented here
 +NIMBY	not in my backyard
@@ -413,9 +450,11 @@ index 5baeef2..07598d1 100644
  NRN	no reply necessary
 +NRN	not right now
 +NSFW	not suitable for work
++NTBF	not to be fixed
 +NTN	no thanks needed
 +NUNP	no users, no problems
 +NVM	never mind
++NVMM	never mind mate
 +NW	no way
 +NXT	next
 +NYPA	not your personal army
@@ -450,6 +489,7 @@ index 5baeef2..07598d1 100644
 +PC	player character
 +PC	politically correct
 +PCB	polychlorinated biphenyl(s)
++PCE 	PC Engine
 +PD	police department
 +PDA	public display of affection
 +PDQ	pretty darn quick
@@ -457,6 +497,7 @@ index 5baeef2..07598d1 100644
 +PEBCAK	problem exists between chair and keyboard
  PEBKAC	problem exists between keyboard and chair
 -PFO	please fuck off
++PFA	please find attached
 +PFI	pay for inclusion
  PFY	pimply faced youth
 +PHB	pointy haired boss
@@ -484,27 +525,38 @@ index 5baeef2..07598d1 100644
 +PR	public relations
 +PSA 	prostate-specific antigen
 +PSA 	public service announcement
++PSX	PlayStation
 +PTA	parent-teacher association
 +PTO	{paid,personal} time off
 +PTO	parent-teacher organization
 +PTO	please turn over
 +PTO	power takeoff
++PTT	push-to-talk
++PTT	post-telephone-telegraph
  PTV	parental tunnel vision
  QED	quod erat demonstrandum
 +QFT	quoted for truth
++QOI	quality of information
 +RA	residential advisor
++RAND	reasonable and non-discriminatory
++RCD	residual current device
  RFC	request for comments
 +RFD	request for discussion
 +RFE	request for enhancements
++RFI	request for information
++RFP	request for proposal
++RIF	reduction in force
  RIP	rest in peace
  RL	real life
  RLC	rod length check
 +RMS	Richard Matthew Stallman
  ROFL	rolling on floor laughing
  ROFLMAO	rolling on floor laughing my ass off
++ROM	rough order of magnitude
 +ROI	return on investment
  ROTFL	rolling on the floor laughing
  RP	responsible person
++RPG	rocket-propelled grenade
 +RR	railroad
 +RSI	repetitive strain injury
  RSN	real soon now
@@ -523,19 +575,23 @@ index 5baeef2..07598d1 100644
 -SFA	sweet fuck all
 +SERP	search engine results page
 +SFAICT	so far as I can tell
++SGTM	sounds good to me
  SHID	slaps head in disgust
  SIMCA	sitting in my chair amused
 +SITD	still in the dark
++SJW	social justice warrior
 +SMAP	Soil Moisture Active Passive
 +SMH	shaking my head
  SMLSFB	so many losers, so few bullets
  SMOP	simple matter of programming
 -SNAFU	situation normal, all fucked up
++SMS	Sega Master System
  SNERT	snot-nosed egotistical rude teenager
++SNES	Super Nintendo Entertainment System
  SNMP	sorry, not my problem
 -SNR	signal to noise ratio
  SO	significant other
- SOB	son of [a] bitch
+-SOB	son of [a] bitch
 -SOL	shit out [of] luck
  SOP	standard operating procedure
 +SRS	serious
@@ -552,6 +608,7 @@ index 5baeef2..07598d1 100644
  SWAG	silly, wild-assed guess
  SWAHBI	silly, wild-assed hare-brained idea
  SWMBO	she who must be obeyed
++SWOT	strength, weaknesses, opportunities, threats
 +SYS	see you soon
 +TA	teaching assistant
  TANSTAAFL	there ain't no such thing as a free lunch
@@ -570,7 +627,7 @@ index 5baeef2..07598d1 100644
  THX	thanks
  TIA	thanks in advance
 +TIAVP	this is a volunteer project
-+TIC	tonque in cheek
++TIC	tongue in cheek
 +TIL	today I learned
  TINC	there is no cabal
 +TINLA	this is not legal advice
@@ -581,6 +638,7 @@ index 5baeef2..07598d1 100644
 +TLA	true love always
 +TLC	tender loving care
 +TLDR	too long, didn't read
++TLDW	too long, didn't watch
 +TM	trademark
 +TM	trust me
  TMA	too many abbreviations
@@ -593,6 +651,7 @@ index 5baeef2..07598d1 100644
 +TOC	table of contents
 +TOCTOU	time of check to time of use
  TOEFL	test of english as a foreign language
++TOFU	text over, fullquote under (in email)
 +TOH	to other half
 +TP	toilet paper
  TPTB	the powers that be
@@ -601,6 +660,7 @@ index 5baeef2..07598d1 100644
  TTFN	ta ta for now
 +TTM	to the moderator
 +TTT	thought that too
++TTTR	time-tagged time-resolved
  TTYL	talk to you later
 +TTYS	talk to you soon
 +TWAIN	thing without an interesting name
@@ -610,12 +670,17 @@ index 5baeef2..07598d1 100644
  TYVM	thank you very much
  U/L	upload
 +UGT	universal greeting time
++UPC	Universal Product Code
 +UR	your
 +UR	{you're, you are}
++URM	underrepresented minority
  UTSL	use the source, Luke
 +VCR	video cassette recorder
  VEG	very evil grin
 +VIP	very important person
++VLA	variable length array
++VLPR	vehicle license plate recognition
++VRI	vehicle recognition identification
  W/	with
 +W/E	whatever
  W/O	without
@@ -628,11 +693,15 @@ index 5baeef2..07598d1 100644
 +WELC	working effectively with legacy code
 +WFH	working from home
  WFM	works for me
++WGACA	what goes around comes around
  WIBNI	wouldn't it be nice if
  WIP	work in progress
 -WOFTAM	waste of fucking time and money
++WLW	women-loving women
 +WMNC	watch me not care
  WOMBAT	waste of money, brain, and time
++WP	well played
++WRR	weighted round robin
  WRT	with respect to
 -WTF	{what,where,who,why} the fuck
 -WTH	{what,where,who,why} the hell
@@ -654,25 +723,29 @@ index 5baeef2..07598d1 100644
  YKWIM	you know what I mean
 -YMA	yo momma's ass
  YMMV	your mileage may vary
++YMMD	you made my day
 +YOLO	you only live once
  YW	you're welcome
 +YWSYLS	you win some, you lose some
 +ZIP	zoning improvement plan
 diff --git a/wtf/acronyms.comp b/wtf/acronyms.comp
-index 6f2b66f..e27697c 100644
+index 6f2b66f..a288700 100644
 --- a/wtf/acronyms.comp
 +++ b/wtf/acronyms.comp
-@@ -1,319 +1,1474 @@
+@@ -1,319 +1,1897 @@
 -$NetBSD: acronyms.comp,v 1.58 2005/02/16 00:04:23 kleink Exp $
 -
-+$NetBSD: acronyms.comp,v 1.193 2018/03/01 19:09:33 ginsbach Exp $
++$NetBSD: acronyms.comp,v 1.357 2023/07/06 21:10:15 jschauma Exp $
  3WHS	three-way handshake
 +8VSB	8-state vestigial side band modulation
 +AA	anti-aliasing
 +AAA	authentication, authorization, [and] accounting
 +AAT	average access time
++ABE	attribute-based encryption
  ABI	application binary interface
++ABNF	augmented backus-naur form
 +ABR	available bit rate
++ABRT	automatic bug reporting tool
 +AC	alternating current
 +ACI	adjacent channel interferer
 +ACID	atomicity, consistency, isolation, durability
@@ -680,20 +753,26 @@ index 6f2b66f..e27697c 100644
 +ACK	acknowledgement
  ACL	access control list
 +ACL	active current loop
-+ACP	auxillary control {process,program}
++ACL	asynchronous connection less
++ACP	auxiliary control {process,program}
  ACPI	advanced configuration and power interface
 +ACS	access control set
 +ACU	automatic calling unit
 +ADB	Apple desktop bus
  ADC	analog [to] digital converter
 +ADD	acronym driven development
++ADDDC	adaptive double DRAM device correction
 +ADO	active data objects
 +ADP	automatic data processing
  ADPCM	adaptive differential pulse code modulation
 +ADS	alternate data stream
  ADSL	asymmetric digital subscriber line
 +ADT	abstract data type
++AEAD	authenticated encryption with associated data
++AEDC	advanced error detection and correction
++AER	advanced error reporting
 +AES	Advanced Encryption Standard
++AFP	Apple Filing Protocol
 +AFS	Andrew File System
 +AGC	automatic gain control
  AGP	accelerated graphics port
@@ -702,12 +781,16 @@ index 6f2b66f..e27697c 100644
 +AL	access list
 +AL	active link
 +ALE	address latch enable
++ALPN	application-layer protocol negotiation
 +ALS	ambient light sensor
++ALSA	advanced Linux sound architecture
 +ALU	arithmetic and logical unit
 +ALUA	asymmetric logical unit access
 +AM	access method
 +AM	alignment mask
  AM	amplitude modulation
++AMD	Advanced Micro Devices Inc
++AMDD	Agile model-driven development
  AMI	alternate mark inversion
 -ANSI	american national standards institute
 +AMP	asymmetric multiprocessing
@@ -717,18 +800,26 @@ index 6f2b66f..e27697c 100644
 +ANR	application not responding
 +ANSI	American National Standards Institute
 +AO	analog output
++AOC	add-on card
 +AOL	Alert-on-LAN
 +AOS	add or subtract
++AOT	ahead of time
  AP	access point
 +AP	application processor
++APFS	Apple file system
  API	application programming interface
++APEI	ACPI platform error interface
  APIC	advanced programmable interrupt controller
 -ARP	address resolution protocol
 +APIPA	automatic private IP addressing
++APM	advanced power management
++APM	application performance management
++APU	accelerated processing unit
 +APT	advanced persistent threat
 +AQM	active queue management
 +ARAT	always running APIC timer
 +ARC	adaptive replacement cache
++ARC	Advanced RISC Computing
 +ARC	automatic reference counting
 +ARM	Advanced RISC Machines
 +ARP	Address Resolution Protocol
@@ -737,36 +828,47 @@ index 6f2b66f..e27697c 100644
 +ARR	address range register
 +ARU	audio response unit
  AS	autonomous system
++ASA	Adaptive Security Appliance
++ASAN	Address Sanitizer
 +ASC	advanced smart cache
 +ASCII	American Standard Code for Information Interchange
 +ASD	agile software development
 +ASE	advanced software environment
++ASF	alert standard format
 +ASIC	application-specific integrated circuit
-+ASK	amplitude shif keying
++ASK	amplitude shift keying
 +ASLR	address space layout randomization
  ASN	autonomous system number
 -ASCII	american standard code for information interchange
++ASP	active server pages
++ASP	auxiliary storage pool
 +ASPM	active state power management
 +ASQ	automated software quality
 +ASR	address space register
++ASR	Apple software restore
 +AST	abstract syntax tree
-+AST	asynchronous trap
++AST	asynchronous system trap
 +AT	access time
  AT	advanced technology
  ATA	advanced technology attachment
  ATAPI	advanced technology attachment packet interface
 +ATC	address translation cache
++ATF	ARM trusted firmware
++ATF	automated testing framework
  ATM	asynchronous transfer mode
  ATX	advanced technology extended
 +AV	anti virus
++AVB	audio video bridging
 +AVL	Adelson-Velsky-Landis
 +AVX	advanced vector extensions
++AWDL	Apple wireless direct link
 +BA	byte align
 +BAL	basic assembly language
 +BAR	base address register
 +BBS	bulletin board system
 +BCC	blind carbon copy
 +BCD	binary coded decimal
++BCH	boot console handler
 +BCR	byte count register
 +BCS	base configuration space
 +BD	baud
@@ -779,6 +881,8 @@ index 6f2b66f..e27697c 100644
 -BGP	border gateway protocol
 -BIOS	basic input/output system
 +BER	bit error {rate,ratio}
++BERT	boot error record table
++BFD	bidirectional forwarding detection
 +BFD	binary {file,format} descriptor
 +BFKL	big fscking kernel lock
 +BFS	breadth-first search
@@ -794,9 +898,12 @@ index 6f2b66f..e27697c 100644
 +BKDG	BIOS and kernel developer's guide
 +BLAS	basic linear algebra subprograms
 +BLC	back light control
++BLE	Bluetooth low energy
  BLOB	binary large object
 +BM	bus master
 +BMC	baseboard management controller
++BMP	basic multilingual plane
++BMP	bitmap image file
 +BMIC	bus master interface controller
 +BN	boundary neutral
 +BNF	Backus-Naur form
@@ -814,12 +921,14 @@ index 6f2b66f..e27697c 100644
  BPS	bits per second
 -BSD	berkeley software distribution
 +BPSK	binary phase shift keying
++BQP	bounded-error quantum polynomial time
 +BQS	Berkeley quality software
 +BRE	basic regular expression
 +BS	backspace
 +BS	binary sequence
 +BSA	basic service area
 +BSD	Berkeley Software Distribution
++BSDP	Boot Service Discovery Protocol
 +BSF	bit scan forward
 +BSOD	blue screen of death
 +BSP	binary space partition
@@ -833,12 +942,16 @@ index 6f2b66f..e27697c 100644
 +BT	Bluetooth
 +BT	bit test
 +BTC	bit test [and] complement
++BTM	bus transport mechanism
 +BTR	bit test [and] reset
 +BTS	bit test [and] set
 +BTS	bug tracking system
 +BW	bandwidth
 +BWM	block-write mode
++BUAG	big ugly ASCII graphic
 +CA	certificate authority
++CAC	cryptographic access control
++CACLS	change access control lists
  CAD	computer-aided design
 -CAV	constant angular velocity (as opposed to CLV)
 +CAM	computer assisted manufacturing
@@ -853,32 +966,41 @@ index 6f2b66f..e27697c 100644
 +CAV	constant angular velocity
 +CBC	cipher block chaining
 +CBR	constant bit rate
-+CC	carbon coby
++CC	carbon copy
++CCC	Chaos Computer Club
  CCD	charge coupled device
 +CCI	co-channel interferer
 +CCNUMA	cache-coherent non-uniform memory access
++CCTL	command completion time limit
 +CD	cache disable
  CD	compact disc
  CDDA	compact disc digital audio
++CDL	compiler description language
 +CDMA	code division multiple access
++CDN	content delivery network
 +CDP	Cisco Discovery Protocol
  CDRAM	cache dynamic random access memory
  CER	canonical encoding rules
 -CGA	color graphics array
++CE	customer edge
 +CF	compact flash
 +CFB	cipher feedback
 +CFG	context-free grammar
 +CFG	control-flow graph
++CFI	control-flow integrity
 +CG	control gate
 +CGA	Color Graphics Adapter
  CGI	common gateway interface
 +CGN	Carrier-Grade NAT
 +CHAP	Challenge-Handshake Authentication Protocol
++CHFS	chip file system
  CHS	cylinder/head/sector
 -CIDR	classless inter-domain routing
 +CI	continuous integration
 +CI	{common,component} interface
++CIA	confidentiality, integrity, availability
 +CIDR	Classless Inter-Domain Routing
++CIF	common intermediate format
 +CIFS	Common Internet File System
 +CIL	common intermediate language
 +CIR	carrier-to-interference ratio
@@ -888,43 +1010,65 @@ index 6f2b66f..e27697c 100644
 +CLF	common log format
  CLI	command line interface
 -CLV	constant linear velocity (as opposed to CAV)
++CLI	common language infrastructure
 +CLR	common language runtime
++CLS	common language specification
 +CLTT	closed loop thermal throttling
 +CLUT	color look-up table
 +CLV	constant linear velocity
 +CM	configuration management
 +CMA	concert multithread architecture
++CMC	chassis management controller
++CMC	corrected machine check
++CMC	certificate management over CMS
 +CMS	{configuration,content,course} management system
++CMS	cryptographic message syntax
 +CMI	control {management,method} interface
 +CMOS	complementary metal-oxide-semiconductor
 +CMP	chip multi-processing
 +CMS	content management system
  CMYK	cyan magenta yellow black
 +CN	{common,canonical} name
++CNA	CVE Numbering Authority
 +CNC	computer numerical control
 +CNR	carrier-to-noise ratio
++COA	change of authority
 +COF	current operating frequency
 +COFDM	coded orthogonal frequency division multiplexing
  COFF	common object file format
 +COM	component object model
++COM	computer on module
 +COMA	cache-only memory architecture
 +CORBA	common object request broker architecture
++COS	class of service
  COW	copy-on-write
 +CP	continuous pilot
++CPA	chosen-plaintext attack
 +CPB	core performance boost
++CPC	central processor complex
++CPC	cpu performance counters
 +CPE	common phase error
++CPE	common platform enumeration
++CPER	common platform error record
 +CPG	clock pulse generator
++CPI	cycles per instruction
 +CPL	current privilege level
 +CPLD	complex programmable logic device
 +CPP	C preprocessor
 +CPS	characters per second
++CPS	continuation-passing style
 +CPT	command pass through
  CPU	central processing unit
 +CR	carriage return
 +CRC	cyclic redundancy check
++CRDT	conflict-free replicated data type
 +CRL	carrier recovery loop
  CRLF	carriage return line feed
++CSPM	cloud security posture management
++CSU	C start up
  CRT	cathode ray tube
++CRTP	curiously recurring template pattern
++CRUD	create, read, update, and delete
 +CS	cable select
 +CS	chip select
 +CS	code segment
@@ -935,14 +1079,21 @@ index 6f2b66f..e27697c 100644
  CSMA	carrier sense multiple access
  CSMA/CA	carrier sense multiple access with collision avoidance
  CSMA/CD	carrier sense multiple access with collision detection
++CSP	communicating sequential processes
++CSP	content security policy
++CSP	constrain satisfaction problems
++CSP	cryptographic service provider
 +CSR	control [and] status registers
 +CSRG	Computer Systems Research Group
  CSS	cascading style sheets
++CST	common spanning tree
 +CSV	comma-separated values
++CTF	compact c type format
 +CTM	close to metal
 +CTR	counter [mode]
  CTS	clear to send
 -CVS	concurrent versions system
++CTS	common type system
 +CUA	common user access
 +CUT	coordinated universal time
 +CV	control voltage
@@ -950,6 +1101,7 @@ index 6f2b66f..e27697c 100644
 +CVS	Concurrent Versions System
 +DA	destination address
 +DAA	distributed application architecture
++DAAP	digital audio access protocol
 +DAB	digital audio broadcasting
  DAC	digital [to] analog converter
 +DAC	discretionary access control
@@ -967,12 +1119,16 @@ index 6f2b66f..e27697c 100644
 +DBL	dynamic buffer limiting
 +DBMS	database management system
 +DBS	database server
++DC	data center
 +DC	direct current
 +DCC	Direct Client-to-Client
 +DCC	direct cable connect
 +DCD	data carrier detect
  DCE	data control equipment
  DCE	distributed computing environment
++DCIM	data center infrastructure management
++DCIM	digital camera images
++DCL	Digital Command Language
 +DCOM	distributed component object model
 +DCOP	Desktop COmmunication Protocol
 +DCS	data collection systems
@@ -980,6 +1136,7 @@ index 6f2b66f..e27697c 100644
 +DCU	data cache unit
  DDC	display data channel
 +DDE	dynamic data exchange
++DDI	device drivers interface
 +DDK	device driver kit
 +DDL	data description language
  DDR	double data rate
@@ -989,6 +1146,7 @@ index 6f2b66f..e27697c 100644
 +DE	debugging extensions
 +DE	desktop environment
 +DEA	data encryption algorithm
++DEC	Digital Equipment Corporation
 +DEK	data encryption key
 +DEP	data execution prevention
  DER	distinguished encoding rules
@@ -1000,28 +1158,38 @@ index 6f2b66f..e27697c 100644
 +DFC	data flow control
 +DFS	depth first search
 +DFS	distributed file system
++DFSAN	Data Flow Sanitizer
 +DFT	diagnostic function test
 +DFT	discrete Fourier transform
 +DGL	data generation language
++DGEMM	double precision general matrix multiply
 +DH	Diffie-Hellman
 +DHCP	Dynamic Host Configuration Protocol
++DIA	dedicated Internet access
++DIB	device independent bitmap
  DIFS	distributed inter-frame space
 +DIMM	dual inline memory module
 +DIRT	design in real time
++DKI	driver/kernel interface
 +DL	diode logic
 +DL	discrete logarithm
 +DL	download
++DLCI	data link connection identifier
  DLE	data link escape
 +DLL	dynamic link library
++DLNA	digital living network alliance
 +DLP	discrete logarithm problem
  DMA	direct memory access
 -DNS	domain name system
 +DMI	desktop management interface
 +DMS	document management system
 +DMT	discrete multitone modulation
++DMU	data management layer
 +DNARD	Digital network appliance reference design
 +DND	drag and drop
++DNLC	directory name lookup cache
 +DNS	Domain Name System
++DNSBL   Domain Name System Block List
 +DNSSEC	DNS Security Extensions
 +DOE	distributed object environment
 +DOF	data over fibre
@@ -1029,9 +1197,11 @@ index 6f2b66f..e27697c 100644
  DOS	denial of service
 +DOS	disk operating system
 +DP	DisplayPort
++DPAA	data path acceleration architecture
 +DPC	deferred procedure call
  DPCM	differential pulse code modulation
 +DPD	dead peer detection
++DPDK	data plane development kit
 +DPI	deep packet inspection
  DPI	dots per inch
 +DPL	descriptor privilege level
@@ -1042,12 +1212,19 @@ index 6f2b66f..e27697c 100644
 +DRBG	deterministic random bit generator
 +DRI	direct rendering infrastructure
 +DRM	digital rights management
++DRM	direct rendering manager
 +DRRS	display refresh rate switching
 +DS	debug store
++DS	differentiated services
++DS9000	DeathStation 9000
++DS9K	DeathStation 9000
 +DSA	digital signature algorithm
 +DSAP	destination service access point
 +DSB	double-sideband modulation
++DSCP	differentiated services code point
 +DSDT	differentiated system descriptor table
++DSF	device special file
++DSL	dataset and snapshot layer
  DSL	digital subscriber line
 +DSL	domain specific language
 +DSLAM	digital subscriber line access multiplexer
@@ -1055,11 +1232,14 @@ index 6f2b66f..e27697c 100644
 +DSO	dynamic shared object
 +DSP	digital signal processor
  DSSS	direct sequence spread spectrum
++DTB	device tree blob
++DTC	device tree compiler
  DTD	document type definition
  DTE	data terminal equipment
  DTE	dumb terminal emulator
 +DTL	diode-transistor logic
 +DTLS	datagram transport layer security
++DTS	device tree source
 +DTS	digital thermal sensor
 +DUT	device under test
 +DVB	digital video broadcasting
@@ -1070,13 +1250,18 @@ index 6f2b66f..e27697c 100644
 +DVI	device independent
 +DVI	Digital Visual Interface
 +DVR	digital video recorder
++DWARF	Debugging With Attributed Record Formats
 +E-XER	extended XML encoding rules
 +EABI	embedded-application binary interface
 +EAI	Email Address Internationalization
 +EAI	Enterprise Application Integration
 +EAP	Extensible Authentication Protocol
 +EAPOL	EAP over Lan
++EAV	entity-attribute-value model
++EAV	ethernet audio/video bridging
 +EBCDIC	Extended Binary Coded Decimal Interchange Code
++EBDA	Extended BIOS Data Area
++EBNF	extended backus-naur form
 +EBR	extended boot record
 +EC	elliptic curve
 +ECC	elliptic curve cryptography
@@ -1090,41 +1275,58 @@ index 6f2b66f..e27697c 100644
  ECP	enhanced capability port
 +ECS	enhanced chip set
 +ECS	extended configuration space
++EDAC	error detection and correction
 +EDAT	enhanced dynamic acceleration technology
 +EdDSA	Edwards curve digital signature algorithm
 +EDGE	explicit data graph execution
  EDID	extended display identification data
  EDO	extended data out
 +EDS	electronical data sheet
++EDSAC	electronic delay storage automatic calculator
++EDVAC	electronic discrete variable automatic computer
 +EEE	energy efficient ethernet
++EEE	embrace, extend, extinguish
  EEPROM	electrically erasable programmable read only memory
 +EFI	extensible firmware interface
 +EFL	emitter follower logic
  EFM	eight to fourteen modulation
 -EGA	enhanced graphics array
++EFS	extent file system
 +EGA	Enhanced Graphics Adapter
  EGP	exterior gateway protocol
 +EH	extension header
 +EIDE	enhanced IDE
  EISA	extended industry standard architecture
++EINJ	error injection table
  ELF	executable and linking format
 +ELS	entry level system
 +EMI	electro-magnetic interference
 +EMP	electro-magnetic pulse
 +EMR	electro-magnetic radiation
++EMACS	Editor MACroS
++ENIAC	electronic numerical integrator and computer
 +EOF	end of file
 +EOI	end of interrupt
++EOIS	end of interactive support
++EOL	end of life
 +EOL	end of line
 +EOT	end of transmission
 +EPIC	explicitly parallel instruction computing
  EPP	enhanced parallel port
  EPRML	extended partial response, maximum likelihood
  EPROM	erasable programmable read only memory
++EPT	extended page tables
++ERC	error recovery control
 +ERD	emergency recovery disk
 +ERD	entity relationship diagram
 +ERE	extended regular expression
++ERST	error record serialization table
++ESAN	Efficiency Sanitizer
++ESB	enterprise service bus
++ESDI	enhanced small disk interface
  ESDRAM	enhanced synchronous dynamic random access memory
 -E-XER	extended XML encoding rules
++ESI	enclosure services interface
 +ESS	electronic switching system
 +ESS	extended service set
 +ESSID	extended service set identifier
@@ -1134,6 +1336,7 @@ index 6f2b66f..e27697c 100644
 +EULA	end user license agreement
  FAT	file allocation table
  FBRAM	frame buffer random access memory
++FCIF	full common intermediate format
 +FCL	fiber channel loop
  FCS	frame check sequence
 +FDC	floppy disk controller
@@ -1141,6 +1344,7 @@ index 6f2b66f..e27697c 100644
  FDDI	fiber distributed data interface
 -FFS	fast file system
 +FDE	full disk encryption
++FDT	flattened device tree
 +FEA	finite element analysis
 +FEC	forward error correction
 +FET	field-effect transistor
@@ -1154,6 +1358,7 @@ index 6f2b66f..e27697c 100644
 +FFS	find first set
 +FFT	fast Fourier transform
 +FG	floating gate
++FHRP	first hop redundancy protocol
  FHSS	frequency hop spread spectrum
 +FID	frequency identifier
 +FIFO	first in, first out
@@ -1183,23 +1388,32 @@ index 6f2b66f..e27697c 100644
 +FTL	flash translation layer
 +FTP	File Transfer Protocol
 +FTPS	File Transfer Protocol Secure
++FTTH	fiber to the home
 +FUS	fast user switching
 +FWH	firmware hub
 +FWS	folding white space
 +GAL	generic array logic
++GARP	generic attribute registration protocol
 +GAS	generic address structure
  GC	garbage collector
++GCC	GNU Compiler Collection
 +GCM	Galois counter mode
  GCR	group-coded recording
++GDI	Graphics Device Interface
 +GDT	global descriptor table
++GECOS	general comprehensive operating supervisor
 +GEM	graphics environment manager
 +GEM	graphics execution manager
++GEMM	general matrix multiply
 +GENA	general event notification architecture
 +GHC	Glasgow Haskell compiler
++GHES	generic hardware error source
++GIC	generic interrupt controller
 +GID	group identifier
  GIF	graphics interchange format
 -GNU	gnu's not unix
 -GPL	gnu/general public license
++GLBP	gateway load balancing protocol
 +GMCH	graphics and memory controller hub
 +GNU	GNU's Not Unix
 +GOP	graphics output protocol
@@ -1218,14 +1432,20 @@ index 6f2b66f..e27697c 100644
 -HDCP	high-bandwidth digital content protection
 -HTML	hyper-text markup language
 -HTTP	hyper-text transfer protocol
++GRO	generic receive offload
 +GSI	global system interrupt
++GSO	generic send offload
 +GUI	graphical user interface
 +GUID	globally unique identifier
++GUS	Gravis UltraSound
 +GVFS    git virtual file system
 +HA	high availability
 +HAL	hardware abstraction layer
 +HAT	hashed array tree
++HATEOAS	hypermedia as the engine of application state
 +HBA	host bus adapter
++HCC	Home Cable Computer
++HCCA	Home Cable Computer Adaptor
 +HCF	halt and catch fire
 +HCI	host controller interface
 +HCI	human-computer interaction
@@ -1235,18 +1455,27 @@ index 6f2b66f..e27697c 100644
 +HDL	hardware description language
 +HDMI	High-Definition Multimedia Interface
 +HDTV	high-definition television
++HECI	host embedded controller interface
++HEST	hardware error source table
++HEVC	high efficiency video coding
 +HF	high frequency
 +HFM	highest frequency mode
++HFS	hierarchical file system
 +HID	human interface device
++HKDF	HMAC-based key derivation function
++HKP	HTTP Keyserver Protocol
 +HLL	high-level language
 +HMA	high memory area
 +HMI	human-machine interface
 +HOOD	hierarchical object oriented design
++HOTP	HMAC-based one time password
 +HP	Hewlett-Packard
 +HPC	high performance computing
++HPD	hot plug detection
 +HPET	high precision event timer
 +HSM	hardware security module
 +HSM	hierarchical storage management 
++HSRP	hot standby router protocol
 +HT	hyper-threading
 +HTC	hardware thermal control
 +HTCC	high temperature co-fired ceramic
@@ -1255,6 +1484,8 @@ index 6f2b66f..e27697c 100644
 +HTTP	Hypertext Transfer Protocol
 +HTTPS	Hypertext Transfer Protocol Secure
 +HVM	hardware virtual machine
++HVDS	High-Voltage Differential Signaling
++HWASAN	Hardware-assisted Address Sanitizer
 +HZ	Hertz
  I2O	intelligent input/output
 -IANA	internet assigned number authority
@@ -1263,12 +1494,14 @@ index 6f2b66f..e27697c 100644
 +IANA	Internet Assigned Numbers Authority
 +IBC	iterated block cipher
 +IBM	International Business Machines
++IBPI	international blinking pattern interpretation
 +IBS	instruction based sampling
 +IBSS	independent basic service set
  IC	integrated circuit
 -ICB	internet citizen's band
 -ICMP	internet control message protocol
 +ICA	independent computer architecture
++ICACLS	integrity control access control lists
 +ICB	Internet Citizen's Band
 +ICE	in-circuit emulator
 +ICE	internal compiler error
@@ -1278,6 +1511,7 @@ index 6f2b66f..e27697c 100644
 +ICW	initialization command word
 +IDA	Intel dynamic acceleration
 +IDCMP	Intuition direct communication message port
++IDCT	inverse discrete cosine transform
 +IDE	integrated development environment
  IDE	integrated drive electronics
 +IDPS	intrusion detection [and] prevention system
@@ -1296,6 +1530,7 @@ index 6f2b66f..e27697c 100644
 +IF	intermediate frequency
 +IFCM	isochronous flow control mode
 +IFF	Interchange File Format
++IFS	internal field separator
 +IGD	Internet gateway device
 +IGMP	Internet Group Management Protocol
  IGP	interior gateway protocol
@@ -1309,31 +1544,44 @@ index 6f2b66f..e27697c 100644
 +ILOM	integrated lights-out management
 +ILP	instruction level parallelism
 +IM	instant messaging
++IME	input method editor
 +IMAP	Internet Message Access Protocol
 +IMC	integrated memory controller
 +IMCR	interrupt mode configuration register
 +IMR	interrupt mask register
 +IMS	information management system
++IMSI	international mobile subscriber identity
 +INCITS	InterNational Committee for Information Technology Standards
++INODE	index node
  IO	input/output
  IOCTL	input/output control
 -IP	internet protocol
 -IPNG	internet protocol, next generation
 -IPSEC	internet protocol security
 -IRC	internet relay chat
++IOM	input/output managers
 +IOMMU	input/output memory management unit
 +IOT	Internet of Things
 +IP	Internet Protocol
 +IP	intellectual property
++IPC	instructions per cycle
 +IPC	interprocess communication
++IPCF	interprocess communication facility
 +IPE	integrated programming environment
++IPI	intelligent peripheral interface
 +IPI	interprocessor interrupt
++IPL	Initial Program Load
++IPL	Interrupt Priority Level
++IPMB	Intelligent Platform Management Bus
++IPMI	Intelligent Platform Management Interface
 +IPNG	Internet Protocol, Next Generation
 +IPS	in-plane switching
 +IPS	intrusion prevention system
 +IPSEC	Internet Protocol Security
 +IRC	Internet Relay Chat
 +IRDA	infrared data association
++IRDP	ICMP Router Discovery Protocol
++IR	intermediate representation
  IRQ	interrupt request
 -IRTF	internet research task force
 +IRQL	interrupt request level
@@ -1342,10 +1590,13 @@ index 6f2b66f..e27697c 100644
 +IS	information system
  ISA	industry standard architecture
 +ISA	instruction set architecture
++ISE	instant secure erase
  ISDN	integrated services digital network
  ISI	inter-symbol interference
 -ISM	industrial, scientific and medical
++ISL	initial system load
 +ISM	industrial, scientific, [and] medical
++ISMS	information system management system
  ISN	initial serial number
 -ISO	international standards organization
 -ISOC	internet society
@@ -1356,25 +1607,32 @@ index 6f2b66f..e27697c 100644
 +ISP	Internet service provider
 +ISR	in-service register
 +ISR	interrupt service routine
++IST	internal spanning tree
 +IST	interrupt stack table
 +ISV	independent software vendor
 +IT	information technology
 +ITB	Intel Turbo Boost
 +ITIL	information technology infrastructure library
++ITP	in-target probe
 +ITSM	IT service management
 +IV	initialization vector
 +IVT	interrupt vector table
 +JBOD	just a bunch of disks
++JCL	Job Control Language
 +JFET	junction [gate] field-effect transistor
 +JIT	just in time
 +JPEG	Joint Photographic Experts Group
 +JRE	Java Runtime Environment
++JSON	JavaScript Object Notation
 +JTAG	joint test action group
++KASAN	Kernel Address Sanitizer
 +KASLR	kernel address space layout randomization
 +KB	keyboard
 +KB	kilobyte
 +KBD	keyboard
 +KBD	kilobaud
++KCS	keyboard controller style
++KEM	key encapsulation mechanism
 +KLOC	thousand lines of code
 +KMS	kernel-mode setting
 +KPI	kernel programming interface
@@ -1382,11 +1640,14 @@ index 6f2b66f..e27697c 100644
 +KVM	kernel virtual machine
 +KVM	kernel virtual memory
 +KVM	keyboard, video, [and] mouse
++L2CAP	link layer control and adaptation protocol
++LAG	link aggregation group
 +LAMP	Linux Apache MySQL {Perl,PHP,Python}
  LAN	local area network
 +LAPIC	local advanced programmable interrupt controller
 +LAR	load access rights
  LBA	logical block addressing
++LBNF	labeled backus-naur form
 +LBS	location-based service
  LCD	liquid crystal display
  LCP	link control protocol
@@ -1398,6 +1659,7 @@ index 6f2b66f..e27697c 100644
 +LE	logical extent
  LED	light emitting diode
 -LIR	local internet registry
++LELL	low energy link layer
 +LER	label edge router
 +LF	line feed
 +LF	low frequency
@@ -1407,38 +1669,52 @@ index 6f2b66f..e27697c 100644
 +LFS	log-structured file system
 +LFU	least frequently used
 +LHP	loop heat pipe
++LIF	logical interchange format
 +LIFO	last in, first out
 +LILO	LInux LOader
 +LILO	last in, last out
 +LINT	local interrupt
 +LIR	local Internet registry
++LISP	LISt Processor
++LISP	Locator/ID Separation Protocol
 +LKM	{Linux,loadable} kernel module
 +LKML	Linux kernel mailing list
 +LL	load linked
 +LL/SC	load linked/store conditional
  LLC	logical link control
++LLD	low-level design
++LLDD	low-level design document
 +LLDP	link layer discovery protocol
 +LLF	low level format
 +LLMNR	link-local multicast name resolution
 +LLVM	Low Level Virtual Machine
 +LM	long mode
++LMCE	local machine check exception
++LMI	local management interface
 +LMM	link management mode
++LMP	link management protocol
 +LNO	loop nest optimization
 +LOC	lines of code
 +LOM	lights-out management
++LPE	Linux performance events
 +LPC	low pin count
 +LPS	local positioning system
  LRC	longitudinal redundancy check
 -LSB	least significant bit [or: byte]
 +LRM	left-to-right mark
++LRO	Large Receive Offload
 +LRO	left-to-right override
 +LRU	least recently used
++LS	link state
++LSAN	Leak Sanitizer
 +LSB	Linux standards base
 +LSB	least significant {bit,byte}
 +LSI	large scale integration
 +LSL	load segment limit
++LSM	log structured merge
 +LSN	Large Scale NAT
 +LSN	log sequence number
++LSO	large send offload
 +LSR	label switch router
 +LTCC	low temperature co-fired ceramic
 +LTO	linear tape-open
@@ -1452,13 +1728,17 @@ index 6f2b66f..e27697c 100644
 +LV	logical volume
 +LVM	logical volume management
 +LVT	local vector table
++LVDS	Low-Voltage Differential Signaling
 +LWP	light-weight process
++LZSS	Lempel Ziv Storer Szymanski
  LZW	Lempel Ziv Welch
 -MAC	medium access control
++MAB	MAC authentication bypass
 +MAC	mandatory access control
 +MAC	{media,medium} access control
 +MAC	message authentication {check,code}
 +MADT	multiple APIC descriptor table
++MAMR	microwave-assisted magnetic recording
 +MB	megabyte
 +MBA	multi-boot agent
  MBR	master boot record
@@ -1470,17 +1750,29 @@ index 6f2b66f..e27697c 100644
 +MCE	machine check exception
 +MCGA	Multi-Color Graphics Array
 +MCH	memory controller hub
++MCLAG	multi-chassis link aggregation group
 +MCM	multi-chip module
 +MCQ	memory controlled queue
 +MD	machine-dependent
++MD	MiniDisc
++MD-SAL	model-driven service abstraction layer
 +MDA	mail delivery agent
 +MDA	Monochrome Display Adapter
++MDC	Management Data Clock
++MDI	Medium Dependent Interface
++MDI-X	Medium Dependent Interface Crossover
++MDIO	Management Data Input/Output
++MDMX	MIPS Digital Media eXtension
  MDRAM	multibank dynamic random access memory
 +MESI	modified, exclusive, shared, invalid
 +MFC	merge from current
 +MFC	Microsoft Foundation Classes
  MFM	modified frequency modulation
++MFU	most frequently used
++MGCP	media gateway control protocol
++MHU	message handling unit
 +MI	machine-independent
++MI	machine interface
 +MIB	management information base
 +MIC	message integrity {check,code}
 +MID	mobile Internet device
@@ -1493,6 +1785,7 @@ index 6f2b66f..e27697c 100644
 +MIME	Multipurpose Internet Mail Extensions
 +MIMO	multiple input multiple output
  MIPS	million instructions per second
++MIPS	Microprocessor without Interlocked Pipeline Stages
 +MISD	multiple instruction, single data
 +MIT	Massachusetts Institute of Technology
 +MITM	man in the middle
@@ -1501,13 +1794,16 @@ index 6f2b66f..e27697c 100644
 +ML	mailing list
 +ML	markup language
 +ML	maximum likelihood
++MLAG	multi-chassis link aggregation group
 +MLC	multi-level cell
 +MLD	multicast listener discovery
 +MLHP	micro loop heat pipe
++MLIR	multi-level intermediate representation
 +MMF	multi-mode fiber
 +MMIC	monolithic microwave integrated circuit
 +MMIO	memory mapped input/output
 +MMORPG	massive multiplayer online role playing game
++MMRP	multiple MAC registration protocol
  MMU	memory management unit
 +MMX	matrix math extension
 +MMX	multimedia extension
@@ -1527,15 +1823,20 @@ index 6f2b66f..e27697c 100644
 +MPP	massively parallel processor
 +MPS	memory pool system
 +MPS	multiprocessor specification
++MQTT	Message Queuing Telemetry Transport
 +MR	modem ready
++MRO	method resolution order
++MRP	multiple registration protocol
 +MRU	most recently used
 +MS	Microsoft
++MSAN	Memory Sanitizer
 +MSB	most significant {bit,byte}
++MSC	message sequence chart
 +MSE	mean square error
  MSF	minutes seconds frames
 +MSI	message signaled interrupt
 +MSI	modified, shared, invalid
-+MSR	machine state register
++MSR	{machine state,model-specific} register
  MSS	maximum segment size
 +MSTP	Multiple Spanning Tree Protocol
 +MT	machine translation
@@ -1548,9 +1849,13 @@ index 6f2b66f..e27697c 100644
  MUA	mail user agent
 +MUD	multi-user domain
 +MVCC	multiversion concurrency control
++MVR	multicast VLAN registration
++MVRP	multiple VLAN registration protocol
  MWE	module width encoding
 +MX	mail exchange
 +NACK	negative acknowledgement
++NAK	negative acknowledgement
++NAN	neighbor awareness networking
 +NAN	not a number
 +NAPT	Network Address Port Translation
 +NAS	network attached storage
@@ -1558,17 +1863,22 @@ index 6f2b66f..e27697c 100644
  NAV	network allocation vector
 -NCP	network control protocol
 +NC	numerical control
++NC-SI	network controller sideband interface
 +NCO	numerically-controlled oscillator
 +NCP	Network Control Protocol
++NCSI	network connectivity status indicator
 +NCQ	native command queuing
 +ND	neighbor discovery
 +NDFA	nondeterministic finite automaton
++NDIS	network driver interface specification
 +NE	numeric error
++NEWS	Network extensible Window System
 +NFA	nondeterministic finite automaton
 +NFC	near-field communication
 +NFCI	no functional change intended
  NFS	network file system
 +NFV	network function virtualization
++NHACP	NABU HCCA Application Communication Protocol
 +NIA	next instruction address
 +NIC	network information center
  NIC	network interface card
@@ -1580,10 +1890,12 @@ index 6f2b66f..e27697c 100644
 +NLS	native language support
 +NMI	non-maskable interrupt
 +NNTP	Network News Transfer Protocol
++NMR	nonce-misuse resistance
 +NOC	network operations center
 +NOP	no operation
 +NOS	network operating system
 +NP	nondeterministic polynomial time
++NRND	not recommended for new designs
  NRZ	non-return to zero
 -NUMA	non uniform memory access
 +NSA	nation-state adversary
@@ -1592,15 +1904,23 @@ index 6f2b66f..e27697c 100644
 +NTM	non-deterministic Turing machine
 +NTP	Network Time Protocol
 +NUMA	non-uniform memory access
++NURBS	non-uniform rational basis spline
++NVMM	NetBSD Virtual Machine Monitor
++NVMM	non-volatile main memory
 +NVRAM	non-volatile random access memory
 +NW	not write-through
 +NX	no execute
 +OAEP	optimal asymmetric encryption padding
++OAM	operations, administration, and {management,maintenance}
 +OBO	off by one
 +OBOE	off by one error
  OCL	object constraint language
  OCR	optical character recognition
++ODE	offline device environment
++ODI	open data-link interface
++ODM	object data manager
 +ODCM	on-demand clock modulation
++ODMR	on-demand mail relay
 +ODT	on-die termination
  OEM	original equipment manufacturer
 +OFB	output feedback
@@ -1625,6 +1945,7 @@ index 6f2b66f..e27697c 100644
 +ORB	object request broker
 +ORM	object-relational mapping
 +OS	operating system
++OSD	object-based storage device
 +OSD	open source definition
  OSF	open software foundation
 +OSI	Open Source Initiative
@@ -1638,6 +1959,7 @@ index 6f2b66f..e27697c 100644
 +OTP	open telecom platform
 +OU	organizational unit
 +OUI	organizationally unique identifier
++OWASP	Open Web Application Security Project
 +OWL	Web Ontology Language
 +P2P	PCI to PCI
 +P2P	peer to peer
@@ -1646,6 +1968,7 @@ index 6f2b66f..e27697c 100644
 +PAAS	platform as a service
 +PAC	phase-amplitude converter
 +PAE	physical address extension
++PAGP	port aggregation protocol
 +PAL	phase alternating line
 +PAL	programmable array logic
  PAM	pluggable authentication modules
@@ -1657,13 +1980,20 @@ index 6f2b66f..e27697c 100644
  PAX	portable archive exchange
 +PBE	pending break encoding
 +PBE	programming by example
++PBR	partition boot record
++PBX	private branch exchange
  PC	personal computer
 +PC	program counter
 +PCB	printed circuit board
 +PCB	process control block
++PCB	Protocol Control Block
++PCBC	propagating cipher block chaining
 +PCC	Portable C Compiler
 +PCD	page-level cache disable
++PCE	path computation element
 +PCE	performance-monitor counter enable
++PCEP	Path Computation Element Protocol
++PCH	platform controller hub
  PCI	peripheral component interconnect
 +PCM	phase change memory
  PCM	pulse code modulation
@@ -1683,6 +2013,8 @@ index 6f2b66f..e27697c 100644
  PDU	protocol data unit
 -PDP	page descriptor page
 +PE	protection enable
++PE	provider edge
++PE	portable executable
 +PEAP	Protected EAP
 +PECI	platform environment control interface
 +PEP	protocol extension protocol
@@ -1692,9 +2024,11 @@ index 6f2b66f..e27697c 100644
 +PFS	perfect forward secrecy
 +PGAS	partitioned global address space
 +PGE	page global enable
++PGO	profile guided optimization
 +PGP	Pretty Good Privacy
 +PHB	PCI host bridge
 +PHP	PHP: Hypertext Preprocessor
++PIC	performance instrumentation counters
 +PIC	position independent code
  PIC	programmable interrupt controller
 +PICNIC	problem in chair, not in computer
@@ -1706,22 +2040,30 @@ index 6f2b66f..e27697c 100644
 +PIM	platform-independent model
  PIO	programmed input/output
 +PIPT	physically indexed, physically tagged
++PIR	private information retrieval
 +PIQ	prefetch input queue
 +PIT	programmable interrupt timer
 +PIV	personal identity verification
++PIX	Private Internet eXchange
 +PKCS	public-key cryptography standards
 +PKI	public key infrastructure
 +PLC	programmable logic controller
 +PLD	programmable logic device
  PLL	phase locked loop
 +PLRU	pseudo LRU
++PLT	procedure linkage table
 +PLTM	package level thermal management
 +PM	power management
 +PM	{phase,pulse} modulation
++PMC	performance monitoring counters
 +PME	power management event
++PMEG	page map entry group
++PMI	performance monitoring infrastructure
 +PMI	platform management interrupt
++PMIC	power management integrated circuit
 +PMIO	port-mapped input/output
  PMT	photo-multiplier tube
++PMU	performance monitoring units
 +PMU	power management unit
  PNG	portable network graphics
 -POP	post office protocol
@@ -1731,21 +2073,30 @@ index 6f2b66f..e27697c 100644
 +POF	probability of failure
 +POP	Post Office Protocol
 +POP	power on password
++POR	plan of record
 +POSIX	Portable Operating System Interface [for Unix]
  POST	power on self test
  POTS	plain old telephone system
 -PPP	point-to-point protocol
 -PPPOA	point-to-point protocol over ATM
 -PPPOE	point-to-point protocol over ethernet
++POWER	Performance Optimization With Enhanced RISC
++POWERPC	Performance Optimization With Enhanced RISC - Performance Computing
 +PP	pair programming
 +PPB	PCI [to] PCI bridge
 +PPC	PowerPC
++PPC	Power Performance Computing
 +PPI	pixels per inch
 +PPM	pages per minute
 +PPP	Point-to-Point Protocol
 +PPPOA	Point-to-Point Protocol over ATM
 +PPPOE	Point-to-Point Protocol over Ethernet
++PPR	processor programming reference
++PPT	powerpoint
++PPT	punched paper tape
 +PPU	physics processing unit
++PQC	post-quantum cryptography
++PRAM	Parameter RAM
 +PRBS	pseudorandom bit sequence
 +PRG	pseudorandom generator
 +PRF	pseudorandom function [family]
@@ -1754,6 +2105,8 @@ index 6f2b66f..e27697c 100644
 +PRNG	pseudorandom number generator
  PROM	programmable read only memory
 +PRP	pseudorandom permutation
++PRU	Programmable Realtime Unit
++PS	PostScript
 +PSD	power spectral density
 +PSE	page size extensions
 +PSK	phase shift keying
@@ -1766,10 +2119,13 @@ index 6f2b66f..e27697c 100644
 -PSTN	public switched telephone network
 +PTV	perceived target value
 +PU	processing unit
++PUC	personal unblocking code
 +PUN	physical unit number
 +PV	physical volume
++PVC	permanent virtual circuit
 +PVG	physical volume group
 +PVI	protected-mode virtual interrupt
++PVRST	Per-VLAN rapid spanning tree
 +PVST	Per-VLAN Spanning Tree
  PWM	pulse width modulation
 +PXE	preboot execution environment
@@ -1779,6 +2135,9 @@ index 6f2b66f..e27697c 100644
 +QBE	query by example
 +QC	quality control
 +QDI	quasi delay insensitive
++QCIF	quarter common intermediate format
++QOI	quality of implementation
++QOI	quick order interface
  QOS	quality of service
 -RAID	redundant array of inexpensive disks
 +QVL	qualified vendor list
@@ -1789,30 +2148,41 @@ index 6f2b66f..e27697c 100644
 +RA	resource affinity
 +RA	router advertisement
 +RAD	rapid application development
++RADIUS	remote authentication dial-in user service
 +RAID	redundant array of {independent,inexpensive} disks
++RAII	resource acquisition is initialization
  RAM	random access memory
+-RCS	revision control system
+-RFC	request for comments
 +RAS	reliability, availability and serviceability
 +RAS	remote access service
 +RAS	restartable atomic sequence
 +RAS	row address strobe
 +RBF	radial basis function
++RBL     reputation block list
++RBL     real-time blackhole list
++RBNF	routing backus-naur form
 +RBT	red-black tree
 +RC	release candidate
 +RC	remote control
++RC	run commands
 +RCS	Revision Control System
- RCS	revision control system
--RFC	request for comments
 +RCU	read, copy, update
 +RDB	Rigid Disk Block
 +RDBMS	relational database management system
 +RDF	Resource Description Framework
 +RDM	relational data model
 +RDMA	remote direct memory access
++RDP	remote desktop protocol
++RDRAM	Rambus DRAM
 +RE	regular expression
++REPL	read, evaluate, print, loop
 +REST	representational state transfer
 +RF	radio frequency
++RFB	remote frame buffer
 +RFI	radio frequency interference
 +RFO	request for ownership
++RFU	reserved for future use
  RGB	red green blue
 -RIP	routing information protocol
 -RIR	regional internet registry
@@ -1824,6 +2194,7 @@ index 6f2b66f..e27697c 100644
 +RHL	Red Hat Linux
 +RIB	routing information base
 +RIFF	Resource Interchange File Format
++RIP	Raster Image Processor
 +RIP	Routing Information Protocol
 +RIR	regional Internet registry
 +RISC	reduced instruction set {computer,computing}
@@ -1832,6 +2203,7 @@ index 6f2b66f..e27697c 100644
  RLL	run length limited
 +RLO	right-to-left override
 +RM	read miss
++RMCP	Remote Management Control Protocol
 +RMI	remote method invocation
 +RMO	Relaxed Memory Ordering
 +RMPM	rapid memory power management
@@ -1839,7 +2211,9 @@ index 6f2b66f..e27697c 100644
 +RMW	read, modify, write
 +RNG	random number generator
  ROM	read only memory
++ROP	return-oriented programming
 +RPC	remote procedure call
++RPG	Report Program Generator
 +RPKI	resource PKI
 +RPL	requested privilege level
  RPM	revolutions per minute
@@ -1849,9 +2223,11 @@ index 6f2b66f..e27697c 100644
 +RR	round robin
 +RS	relay station
 +RSA	Rivest, Shamir, [and] Adleman
++RSC	Receive Segment Coalescing
 +RSIP	Realm Specific IP
 +RSN	Robust Secure Network
 +RSS	really simple syndication
++RSS	Receive Side Scaling
 +RSS	residual sum of squares
 +RSTP	Rapid Spanning Tree Protocol
 +RT	real time
@@ -1862,10 +2238,12 @@ index 6f2b66f..e27697c 100644
 +RTL	resistor-transistor logic
 +RTL	right to left
 +RTOS	real time operating system
++RTP	Real-time Transport Protocol
  RTS	request to send
 -RTT	round time trip
 -S/PDIF	sony/phillips digital interface
 +RTT	round trip time
++RTTI	run-time type information
 +RUP	rational unified process
 +RW	Rabin-Williams
 +RWM	read-write memory
@@ -1876,12 +2254,16 @@ index 6f2b66f..e27697c 100644
 +SA	source address
 +SA	structured analysis
 +SAAS	software as a service
++SABRE	Semi-automated business research environment
  SACD	super audio compact disc
 +SAD	security association database
-+SAL	system abstraction layer
++SAF-TE	SCSI accessed fault-tolerant enclosure
++SAGE	Semi-automated ground environment
++SAL	{service,system} abstraction layer
  SAM	serial access memory
 -SASI	shugart associates system interface (predecessor to SCSI)
 +SAM	sum addressed memory
++SAML	security assertion markup language
 +SAN	storage area network
 +SAP	service access point
 +SAPIC	streamlined advanced programmable interrupt controller
@@ -1890,57 +2272,82 @@ index 6f2b66f..e27697c 100644
 +SASL	simple authentication [and] security layer
  SATA	serial advanced technology attachment
 -SCSI	small computer system interface
++SAX	simple API for XML
 +SB	sound blaster
++SBSA	server base system architecture
 +SBU	standard build unit
 +SC	store conditional
 +SCA	source code analyzer
 +SCADA	supervisory control and data acquisition
 +SCC	single chip cloud
 +SCC	source code control
++SCCP	skinny call control protocol
 +SCCS	Source Code Control System
 +SCI	scalable coherent interface
 +SCI	system control interrupt
++SCIM	smart common input method
 +SCM	software configuration management
 +SCM	source code management
 +SCM	storage-class memory
++SCO	synchronous connection orientated
 +SCP	secure copy
++SCP	system control processor
++SCPI	system control and power interface
 +SCSI	Small Computer System Interface
 +SCTP	Stream Control Transmission Protocol
++SDDC	software defined data center
++SDEI	software delegated exception interface
 +SDI	symbol deinterleave
 +SDK	software development kit
 +SDL	Simple Declarative Language
 +SDL	Simple Direct-media Layer 
 +SDLC	{software,system,systems} development life cycle
 +SDN	software defined networking
++SDP	Session Description Protocol
++SDR	software defined radio
  SDRAM	synchronous dynamic random access memory
 +SDS	software defined storage
 +SDT	syntax-directed translation
++SEA	synchronous external abort
 +SEGV	segmentation violation
++SED	self-encrypting drive
++SED	stream editor
++SEMB	serial ATA enclosure management bridge
 +SEO	search engine optimization
++SES	SCSI enclosure services
 +SFC	sequential function chart
 +SFI	simple firmware interface
 +SFI	software fault isolation
 +SFTP	SSH File Transfer Protocol
 +SFTP	Serial File Transfer Protocol
 +SFTP	Simple File Transfer Protocol
++SGI	Silicon Graphics, Inc
++SGI	software generated interrupt
 +SGMII	serial gigabit media independent interface
++SGPIO	serial general purpose input/output
  SGRAM	synchronous graphics random access memory
 +SHA	secure hash algorithm
++SICP	structure and interpretation of computer programs
 +SIDH	supersingular isogeny Diffie-Hellman
 +SIEM	security information and event management
++SIF	source input format
  SIFS	short inter-frame space
 -SIP	session initiation protocol
++SIM	subscriber identity module
 +SIMD	single instruction, multiple data
 +SIMM	single inline memory module
 +SIP	Session Initiation Protocol
 +SIR	signal-to-interference ratio
  SIR	slow infrared
 +SISD	single instruction, single data
++SIV	synthetic intialization vector
++SLAAC	stateless address auto-configuration
 +SLC	single-level cell
  SLDRAM	synchronous-link dynamic random access memory
 +SLED	single large expensive disk
 +SLI	scalable link interface
 +SLI	scan-line interleave
++SLIC	system license internal code
 +SLOC	source lines of code
 +SLRU	segmented LRU
 +SMA	smart memory access
@@ -1948,20 +2355,28 @@ index 6f2b66f..e27697c 100644
 +SMAP	Simple Mail Access Protocol
 +SMAP	supervisor mode access prevention
  SMART	self-monitoring analysis and reporting technology
++SMB	Server Message Block
++SMB	system management bus
 +SMBIOS	System Management BIOS
 +SMC	system management controller
++SMD	storage module device
 +SMEP	supervisor mode execution protection
 +SMF	single mode fiber
 +SMI	structure of management information
 +SMI	system management interrupt
 +SMM	system management mode
++SMP	serial management protocol
  SMP	symmetric multiprocessing
 -SMTP	simple mail transfer protocol
 -SNMP	simple network management protocol
++SMR	shingled magnetic recording
++SMR	state machine replication
 +SMT	simultaneous multithreading
 +SMTP	Simple Mail Transfer Protocol
 +SMU	system management unit
++SNA	systems network architecture
 +SNAP	Sub-Network Access Protocol
++SNIA	Storage Networking Industry Association
 +SNMP	Simple Network Management Protocol
 +SNR	signal-to-noise ratio
 +SOA	service oriented architecture
@@ -1971,8 +2386,11 @@ index 6f2b66f..e27697c 100644
 +SOH	start of header
 +SOHO	small office/home office
 +SOL	serial over LAN
++SOM	system on module
 +SP	service pack
 +SP	stack pointer
++SPA	storage pool allocator
++SPAN	switched port analyzer
 +SPARC	scalable processor architecture
 +SPARQL	SPARQL Protocol and RDF Query Language
 +SPD	security policy database
@@ -1980,37 +2398,50 @@ index 6f2b66f..e27697c 100644
 +SPDIF	Sony/Philips digital interface format
 +SPI	serial peripheral interface
 +SPI	stateful packet inspection
++SPIR	standard portable intermediate representation
 +SPL	system interrupt priority level
 +SPL	spinlock
 +SPMD	single process, multiple data
 +SPR	special purpose register
 +SPT	sectors per track
 +SQA	software quality assurance
++SQCIF	sub quarter common intermediate format
 +SQL	Structured Query Language
  SRAM	static random access memory
 +SRC	sample rate conversion
++SRP	SCSI RDMA protocol
++SRR	shaped round robin
++SRTP	Secure Real-time Transport Protocol
 +SS	self-snoop
 +SS	stack segment
 +SSA	static single assignment
 +SSAP	source service access point
 +SSB	single-sideband modulation
++SSC	spread spectrum clock
 +SSD	solid state drive
 +SSE	streaming SIMD extensions
  SSFDC	solid state floppy disc card
  SSH	secure shell
 +SSI	server side includes
 +SSID	service set identifier
++SSTP 	secure socket tunneling protocol
  SSL	secure sockets layer
 +SSP	stack smashing protection
 +STC	software thermal control
 +STD	state transition diagram
++STM	software transactional memory
++STOMP	Streaming Text Oriented Messaging Protocol
 +STP	Spanning Tree Protocol
  STP	shielded twisted pair
 -SVGA	super video graphics array
++STRG	spanning tree root guard
++SUN	Stanford University Network
 +SUS	Single Unix Specification
 +SUT	system under test
++SVC	switched virtual circuit
 +SVG	scalable vector graphics
 +SVGA	Super Video Graphics Array
++SVI	{switch,switched} virtual interface
 +SVM	secure virtual machine
 +SVM	support vector machine
 +SVR	System V Release
@@ -2020,27 +2451,32 @@ index 6f2b66f..e27697c 100644
 +SYR	symbol timing recovery
 +TA	test assertion
 +TA	transmitter address
++TACACS	terminal access controller access-control system
 +TAI	international atomic time
 +TAO	track at once
 +TAOCP	The Art of Computer Programming
 +TAP	Test Anything Protocol
 +TAS	test and set
 +TB	terabyte
++TBNF	transitional backus-naur form
 +TCB	trace capture buffer
 +TCB	trusted computing base
 +TCC	thermal control circuit
  TCL	tool command language
 -TCP	transmission control protocol
+-TDD	test driven development
 +TCP	Transmission Control Protocol
 +TCQ	tagged command queueing
 +TDC	time [to] digital converter
- TDD	test driven development
++TDD	test-driven development
 +TDD	time division duplex
 +TDM	time division multiplexing
 +TDMA	time division multiple access
 +TDOA	time difference of arrival
 +TDP	thermal design {point,power}
++TDR	time-domain reflectometry
 +TECO	Text Editor and Corrector
++TEE	Trusted Execution Environment
  TFT	thin film transistor
 +TFTP	Trivial File Transfer Protocol
 +TIAS	try it and see
@@ -2052,16 +2488,22 @@ index 6f2b66f..e27697c 100644
 -TLB	transition lookaside buffer
 +TLB	translation lookaside buffer
  TLD	top level domain
++TLER	time-limited error recovery
++TLI	transport layer interface
 +TLS	thread local storage
 +TLS	transport layer security
 +TM	Turing machine
 +TM	thermal monitor
++TMG	transmogrifier
  TMDS	transition minimized differential signaling
 +TMO	timeout
 +TOD	time of day
++TOE	TCP offload engine
++TOFU	trust on first use
 +TOS	terms of service
 +TOS	trusted operating system
 +TOS	type of service
++TOTP	time-based one time password
 +TP	transaction processing
 +TPI	tracks per inch
 +TPM	transactions per minute
@@ -2077,41 +2519,54 @@ index 6f2b66f..e27697c 100644
 +TS	time series
 +TS	time stamp
 +TS	transport stream
++TSAN	Thread Sanitizer
 +TSC	time stamp counter
 +TSD	time stamp disable
++TSDB	time series database
 +TSL	test, set, lock
 +TSO	time sharing option
++TSO	TCP segmentation offload
 +TSO	Total Store Ordering
 +TSP	Time-Stamp Protocol
 +TSP	Tunnel Setup Protocol
 +TSP	time synchronization protocol
 +TSP	traveling salesman problem
 +TSS	task state segment
++TSV	tab-separated values
  TTL	time to live
 +TTL	transistor-transistor logic
 +TTM	translation table maps
  TTY	teletype
++TU	translation unit
 +TUI	{terminal,text-based,textual} user interface
 +TX	{transmit out,transmitter}
++TXG	transaction group
  TZ	time zone
 +UAC	user {access,account} control
 +UAF	use-after-free
  UART	universal asynchronous receiver/transmitter
 +UAT	user acceptance testing
 +UB	undefined behavior
++UBSAN	Undefined Behavior Sanitizer
  UC	uncacheable
 -UDO	ultra density optical (storage)
 -UDP	user datagram protocol
 -UFS	unix file system
 +UCS	uniform-cost search
++UCS	unified computing system
++UCS	universal coded character set
++UDI	uniform driver interface
 +UDMA	ultra DMA
 +UDO	ultra density optical
 +UDP	User Datagram Protocol
++UDS	Unix Domain Socket
 +UEFI	unified extensible firmware interface
++UFO	UDP fragmentation offload
 +UFS	Unix File System
 +UGA	universal graphics adapter
 +UI	unit interval
 +UI	user interface
++UICC	universal integrated circuit card
 +UID	unique identifier
 +UID	user identifier
 +UL	upload
@@ -2130,8 +2585,10 @@ index 6f2b66f..e27697c 100644
  USWC	uncacheable speculative write combining
 +UT	unit test
 +UTC	coordinated universal time
++UTF	unicode transformation formats
  UTP	unshielded twisted pair
 -UUCP	unix-to-unix copy protocol
++UTS	UNIX time-sharing
 +UUCP	Unix-to-Unix Copy Protocol
 +UUID	universally unique identifier
 +UUOC	useless use of cat
@@ -2142,25 +2599,33 @@ index 6f2b66f..e27697c 100644
 +VA	volt-ampere
  VAX	virtual address extension
 +VB	Visual Basic
++VBR	volume boot record
 +VCA	variable-gain amplifier
 +VCC	common collector voltage
++VCCP	virtual chassis control protocol
 +VCF	voltage-controlled filter
  VCM	virtual channel memory
 -VESA	video electronics standards association
 -VGA	video graphics array
 +VCO	voltage-controlled oscillator
++VCP	virtual chassis port
 +VCS	version control system
++VDPAU	Video Decode and Presentation API for Unix
++VES	virtual execution system
 +VESA	Video Electronics Standards Association
 +VFO	variable-frequency oscillator
++VFS	virtual file system
 +VG	volume group
 +VGA	Video Graphics Array
 +VHDCI	very high density cable interconnect
-+VID	voltage level identifier
++VID	{VLAN,voltage level} identifier
++VIM	Vi IMproved
 +VIPT	virtually indexed, physically tagged
 +VIVT	virtually indexed, virtually tagged
  VLAN	virtual local area network
 -VLSM	variable length subnetting mask
 -VM	virtual memory
++VLD	variable-length decoding
 +VLIW	very long instruction word
 +VLSI	very large scale integration
 +VLSM	variable length subnet mask
@@ -2168,29 +2633,41 @@ index 6f2b66f..e27697c 100644
 +VME	virtual mode extension
 +VMX	vector multimedia extensions
 +VMX	virtual machine extensions
++VNC	virtual network computing
 +VOD	video on demand
++VPD	vital product data
  VPN	virtual private network
++VPWS	virtual private wire service
 +VR	virtual reality
  VRAM	video random access memory
 +VRF	virtual routing and forwarding
 +VRM	voltage regulator module
++VROC	Virtual RAID On CPU
 +VRRP	Virtual Router Redundancy Protocol
 +VSTP	VLAN Spanning Tree Protocol
 +VTP	VLAN Trunking Protocol
++VXFS	Veritas file system
++VXVM	Veritas volume manager
 +W	watt
 +W3C	World Wide Web Consortium
++WAFL	write anywhere file layout
++WAMP	Web Application Messaging Protocol
  WAN	wide area network
 -WAP	wireless application protocol
 +WAP	Wireless Application Protocol
 +WAP	wireless access point
++WDM	Windows Driver Model
++WDDM	Windows Display Driver Model
 +WDT	watchdog timer
 +WEP	Wired Equivalent Privacy
 +WFI	wait for interrupt
 +WFQ	weighted fair queuing
 +WH	write hit
++WHEA	Windows hardware error architecture
 +WIFI	wireless fidelity
  WLAN	wireless local area network
 +WM	write miss
++WMF	Windows meta file
 +WMI	Windows Management Instrumentation
 +WOL	Wake-on-LAN
 +WOM	Wake-on-Modem
@@ -2201,12 +2678,15 @@ index 6f2b66f..e27697c 100644
 +WP	write protect
 +WPA	Wi-Fi Protected Access
 +WPA2	Wi-Fi Protected Access II
++WPAD	web proxy auto-discovery protocol
 +WPS	Wi-Fi Protected Setup
  WRAM	window random access memory
 +WS	web services
 +WTC	write through caching
++WTD	weighted tail drop
 +WWAN	wireless wide area network
  WWW	world wide web
++WYSIAYG	what you see is all you get
 +WYSIWYG	what you see is what you get
 +XBAR	crossbar
 +XDMCP	X Display Manager control protocol
@@ -2214,21 +2694,36 @@ index 6f2b66f..e27697c 100644
 -XGA	extended graphics array
 -XML	extensible markup language
 +XGA	Extended Graphics Array
++XHR	XMLHttpRequest
 +XIP	execute in place
 +XML	Extensible Markup Language
++XNA	XNA's not acronymed
++XNS	Xerox network systems
 +XOR	exclusive or
 +XP	extreme programming
 +XSI	X/Open System Interface
  XSL	extensible stylesheet language
++XSLT	extensible stylesheet language transformations
 +XSS	cross site scripting
  XT	extended technology
++XTACACS	extended terminal access controller access-control system
++XTI	X/Open transport interface
 +XUL	XML user interface language
 +YACC	yet another compiler compiler
++YAML	YAML ain't markup language
++YANG	yet another next generation
 +YAWPFAPR	you are welcome; please file a problem report
 +YP	Yellow Pages
 +YTD	year to date
++ZAP	ZFS attribute processor
 +ZBR	zone bit recording
  ZFOD	zero-filled on demand
++ZFS	zettabyte file system
 +ZIF	zero insertion force
 +ZIFS	zero insertion force socket
++ZIL	ZFS intent log
 +ZMA	zone multicast address
++ZOI	zero one infinity
++ZOI	zone of influence
++ZPL	ZFS Posix layer
++ZVOL	ZFS Volume

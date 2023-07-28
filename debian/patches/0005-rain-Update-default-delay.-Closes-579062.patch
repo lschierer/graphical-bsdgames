@@ -20,7 +20,7 @@ index 9fb0f0e..c6515e9 100644
  .Sh AUTHOR
  .An Eric P. Scott
 diff --git a/rain/rain.c b/rain/rain.c
-index e388f46..63e6276 100644
+index e388f46..07bdd0f 100644
 --- a/rain/rain.c
 +++ b/rain/rain.c
 @@ -70,7 +70,7 @@ main(int argc, char **argv)
@@ -28,7 +28,7 @@ index e388f46..63e6276 100644
  	int x, y, j;
  	long cols, lines;
 -	unsigned int delay = 0;
-+	unsigned int delay = 120;
++	unsigned int delay = 120000;
  	unsigned long val = 0;
  	int ch;
  	char *ep;

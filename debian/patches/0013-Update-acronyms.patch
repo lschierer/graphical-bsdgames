@@ -4,12 +4,12 @@ Subject: Update acronyms.
 
 Source: http://cvsweb.netbsd.org/bsdweb.cgi/src/share/misc/
 ---
- wtf/acronyms      |  519 ++++++++++++++--
+ wtf/acronyms      |  517 ++++++++++++++--
  wtf/acronyms.comp | 1772 ++++++++++++++++++++++++++++++++++++++++++++++++++---
- 2 files changed, 2138 insertions(+), 153 deletions(-)
+ 2 files changed, 2137 insertions(+), 152 deletions(-)
 
 diff --git a/wtf/acronyms b/wtf/acronyms
-index 5baeef2..ba8ae96 100644
+index 5baeef2..82b2d44 100644
 --- a/wtf/acronyms
 +++ b/wtf/acronyms
 @@ -1,252 +1,659 @@
@@ -703,11 +703,10 @@ index 5baeef2..ba8ae96 100644
 +WP	well played
 +WRR	weighted round robin
  WRT	with respect to
--WTF	{what,where,who,why} the fuck
++WTB	{waiting,want,willing} to buy
+ WTF	{what,where,who,why} the fuck
 -WTH	{what,where,who,why} the hell
 -WYSIWYG	what you see is what you get
-+WTB	{waiting,want,willing} to buy
-+WTF	where's the food
 +WTG	way to go
 +WTH	{what,when,where,who,why} the hell
 +WTS	{waiting,want,willing} to sell

@@ -1,0 +1,24 @@
+From: "Dr. Tobias Quathamer" <toddy@debian.org>
+Date: Fri, 28 Jul 2023 14:36:42 +0200
+Subject: trek: Fix error that prevents visual command from working under some
+ circumstances.
+
+Thanks: James Baldwin-Brown <jgbaldwinbrown@gmail.com>
+Closes: #964235
+---
+ trek/trek.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/trek/trek.h b/trek/trek.h
+index 62ac1df..7dbb5f5 100644
+--- a/trek/trek.h
++++ b/trek/trek.h
+@@ -201,7 +201,7 @@ struct kling
+ 
+ struct xy
+ {
+-	unsigned char	x, y;		/* coordinates */
++	signed char	x, y;		/* coordinates */
+ };
+ 
+ 

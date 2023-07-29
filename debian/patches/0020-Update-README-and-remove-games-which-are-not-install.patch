@@ -1,0 +1,36 @@
+From: "Dr. Tobias Quathamer" <toddy@debian.org>
+Date: Sat, 29 Jul 2023 21:25:57 +0200
+Subject: Update README and remove games which are not installed.
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+Thanks: Γιώργος Κωστόπουλος <giorgosk67@gmail.com>
+Closes: #1030338
+---
+ README | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/README b/README
+index 17165f4..647352c 100644
+--- a/README
++++ b/README
+@@ -41,7 +41,6 @@ adventure:	the original adventure by Crowther and Woods
+ arithmetic:	arithmetic quiz/speed test
+ atc:		air traffic control
+ backgammon:	backgammon
+-banner:		display a message in big letters
+ battlestar:	adventure game on a battlestar
+ bcd:		outputs text in an antique form
+ boggle:		boggle
+@@ -50,10 +49,7 @@ canfield:	curses-based solitaire
+ countmail:	tell you how much new mail you have
+ cribbage:	cribbage
+ dab:		dots and boxes
+-dm:		dungeon master, regulates games playing
+-factor:		factor a number
+ fish:		go fish
+-fortune:	displays a random silly message
+ gomoku:		gomoku
+ hack:		exploring the Dungeons of Doom
+ hangman:	guess the word before it is too late

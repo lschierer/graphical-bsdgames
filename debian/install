@@ -1,0 +1,2 @@
+debian/desktop-files/*desktop usr/share/applications/bsdgames
+debian/bsdgames.svg usr/share/icons/hicolor/scalable/apps

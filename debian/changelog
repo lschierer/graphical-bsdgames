@@ -1,3 +1,29 @@
+bsdgames (2.17-30) unstable; urgency=medium
+
+  * Change gbp.conf for DEP-14 branch layout
+  * Switch to debhelper-compat
+  * Refresh patches
+  * Sync acronyms and acronyms.comp with NetBSD-HEAD
+  * rain: Default delay is in wrong units, making it effectively 0.
+    Thanks to Asher Gordon <AsDaGo@posteo.net> (Closes: #723808, #947222)
+  * Revert WTF acronym.
+    Thanks to Salvo Tomaselli <tiposchi@tiscali.it> (Closes: #930473)
+  * trek: Fix error that prevents visual command from working
+    under some circumstances.
+    Thanks to James Baldwin-Brown <jgbaldwinbrown@gmail.com> (Closes: #964235)
+  * Update README and remove games which are not installed.
+    Thanks to Γιώργος Κωστόπουλος <giorgosk67@gmail.com> (Closes: #1030338)
+  * Build-Depend on libncurses-dev instead of libncurses5-dev
+  * Update Standards-Version to 4.6.2, no changes needed
+  * Add Suggests: mailutils and sync countmail with NetBSD-HEAD.
+    Thanks to Jakub Wilk <jwilk@jwilk.net> (Closes: #1042397)
+  * Add desktop files and generic icon for all programs.
+    Also remove obsolete d/menu file.
+    (Closes: #723695, #723900, #726215)
+  * Use debhelper v13
+
+ -- Dr. Tobias Quathamer <toddy@debian.org>  Sun, 30 Jul 2023 00:42:16 +0200
+
 bsdgames (2.17-29) unstable; urgency=medium
 
   * Team upload.

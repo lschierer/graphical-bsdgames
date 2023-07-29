@@ -19,6 +19,7 @@ Package: bsdgames
 Architecture: any
 Depends: wamerican | wordlist, ${misc:Depends}, ${shlibs:Depends}
 Provides: adventure
+Suggests: mailutils
 Description: collection of classic textual unix games
  This is a collection of some of the text-based games and amusements that
  have been enjoyed for decades on unix systems.

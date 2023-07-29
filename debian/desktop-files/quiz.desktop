@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Quiz
+Exec=quiz
+Icon=bsdgames.svg
+Terminal=True
+Categories=Game;ConsoleOnly

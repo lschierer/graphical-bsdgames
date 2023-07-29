@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=BSD-Games Adventure
+Exec=bsdgames-adventure
+Icon=bsdgames.svg
+Terminal=True
+Categories=Game;AdventureGame;ConsoleOnly

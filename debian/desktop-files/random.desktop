@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Random
+Exec=random
+Icon=bsdgames.svg
+Terminal=True
+Categories=Game;ConsoleOnly

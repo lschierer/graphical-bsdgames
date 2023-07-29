@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Dots and Boxes
+Exec=dab
+Icon=bsdgames.svg
+Terminal=True
+Categories=Game;StrategyGame;ConsoleOnly

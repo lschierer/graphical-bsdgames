@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Star Trek
+Exec=trek
+Icon=bsdgames.svg
+Terminal=True
+Categories=Game;ActionGame;ConsoleOnly

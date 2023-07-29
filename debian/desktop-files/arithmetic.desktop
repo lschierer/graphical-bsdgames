@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Arithmetic Quiz
+Exec=arithmetic
+Icon=bsdgames.svg
+Terminal=True
+Categories=Game;KidsGame;ConsoleOnly

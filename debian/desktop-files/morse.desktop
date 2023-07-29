@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Pig
+Exec=pig
+Icon=bsdgames.svg
+Terminal=True
+Categories=Game;KidsGame;ConsoleOnly

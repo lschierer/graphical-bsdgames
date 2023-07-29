@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Snake
+Exec=snake
+Icon=bsdgames.svg
+Terminal=True
+Categories=Game;ActionGame;ConsoleOnly

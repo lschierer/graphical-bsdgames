@@ -6,7 +6,7 @@ Build-Depends: bison,
                flex,
                groff,
                libfl-dev,
-               libncurses5-dev,
+               libncurses-dev,
                wamerican,
                wbritish
 Maintainer: Debian Games Team <pkg-games-devel@lists.alioth.debian.org>

@@ -2,7 +2,7 @@ Source: bsdgames
 Section: games
 Priority: optional
 Build-Depends: bison,
-               debhelper-compat (= 11),
+               debhelper-compat (= 13),
                flex,
                groff,
                libfl-dev,

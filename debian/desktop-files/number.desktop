@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Version=1.5
-Name=Number
-Exec=number
-Icon=bsdgames.svg
-Terminal=True
-Categories=Game;ConsoleOnly

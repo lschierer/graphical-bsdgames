@@ -26,7 +26,5 @@ Description: collection of classic textual unix games
  have been enjoyed for decades on unix systems.
  .
  It includes these programs: adventure, arithmetic, atc, backgammon,
- battlestar, bcd, boggle, caesar, canfield, countmail, cribbage, dab,
- go-fish, gomoku, hack, hangman, hunt, mille, monop, morse, number,
- pig, phantasia, pom, ppt, primes, quiz, random, rain, robots, rot13,
- sail, snake, tetris, trek, wargames, worm, worms, wump, wtf
+ battlestar, caesar, canfield, cribbage, dab, go-fish, gomoku, hack, hangman,
+ primes, robots, sail, snake, tetris, trek, worm, wtf, wump

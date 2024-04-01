@@ -1,3 +1,32 @@
+bsdgames (2.17-31) unstable; urgency=medium
+
+  * Disable building of some games, in order to prepare for a new
+    upstream version found at https://sourceforge.net/projects/bsd-games/
+    - Update list of included games
+    - Update d/rules for removed games
+    - Update d/dirs for removed games
+    - Remove obsolete .desktop files
+  * List of games which have been removed:
+    - bcd
+    - boggle
+    - countmail
+    - hunt (This currently FTBFS. Closes: #1066266)
+    - mille
+    - monop
+    - morse
+    - number
+    - phantasia
+    - pig
+    - pom
+    - ppt
+    - quiz
+    - rain
+    - random
+    - wargames
+    - worms
+
+ -- Dr. Tobias Quathamer <toddy@debian.org>  Mon, 01 Apr 2024 18:10:52 +0200
+
 bsdgames (2.17-30) unstable; urgency=medium
 
   * Change gbp.conf for DEP-14 branch layout

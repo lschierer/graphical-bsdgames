@@ -1,3 +1,9 @@
+bsdgames (2.17-33) unstable; urgency=medium
+
+  * Re-enable pom, still in use
+
+ -- Dr. Tobias Quathamer <toddy@debian.org>  Sat, 06 Apr 2024 21:27:08 +0200
+
 bsdgames (2.17-32) unstable; urgency=medium
 
   * Remove phantasia files from pre- and postinst. Closes: #1068243

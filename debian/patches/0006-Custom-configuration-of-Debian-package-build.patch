@@ -23,7 +23,7 @@ index 0000000..97d45fb
 +bsd_games_cfg_install_prefix=`pwd`/debian/bsdgames
 +
 +# Do not build or install these games:
-+bsd_games_cfg_no_build_dirs="banner bcd boggle countmail dm factor fortune hunt mille monop morse number phantasia pig ppt quiz rain random wargames worms"
++bsd_games_cfg_no_build_dirs="banner bcd boggle countmail dm factor fortune hunt mille monop morse number phantasia pig ppt rain random wargames worms"
 +
 +# Keep huntd in /usr/sbin as it was in the past. I may
 +# change this later.
@@ -35,7 +35,7 @@ index 0000000..97d45fb
 +bsd_games_cfg_sharedir=/usr/share/games/bsdgames
 +bsd_games_cfg_varlibdir=/var/games/bsdgames
 +
-+# Do not do chown now, we arn't running as root.
++# Do not do chown now, we aren't running as root.
 +bsd_games_cfg_do_chown=n
 +
 +# Debian perfers symlinks for manpages.

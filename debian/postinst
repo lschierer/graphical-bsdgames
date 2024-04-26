@@ -28,6 +28,14 @@ SCOREFILES="
 	/var/games/bsdgames/snake.log
 	/var/games/bsdgames/snakerawscores
 	/var/games/bsdgames/tetris-bsd.scores
+	/var/games/bsdgames/phantasia/characs
+	/var/games/bsdgames/phantasia/gold
+	/var/games/bsdgames/phantasia/lastdead
+	/var/games/bsdgames/phantasia/mess
+	/var/games/bsdgames/phantasia/motd
+	/var/games/bsdgames/phantasia/scoreboard
+	/var/games/bsdgames/phantasia/void
+	/var/games/bsdgames/phantasia/monsters
 	/var/games/bsdgames/hack/perm
 	/var/games/bsdgames/hack/record"
 
@@ -45,9 +53,23 @@ if [ -d /var/games/bsdgames-nonfree ]; then
 	rmdir -p /var/games/bsdgames-nonfree/hack/save 2>/dev/null || true
 fi
 	
+# These files cannot just be zero-byte files:
+if [ ! -e /var/games/bsdgames/phantasia/void ]; then
+	cp /usr/share/games/bsdgames/phantasia/void \
+		/var/games/bsdgames/phantasia/void
+fi
+if [ ! -e /var/games/bsdgames/phantasia/monsters ] ; then
+	cp /usr/share/games/bsdgames/phantasia/monsters \
+		/var/games/bsdgames/phantasia/monsters
+fi
+
 touch $SCOREFILES
 chown root:games $SCOREFILES
 chmod 664 $SCOREFILES
+
+# These files may not be world-readable as they have passwords
+# in them.
+chmod 660 /var/games/bsdgames/phantasia/characs
 
 ADVENTURE_PRIORITY=50
 

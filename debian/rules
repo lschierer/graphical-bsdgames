@@ -23,7 +23,6 @@ override_dh_auto_build:
 override_dh_installdocs:
 	dh_installdocs
 	cp atc/BUGS debian/bsdgames/usr/share/doc/bsdgames/BUGS.atc
-	cp hunt/README debian/bsdgames/usr/share/doc/bsdgames/README.hunt
 	cp phantasia/README debian/bsdgames/usr/share/doc/bsdgames/README.phantasia
 	cp boggle/README debian/bsdgames/usr/share/doc/bsdgames/README.boggle
 	cp hack/Original_READ_ME debian/bsdgames/usr/share/doc/bsdgames/Original_READ_ME.hack

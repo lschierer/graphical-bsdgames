@@ -9,7 +9,7 @@ Subject: Custom configuration of Debian package build
 
 diff --git a/config.params b/config.params
 new file mode 100644
-index 0000000..97d45fb
+index 0000000..b5ce434
 --- /dev/null
 +++ b/config.params
 @@ -0,0 +1,49 @@
@@ -23,7 +23,7 @@ index 0000000..97d45fb
 +bsd_games_cfg_install_prefix=`pwd`/debian/bsdgames
 +
 +# Do not build or install these games:
-+bsd_games_cfg_no_build_dirs="banner dm factor fortune"
++bsd_games_cfg_no_build_dirs="banner dm factor fortune hunt"
 +
 +# Keep huntd in /usr/sbin as it was in the past. I may
 +# change this later.

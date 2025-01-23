@@ -1,3 +1,22 @@
+bsdgames (2.17-35) unstable; urgency=medium
+
+  * Revert removal of games. (Closes: #1069795, #1069807)
+    All previously included games are included again, there is
+    obviously demand for almost all of them. I've received many
+    mails and bug reports to please keep a specific program.
+    So I've decided to re-enable all of them. In my opinion, it's
+    not sensible to switch to the alternative upstream at
+    https://sourceforge.net/projects/bsd-games/, because too
+    many games have been removed from those sources.
+    This version of bsdgames is therefore essentially the same as
+    version 2.17-30.  
+  * Remove pbuilder setting from gbp.conf
+  * Remove hunt from games, does no longer build
+  * atc: Won't allocate 26th plane if it was the most recently allocated plane.
+    Thanks to Jonathan David Amery <jdamery@ysolde.ucam.org> (Closes: #214626)
+
+ -- Dr. Tobias Quathamer <toddy@debian.org>  Thu, 23 Jan 2025 21:24:48 +0100
+
 bsdgames (2.17-34) unstable; urgency=medium
 
   * Enable building of 'quiz' again. (Closes: #1069729)

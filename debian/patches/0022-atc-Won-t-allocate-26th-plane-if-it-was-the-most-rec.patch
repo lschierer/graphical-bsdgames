@@ -1,0 +1,24 @@
+From: "Dr. Tobias Quathamer" <toddy@debian.org>
+Date: Thu, 23 Jan 2025 21:21:44 +0100
+Subject: atc: Won't allocate 26th plane if it was the most recently allocated
+ plane.
+
+Closes: #214626
+Thanks: Jonathan David Amery <jdamery@ysolde.ucam.org>
+---
+ atc/update.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/atc/update.c b/atc/update.c
+index 39bbf2a..93a7b10 100644
+--- a/atc/update.c
++++ b/atc/update.c
+@@ -295,7 +295,7 @@ next_plane()
+ 					break;
+ 				}
+ 	} while (found && last_plane != start_plane);
+-	if (last_plane == start_plane)
++	if (found)
+ 		return (-1);
+ 	return (last_plane);
+ }

@@ -1,6 +1,5 @@
 Source: bsdgames
 Section: games
-Priority: optional
 Build-Depends: bison,
                debhelper-compat (= 13),
                flex,

@@ -1,3 +1,7 @@
 ---
 include:
   - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/recipes/debian.yml
+
+# Disable uscan, because the package does not have an upstream to check.
+variables:
+  SALSA_CI_DISABLE_USCAN: 1

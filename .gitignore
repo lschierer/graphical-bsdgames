@@ -1,0 +1,8 @@
+# C build artifacts
+build/
+*.o
+*.a
+
+# IDE
+.idea/
+*.sublime-workspace

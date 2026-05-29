@@ -1,4 +1,4 @@
-/*	$NetBSD: config.h,v 1.7 2003/04/02 18:36:33 jsm Exp $	*/
+/*	$NetBSD: config.h,v 1.11 2021/05/02 12:50:44 rillig Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -75,9 +75,7 @@
  * <sys/wait.h>		<wait.h>
  * <sys/time.h>		<time.h>
  * <sgtty.h>		<termio.h>
- * Some routines are called differently
- * index		strchr
- * rindex		strrchr
+ *
  * Also, the code for suspend and various ioctls is only given for BSD4.2
  * (I do not have access to a SYSV system.)
  */
@@ -85,8 +83,6 @@
 
 /* #define STUPID */	/* avoid some complicated expressions if
 			   your C compiler chokes on them */
-/* #define PYRAMID_BUG */	/* avoid a bug on the Pyramid */
-/* #define NOWAITINCLUDE */	/* neither <wait.h> nor <sys/wait.h> exists */
 
 #define WIZARD  "bruno"	/* the person allowed to use the -D option */
 #define RECORD	"record"/* the file containing the list of topscorers */
@@ -117,7 +113,7 @@
  */
 /* #define	MAIL */
 #define	DEF_MAILREADER	_PATH_MAIL		/* or e.g. /bin/mail */
-#define	MAILCKFREQ	100	
+#define	MAILCKFREQ	100
 
 
 #define SHELL		/* do not delete the '!' command */

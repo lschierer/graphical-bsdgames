@@ -1,4 +1,4 @@
-/*	$NetBSD: extern.h,v 1.8 2004/01/27 20:30:29 jsm Exp $	*/
+/*	$NetBSD: extern.h,v 1.12 2021/05/02 12:50:43 rillig Exp $	*/
 
 /*-
  * Copyright (c) 1993
@@ -35,37 +35,28 @@
 
 void	 addword(const char *);
 void	 badword(void);
-char	*batchword(FILE *);
-void	 checkdict(void);
 int	 checkword(const char *, int, int *);
 void	 cleanup(void);
 void	 delay(int);
 long	 dictseek(FILE *, long, int);
 void	 findword(void);
 void	 flushin(FILE *);
-char	*getline(char *);
-void	 getword(char *);
+char	*get_line(char *);
 int	 help(void);
 int	 inputch(void);
 int	 loaddict(FILE *);
 int	 loadindex(const char *);
-void	 newgame(const char *);
 char	*nextword(FILE *);
 FILE	*opendict(const char *);
-void	 playgame(void);
 void	 prompt(const char *);
 void	 prtable(const char *const [],
-	    int, int, int, void (*)(const char *const [], int), int (*)(const char *const [], int));
-void	 putstr(const char *);
+	    int, int, int, void (*)(const char *const [], int),
+	    int (*)(const char *const [], int));
 void	 redraw(void);
 void	 results(void);
 int	 setup(int, time_t);
 void	 showboard(const char *);
 void	 showstr(const char *, int);
 void	 showword(int);
-void	 starttime(void);
 void	 startwords(void);
-void	 stoptime(void);
 int	 timerch(void);
-void	 usage(void) __attribute__((__noreturn__));
-int	 validword(const char *);

@@ -1,4 +1,4 @@
-/*	$NetBSD: impulse.c,v 1.6 2003/08/07 09:37:52 agc Exp $	*/
+/*	$NetBSD: impulse.c,v 1.10 2009/05/24 22:55:03 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)impulse.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: impulse.c,v 1.6 2003/08/07 09:37:52 agc Exp $");
+__RCSID("$NetBSD: impulse.c,v 1.10 2009/05/24 22:55:03 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -48,8 +48,7 @@ __RCSID("$NetBSD: impulse.c,v 1.6 2003/08/07 09:37:52 agc Exp $");
 
 /*ARGSUSED*/
 void
-impulse(v)
-	int v __attribute__((__unused__));
+impulse(int v __unused)
 {
 	int		course;
 	int		power;
@@ -68,9 +67,9 @@ impulse(v)
 		return;
 	power = 20 + 100 * dist;
 	percent = 100 * power / Ship.energy + 0.5;
-	if (percent >= 85)
-	{
-		printf("Scotty: That would consume %d%% of our remaining energy.\n",
+	if (percent >= 85) {
+		printf("Scotty: That would consume %d%% of our remaining "
+		       "energy.\n",
 			percent);
 		if (!getynpar("Are you sure that is wise"))
 			return;
@@ -78,8 +77,7 @@ impulse(v)
 	}
 	time = dist / 0.095;
 	percent = 100 * time / Now.time + 0.5;
-	if (percent >= 85)
-	{
+	if (percent >= 85) {
 		printf("Spock: That would take %d%% of our remaining time.\n",
 			percent);
 		if (!getynpar("Are you sure that is wise"))

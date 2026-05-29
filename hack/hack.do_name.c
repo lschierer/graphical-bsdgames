@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.do_name.c,v 1.6 2003/04/02 18:36:36 jsm Exp $	*/
+/*	$NetBSD: hack.do_name.c,v 1.13 2011/08/07 06:03:45 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,17 +63,20 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.do_name.c,v 1.6 2003/04/02 18:36:36 jsm Exp $");
+__RCSID("$NetBSD: hack.do_name.c,v 1.13 2011/08/07 06:03:45 dholland Exp $");
 #endif				/* not lint */
 
 #include <stdlib.h>
 #include "hack.h"
 #include "extern.h"
 
+static void do_oname(struct obj *);
+static char *xmonnam(struct monst *, int);
+static char *lmonnam(struct monst *);
+static char *visctrl(int);
+
 coord
-getpos(force, goal)
-	int             force;
-	const char           *goal;
+getpos(int force, const char *goal)
 {
 	int             cx, cy, i, c;
 	coord           cc;
@@ -112,11 +115,13 @@ nxtc:		;
 }
 
 int
-do_mname()
+do_mname(void)
 {
 	char            buf[BUFSZ];
 	coord           cc;
-	int             cx, cy, lth, i;
+	int             cx, cy;
+	size_t lth;
+	unsigned        i;
 	struct monst   *mtmp, *mtmp2;
 	cc = getpos(0, "the monster you want to name");
 	cx = cc.x;
@@ -152,7 +157,7 @@ do_mname()
 	}
 	mtmp2 = newmonst(mtmp->mxlth + lth);
 	*mtmp2 = *mtmp;
-	for (i = 0; (unsigned)i < mtmp->mxlth; i++)
+	for (i = 0; i < mtmp->mxlth; i++)
 		((char *) mtmp2->mextra)[i] = ((char *) mtmp->mextra)[i];
 	mtmp2->mnamelth = lth;
 	(void) strcpy(NAME(mtmp2), buf);
@@ -165,12 +170,11 @@ do_mname()
  * when there might be pointers around in unknown places. For now: only
  * when  obj  is in the inventory.
  */
-void
-do_oname(obj)
-	struct obj     *obj;
+static void
+do_oname(struct obj *obj)
 {
 	struct obj     *otmp, *otmp2;
-	int lth;
+	size_t lth;
 	char            buf[BUFSZ];
 	pline("What do you want to name %s? ", doname(obj));
 	getlin(buf);
@@ -208,11 +212,11 @@ do_oname(obj)
 #if 0
 	obfree(obj, otmp2);	/* now unnecessary: no pointers on bill */
 #endif
-	free((char *) obj);	/* let us hope nobody else saved a pointer */
+	free(obj);	/* let us hope nobody else saved a pointer */
 }
 
 int
-ddocall()
+ddocall(void)
 {
 	struct obj     *obj;
 
@@ -234,8 +238,7 @@ ddocall()
 }
 
 void
-docall(obj)
-	struct obj     *obj;
+docall(struct obj *obj)
 {
 	char            buf[BUFSZ];
 	struct obj      otemp;
@@ -259,21 +262,20 @@ docall(obj)
 	*str1 = str;
 }
 
-const char *const ghostnames[] = {/* these names should have length < PL_NSIZ */
+static const char *const ghostnames[] = {
+	/* these names should have length < PL_NSIZ */
 	"adri", "andries", "andreas", "bert", "david", "dirk", "emile",
 	"frans", "fred", "greg", "hether", "jay", "john", "jon", "kay",
 	"kenny", "maud", "michiel", "mike", "peter", "robert", "ron",
 	"tom", "wilmar"
 };
 
-char           *
-xmonnam(mtmp, vb)
-	struct monst   *mtmp;
-	int             vb;
+static char *
+xmonnam(struct monst *mtmp, int vb)
 {
 	static char     buf[BUFSZ];	/* %% */
 	if (mtmp->mnamelth && !vb) {
-		(void) strcpy(buf, NAME(mtmp));
+		(void) strlcpy(buf, NAME(mtmp), sizeof(buf));
 		return (buf);
 	}
 	switch (mtmp->data->mlet) {
@@ -284,46 +286,43 @@ xmonnam(mtmp, vb)
 				gn = ghostnames[rn2(SIZE(ghostnames))];
 				if (!rn2(2))
 					(void)
-						strcpy((char *) mtmp->mextra, !rn2(5) ? plname : gn);
+						strlcpy((char *) mtmp->mextra, !rn2(5) ? plname : gn, mtmp->mxlth);
 			}
-			(void) sprintf(buf, "%s's ghost", gn);
+			(void) snprintf(buf, sizeof(buf), "%s's ghost", gn);
 		}
 		break;
 	case '@':
 		if (mtmp->isshk) {
-			(void) strcpy(buf, shkname(mtmp));
+			(void) strlcpy(buf, shkname(mtmp), sizeof(buf));
 			break;
 		}
-		/* fall into next case */
+		/* FALLTHROUGH */
 	default:
-		(void) sprintf(buf, "the %s%s",
+		(void) snprintf(buf, sizeof(buf), "the %s%s",
 			       mtmp->minvis ? "invisible " : "",
 			       mtmp->data->mname);
 	}
 	if (vb && mtmp->mnamelth) {
-		(void) strcat(buf, " called ");
-		(void) strcat(buf, NAME(mtmp));
+		(void) strlcat(buf, " called ", sizeof(buf));
+		(void) strlcat(buf, NAME(mtmp), sizeof(buf));
 	}
 	return (buf);
 }
 
-char           *
-lmonnam(mtmp)
-	struct monst   *mtmp;
+static char *
+lmonnam(struct monst *mtmp)
 {
 	return (xmonnam(mtmp, 1));
 }
 
 char           *
-monnam(mtmp)
-	struct monst   *mtmp;
+monnam(struct monst *mtmp)
 {
 	return (xmonnam(mtmp, 0));
 }
 
 char           *
-Monnam(mtmp)
-	struct monst   *mtmp;
+Monnam(struct monst *mtmp)
 {
 	char           *bp = monnam(mtmp);
 	if ('a' <= *bp && *bp <= 'z')
@@ -332,23 +331,19 @@ Monnam(mtmp)
 }
 
 char           *
-amonnam(mtmp, adj)
-	struct monst   *mtmp;
-	const char           *adj;
+amonnam(struct monst *mtmp, const char *adj)
 {
 	char           *bp = monnam(mtmp);
 	static char     buf[BUFSZ];	/* %% */
 
 	if (!strncmp(bp, "the ", 4))
 		bp += 4;
-	(void) sprintf(buf, "the %s %s", adj, bp);
+	(void) snprintf(buf, sizeof(buf), "the %s %s", adj, bp);
 	return (buf);
 }
 
 char           *
-Amonnam(mtmp, adj)
-	struct monst   *mtmp;
-	const char           *adj;
+Amonnam(struct monst *mtmp, const char *adj)
 {
 	char           *bp = amonnam(mtmp, adj);
 
@@ -357,8 +352,7 @@ Amonnam(mtmp, adj)
 }
 
 char           *
-Xmonnam(mtmp)
-	struct monst   *mtmp;
+Xmonnam(struct monst *mtmp)
 {
 	char           *bp = Monnam(mtmp);
 	if (!strncmp(bp, "The ", 4)) {
@@ -368,9 +362,8 @@ Xmonnam(mtmp)
 	return (bp);
 }
 
-char           *
-visctrl(c)
-	char            c;
+static char *
+visctrl(int c)
 {
 	static char     ccc[3];
 	if (c < 040) {

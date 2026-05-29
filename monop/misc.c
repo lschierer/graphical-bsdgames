@@ -1,4 +1,4 @@
-/*	$NetBSD: misc.c,v 1.13 2004/11/05 21:30:32 dsl Exp $	*/
+/*	$NetBSD: misc.c,v 1.23 2012/06/19 05:35:32 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,21 +34,25 @@
 #if 0
 static char sccsid[] = "@(#)misc.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: misc.c,v 1.13 2004/11/05 21:30:32 dsl Exp $");
+__RCSID("$NetBSD: misc.c,v 1.23 2012/06/19 05:35:32 dholland Exp $");
 #endif
 #endif /* not lint */
 
-#include "monop.ext"
 #include <ctype.h>
+#include <limits.h>
 #include <signal.h>
+#include <errno.h>
+
+#include "monop.h"
+
+static void is_monop(MON *, int);
 
 /*
  *	This routine executes a truncated set of commands until a
  * "yes or "no" answer is gotten.
  */
 int
-getyn(prompt)
-	const char *prompt;
+getyn(const char *prompt)
 {
 	int com;
 
@@ -63,7 +67,7 @@ getyn(prompt)
  *	This routine tells the player if he's out of money.
  */
 void
-notify()
+notify(void)
 {
 	if (cur_p->money < 0)
 		printf("That leaves you $%d in debt\n", -cur_p->money);
@@ -79,7 +83,7 @@ notify()
  *	This routine switches to the next player
  */
 void
-next_play()
+next_play(void)
 {
 	player = (player + 1) % num_play;
 	cur_p = &play[player];
@@ -91,32 +95,28 @@ next_play()
  * given prompt.
  */
 int
-get_int(prompt)
-	const char *prompt;
+get_int(const char *prompt)
 {
-	int num;
+	long num;
 	char *sp;
-	int c;
 	char buf[257];
 
 	for (;;) {
-inter:
-		printf(prompt);
-		num = 0;
-		for (sp = buf; (c=getchar()) != '\n'; *sp++ = c)
-			if (c == -1)	/* check for interrupted system call */
-				goto inter;
-		*sp = c;
-		if (sp == buf)
-			continue;
-		for (sp = buf; isspace((unsigned char)*sp); sp++)
-			continue;
-		for (; isdigit((unsigned char)*sp); sp++)
-			num = num * 10 + *sp - '0';
-		if (*sp == '\n')
-			return num;
-		else
+		printf("%s", prompt);
+		fgets(buf, sizeof(buf), stdin);
+		/* if stdin is closed we cant really play anymore */
+		if (feof(stdin))
+			quit();
+		sp = strchr(buf, '\n');
+		if (sp)
+			*sp = '\0';
+		errno = 0;
+		num = strtol(buf, &sp, 10);
+		if (errno || strlen(sp) > 0 || num < 0 || num >= INT_MAX) {
 			printf("I can't understand that\n");
+			continue;
+		}
+		return num;
 	}
 }
 
@@ -124,17 +124,16 @@ inter:
  *	This routine sets the monopoly flag from the list given.
  */
 void
-set_ownlist(pl)
-	int pl;
+set_ownlist(int pl)
 {
 	int num;		/* general counter		*/
 	MON *orig;		/* remember starting monop ptr	*/
 	OWN *op;		/* current owned prop		*/
-	OWN *orig_op;		/* origianl prop before loop	*/
+	OWN *orig_op;		/* original prop before loop	*/
 
 	op = play[pl].own_list;
 #ifdef DEBUG
-	printf("op [%d] = play[pl [%d] ].own_list;\n", op, pl);
+	printf("op [%p] = play[pl [%d] ].own_list;\n", op, pl);
 #endif
 	while (op) {
 #ifdef DEBUG
@@ -161,7 +160,7 @@ set_ownlist(pl)
 			    op = op->next) {
 #ifdef DEBUG
 				printf("iter: %d\n", num);
-				printf("op = %d, op->sqr = %d, "
+				printf("op = %p, op->sqr = %p, "
 				    "op->sqr->type = %d\n", op, op->sqr,
 				    op->sqr->type);
 #endif
@@ -189,29 +188,36 @@ set_ownlist(pl)
 #endif
 				op = op->next;
 #ifdef DEBUG
-				printf("[%d];\n", op);
+				printf("[%p];\n", op);
 #endif
 			}
 #ifdef DEBUG
-			printf("num = %d\n");
+			printf("num = %d\n", num);
 #endif
-			if (orig == 0) {
+			if (orig == NULL) {
 				printf("panic:  bad monopoly descriptor: "
 				    "orig = %p\n", orig);
 				printf("player # %d\n", pl+1);
 				printhold(pl);
 				printf("orig_op = %p\n", orig_op);
-				printf("orig_op->sqr->type = %d (PRPTY)\n",
-				    op->sqr->type);
-				printf("orig_op->next = %p\n", op->next);
-				printf("orig_op->sqr->desc = %p\n",
-				    op->sqr->desc);
+				if (orig_op) {
+					printf("orig_op->sqr->type = %d (PRPTY)\n",
+					    orig_op->sqr->type);
+					printf("orig_op->next = %p\n",
+					    orig_op->next);
+					printf("orig_op->sqr->desc = %p\n",
+					    orig_op->sqr->desc);
+				}
 				printf("op = %p\n", op);
-				printf("op->sqr->type = %d (PRPTY)\n",
-				    op->sqr->type);
-				printf("op->next = %p\n", op->next);
-				printf("op->sqr->desc = %p\n", op->sqr->desc);
+				if (op) {
+					printf("op->sqr->type = %d (PRPTY)\n",
+					    op->sqr->type);
+					printf("op->next = %p\n", op->next);
+					printf("op->sqr->desc = %p\n",
+					    op->sqr->desc);
+				}
 				printf("num = %d\n", num);
+				exit(1);
 			}
 #ifdef DEBUG
 			printf("orig->num_in = %d\n", orig->num_in);
@@ -228,10 +234,8 @@ set_ownlist(pl)
 /*
  *	This routine sets things up as if it is a new monopoly
  */
-void
-is_monop(mp, pl)
-	MON *mp;
-	int pl;
+static void
+is_monop(MON *mp, int pl)
 {
 	int i;
 
@@ -246,8 +250,7 @@ is_monop(mp, pl)
  *	This routine sets things up as if it is no longer a monopoly
  */
 void
-is_not_monop(mp)
-	MON *mp;
+is_not_monop(MON *mp)
 {
 	int i;
 
@@ -261,7 +264,7 @@ is_not_monop(mp)
  *	This routine gives a list of the current player's routine
  */
 void
-list()
+list(void)
 {
 	printhold(player);
 }
@@ -270,7 +273,7 @@ list()
  *	This routine gives a list of a given players holdings
  */
 void
-list_all()
+list_all(void)
 {
 	int pl;
 
@@ -283,9 +286,14 @@ list_all()
  *	This routine gives the players a chance before it exits.
  */
 void
-quit()
+quit(void)
 {
 	putchar('\n');
+
+	/* We dont even have a chance to input y/n if stdin is closed */
+	if (feof(stdin))
+		exit(0);
+
 	if (getyn("Do you all really want to quit? ") == 0)
 		exit(0);
 }

@@ -1,4 +1,4 @@
-/*	$NetBSD: fortune.c,v 1.44 2004/11/05 21:30:32 dsl Exp $	*/
+/*	$NetBSD: fortune.c,v 1.65 2020/07/21 03:05:40 nia Exp $	*/
 
 /*-
  * Copyright (c) 1986, 1993
@@ -34,54 +34,59 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1986, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1986, 1993\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)fortune.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: fortune.c,v 1.44 2004/11/05 21:30:32 dsl Exp $");
+__RCSID("$NetBSD: fortune.c,v 1.65 2020/07/21 03:05:40 nia Exp $");
 #endif
 #endif /* not lint */
 
-# include	<sys/param.h>
-# include	<sys/stat.h>
-# include	<sys/time.h>
-# include	<sys/endian.h>
+#include <sys/param.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/endian.h>
 
-# include	<dirent.h>
-# include	<fcntl.h>
-# include	<assert.h>
-# include	<unistd.h>
-# include	<stdio.h>
-# include	<ctype.h>
-# include	<stdlib.h>
-# include	<string.h>
-# include	<err.h>
-# include	<time.h>
-# include	"strfile.h"
-# include	"pathnames.h"
+#include <dirent.h>
+#include <fcntl.h>
+#include <assert.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+#include <err.h>
+#include <time.h>
 
-# define	TRUE	1
-# define	FALSE	0
-# define	bool	short
+#ifndef NO_REGEX
+#include <regex.h>
+#endif
 
-# define	MINW	6		/* minimum wait if desired */
-# define	CPERS	20		/* # of chars for each sec */
-# define	SLEN	160		/* # of chars in short fortune */
+#include "strfile.h"
+#include "pathnames.h"
 
-# define	POS_UNKNOWN	((off_t) -1)	/* pos for file unknown */
-# define	NO_PROB		(-1)		/* no prob specified for file */
+#define TRUE	1
+#define FALSE	0
+#define bool	short
 
-# ifdef DEBUG
-# define	DPRINTF(l,x)	if (Debug >= l) fprintf x; else
-# undef		NDEBUG
-# else
-# define	DPRINTF(l,x)
-# define	NDEBUG	1
-# endif
+#define MINW	6		/* minimum wait if desired */
+#define CPERS	20		/* # of chars for each sec */
+#define SLEN	160		/* # of chars in short fortune */
+
+#define POS_UNKNOWN	((off_t) -1)	/* pos for file unknown */
+#define NO_PROB		(-1)		/* no prob specified for file */
+
+#ifdef DEBUG
+#define DPRINTF(l,x)	if (Debug >= l) fprintf x; else
+#undef NDEBUG
+#else
+#define DPRINTF(l,x)
+#define NDEBUG		1
+#endif
 
 typedef struct fd {
 	int		percent;
@@ -99,135 +104,95 @@ typedef struct fd {
 	struct fd	*next, *prev;
 } FILEDESC;
 
-bool	Found_one;			/* did we find a match? */
-bool	Find_files	= FALSE;	/* just find a list of proper fortune files */
-bool	Wait		= FALSE;	/* wait desired after fortune */
-bool	Short_only	= FALSE;	/* short fortune desired */
-bool	Long_only	= FALSE;	/* long fortune desired */
-bool	Offend		= FALSE;	/* offensive fortunes only */
-bool	All_forts	= FALSE;	/* any fortune allowed */
-bool	Equal_probs	= FALSE;	/* scatter un-allocted prob equally */
+static bool Found_one;			/* did we find a match? */
+static bool Find_files	= FALSE;	/* just find a list of proper fortune files */
+static bool Wait	= FALSE;	/* wait desired after fortune */
+static bool Short_only	= FALSE;	/* short fortune desired */
+static bool Long_only	= FALSE;	/* long fortune desired */
+static bool Offend	= FALSE;	/* offensive fortunes only */
+static bool All_forts	= FALSE;	/* any fortune allowed */
+static bool Equal_probs	= FALSE;	/* scatter un-allocted prob equally */
+
 #ifndef NO_REGEX
-bool	Match		= FALSE;	/* dump fortunes matching a pattern */
+struct re {
+	bool valid;
+	regex_t regex;
+};
+
+static bool Match	= FALSE;	/* dump fortunes matching a pattern */
+struct re Re_pat;
+struct re Re_pat13;
+static struct re *Re_use = NULL;
 #endif
+
 #ifdef DEBUG
-bool	Debug = FALSE;			/* print debug messages */
+static bool Debug = FALSE;		/* print debug messages */
 #endif
 
-char	*Fortbuf = NULL;			/* fortune buffer for -m */
+static char *Fortbuf = NULL;		/* fortune buffer for -m */
 
-int	Fort_len = 0;
+static size_t Fort_len = 0;
 
-u_int64_t	Seekpts[2];			/* seek pointers to fortunes */
+static off_t Seekpts[2];		/* seek pointers to fortunes */
 
-FILEDESC	*File_list = NULL,	/* Head of file list */
+static FILEDESC *File_list = NULL,	/* Head of file list */
 		*File_tail = NULL;	/* Tail of file list */
-FILEDESC	*Fortfile;		/* Fortune file to use */
+static FILEDESC *Fortfile;		/* Fortune file to use */
 
-STRFILE		Noprob_tbl;		/* sum of data for all no prob files */
+static STRFILE Noprob_tbl;		/* sum of data for all no prob files */
 
-int	 add_dir(FILEDESC *);
-int	 add_file(int,
+static int add_dir(FILEDESC *);
+static int add_file(int,
 	    const char *, const char *, FILEDESC **, FILEDESC **, FILEDESC *);
-void	 all_forts(FILEDESC *, const char *);
-char	*copy(const char *, u_int);
-void	 rot13(char *line, int len);
-void	 display(FILEDESC *);
-void	 do_free(void *);
-void	*do_malloc(u_int);
-int	 form_file_list(char **, int);
-int	 fortlen(void);
-void	 get_fort(void);
-void	 get_pos(FILEDESC *);
-void	 get_tbl(FILEDESC *);
-void	 getargs(int, char *[]);
-void	 init_prob(void);
-int	 is_dir(const char *);
-int	 is_fortfile(const char *, char **, char **, int);
-int	 is_off_name(const char *);
-int	 main(int, char *[]);
-int	 max(int, int);
-FILEDESC *
-	 new_fp(void);
-char	*off_name(const char *);
-void	 open_dat(FILEDESC *);
-void	 open_fp(FILEDESC *);
-FILEDESC *
-	 pick_child(FILEDESC *);
-void	 print_file_list(void);
-void	 print_list(FILEDESC *, int);
-void	 sum_noprobs(FILEDESC *);
-void	 sum_tbl(STRFILE *, STRFILE *);
-void	 usage(void) __attribute__((__noreturn__));
-void	 zero_tbl(STRFILE *);
+static void all_forts(FILEDESC *, const char *);
+static char *copy(const char *, size_t);
+static void rot13(char *line, int len);
+static void display(FILEDESC *);
+static void do_free(void *);
+static void *do_malloc(size_t);
+static int form_file_list(char **, int);
+static size_t fortlen(void);
+static void get_fort(void);
+static void get_pos(FILEDESC *);
+static void get_tbl(FILEDESC *);
+static void getargs(int, char *[]);
+static void init_prob(void);
+static int is_dir(const char *);
+static int is_fortfile(const char *, char **, char **, int);
+static int is_off_name(const char *);
+static int max(int, int);
+static FILEDESC *new_fp(void);
+static char *off_name(const char *);
+static void open_dat(FILEDESC *);
+static void open_fp(FILEDESC *);
+static FILEDESC *pick_child(FILEDESC *);
+static void print_file_list(void);
+static void print_list(FILEDESC *, int);
+static void sum_noprobs(FILEDESC *);
+static void sum_tbl(STRFILE *, STRFILE *);
+static void usage(void) __dead;
+static void zero_tbl(STRFILE *);
 
-#ifndef	NO_REGEX
-char	*conv_pat(char *);
-int	 find_matches(void);
-void	 matches_in_list(FILEDESC *);
-int	 maxlen_in_list(FILEDESC *);
-#endif
+int main(int, char *[]);
 
 #ifndef NO_REGEX
-# if HAVE_REGCMP
-#  define	RE_INIT(re)
-#  define	RE_COMP(re, p)	((re) = regcmp((p), NULL))
-#  define	RE_ERROR(re)	"Invalid pattern"
-#  define	RE_OK(re)	((re) != NULL)
-#  define	RE_EXEC(re, p)	regex((re), (p))
-#  define	RE_FREE(re)
-
-char	*Re_pat, *Re_pat13, *Re_use;
-char	*regcmp(), *regex();
-
-# elif HAVE_RE_COMP
-char	*Re_pat, *Re_pat13, *Re_use;
-char	*Re_error;
-
-#  define	RE_INIT(re)
-#  define	RE_COMP(re, p)	(Re_error = re_comp(p))
-#  define	RE_ERROR(re)	Re_error
-#  define	RE_OK(re)	(Re_error == NULL)
-#  define	RE_EXEC(re, p)	re_exec(p)
-#  define	RE_FREE(re)
-# elif HAVE_REGCOMP
-#  include <regex.h>
-regex_t *Re_pat = NULL, *Re_pat13 = NULL, *Re_use = NULL;
-int	 Re_code;
-char	 Re_error[1024];
-#  define	RE_INIT(re)	if ((re) == NULL && \
-				    ((re) = calloc(sizeof(*(re)), 1)) \
-				    == NULL) err(1, NULL)
-#  define	RE_COMP(re, p)	(Re_code = regcomp((re), (p), REG_EXTENDED))
-#  define	RE_OK(re)	(Re_code == 0)
-#  define	RE_EXEC(re, p)	(!regexec((re), (p), 0, NULL, 0))
-#  define	RE_ERROR(re)	(regerror(Re_code, (re), Re_error, \
-				    sizeof(Re_error)), Re_error)
-#  define	RE_FREE(re)	if ((re) != NULL) do { regfree((re)); \
-				    (re) = NULL; } while (0)
-# else
-	#error "Need to define HAVE_REGCMP, HAVE_RE_COMP, or HAVE_REGCOMP"
-# endif
+static void re_setup(struct re *rx, const char *pattern, bool ignore_case);
+static void re_cleanup(struct re *rx);
+static int find_matches(void);
+static void matches_in_list(FILEDESC *);
+static size_t maxlen_in_list(FILEDESC *);
 #endif
 
-#if (defined(__linux__) && !defined(__GLIBC__)) || (defined(__GLIBC__) && !defined(_DIRENT_HAVE_D_NAMLEN)) || defined(__CYGWIN__)
-#define		NAMLEN(d)	(strlen((d)->d_name))
-#else
+#ifndef NAMLEN
 #define		NAMLEN(d)	((d)->d_namlen)
 #endif
 
 int
-main(ac, av)
-	int	ac;
-	char	*av[];
+main(int ac, char *av[])
 {
-	struct timeval tv;
-#ifdef	OK_TO_WRITE_DISK
-	int	fd;
-#endif	/* OK_TO_WRITE_DISK */
-
-	/* Revoke setgid privileges */
-	setregid(getgid(), getgid());
+#ifdef OK_TO_WRITE_DISK
+	int fd;
+#endif /* OK_TO_WRITE_DISK */
 
 	getargs(ac, av);
 
@@ -237,12 +202,6 @@ main(ac, av)
 #endif
 
 	init_prob();
-	if (gettimeofday(&tv, NULL) != 0)
-		err(1, "gettimeofday()");
-	srandom(((unsigned long)tv.tv_sec)    *
-                ((unsigned long)tv.tv_usec+1) *
-	        ((unsigned long)getpid()+1)   *
-                ((unsigned long)getppid()+1));
 	do {
 		get_fort();
 	} while ((Short_only && fortlen() > SLEN) ||
@@ -250,38 +209,37 @@ main(ac, av)
 
 	display(Fortfile);
 
-#ifdef	OK_TO_WRITE_DISK
+#ifdef OK_TO_WRITE_DISK
 	if ((fd = creat(Fortfile->posfile, 0666)) < 0)
 		err(1, "Can't create `%s'", Fortfile->posfile);
-#ifdef	LOCK_EX
+#ifdef LOCK_EX
 	/*
 	 * if we can, we exclusive lock, but since it isn't very
 	 * important, we just punt if we don't have easy locking
 	 * available.
 	 */
 	(void) flock(fd, LOCK_EX);
-#endif	/* LOCK_EX */
+#endif /* LOCK_EX */
 	write(fd, (char *) &Fortfile->pos, sizeof Fortfile->pos);
 	if (!Fortfile->was_pos_file)
 		(void) chmod(Fortfile->path, 0666);
-#ifdef	LOCK_EX
+#ifdef LOCK_EX
 	(void) flock(fd, LOCK_UN);
-#endif	/* LOCK_EX */
-#endif	/* OK_TO_WRITE_DISK */
+#endif /* LOCK_EX */
+	close(fd);
+#endif /* OK_TO_WRITE_DISK */
 	if (Wait) {
 		if (Fort_len == 0)
 			(void) fortlen();
-		sleep((unsigned int) max(Fort_len / CPERS, MINW));
+		sleep(max(Fort_len / CPERS, MINW));
 	}
 	return(0);
 }
 
-void
-rot13(line, len)
-	char *line;
-	int len;
+static void
+rot13(char *line, int len)
 {
-	char	*p, ch;
+	char *p, ch;
 
 	if (len == 0)
 		len = strlen(line);
@@ -293,11 +251,10 @@ rot13(line, len)
 			*p = 'a' + (ch - 'a' + 13) % 26;
 }
 
-void
-display(fp)
-	FILEDESC	*fp;
+static void
+display(FILEDESC *fp)
 {
-	char	line[BUFSIZ];
+	char line[BUFSIZ];
 
 	open_fp(fp);
 	(void) fseek(fp->inf, (long)Seekpts[0], SEEK_SET);
@@ -314,11 +271,11 @@ display(fp)
  * fortlen:
  *	Return the length of the fortune.
  */
-int
-fortlen()
+static size_t
+fortlen(void)
 {
-	int	nchar;
-	char	line[BUFSIZ];
+	size_t nchar;
+	char line[BUFSIZ];
 
 	if (!(Fortfile->tbl.str_flags & (STR_RANDOM | STR_ORDERED)))
 		nchar = Seekpts[1] - Seekpts[0];
@@ -337,20 +294,18 @@ fortlen()
 /*
  *	This routine evaluates the arguments on the command line
  */
-void
-getargs(argc, argv)
-	int	argc;
-	char	**argv;
+static void
+getargs(int argc, char **argv)
 {
-	int	ignore_case;
-# ifndef NO_REGEX
-	char	*pat = NULL;
-# endif	/* NO_REGEX */
+	int ignore_case;
+#ifndef NO_REGEX
+	char *pat = NULL;
+#endif /* NO_REGEX */
 	int ch;
 
 	ignore_case = FALSE;
 
-# ifdef DEBUG
+#ifdef DEBUG
 	while ((ch = getopt(argc, argv, "aDefilm:osw")) != -1)
 #else
 	while ((ch = getopt(argc, argv, "aefilm:osw")) != -1)
@@ -359,11 +314,11 @@ getargs(argc, argv)
 		case 'a':		/* any fortune */
 			All_forts++;
 			break;
-# ifdef DEBUG
+#ifdef DEBUG
 		case 'D':
 			Debug++;
 			break;
-# endif /* DEBUG */
+#endif /* DEBUG */
 		case 'e':
 			Equal_probs++;	/* scatter un-allocted prob equally */
 			break;
@@ -384,11 +339,11 @@ getargs(argc, argv)
 		case 'w':		/* give time to read */
 			Wait++;
 			break;
-# ifdef	NO_REGEX
+#ifdef NO_REGEX
 		case 'i':			/* case-insensitive match */
 		case 'm':			/* dump out the fortunes */
 			errx(1, "Can't match fortunes on this system (Sorry)");
-# else	/* NO_REGEX */
+#else /* NO_REGEX */
 		case 'm':			/* dump out the fortunes */
 			Match++;
 			pat = optarg;
@@ -396,7 +351,7 @@ getargs(argc, argv)
 		case 'i':			/* case-insensitive match */
 			ignore_case++;
 			break;
-# endif	/* NO_REGEX */
+#endif /* NO_REGEX */
 		case '?':
 		default:
 			usage();
@@ -415,38 +370,24 @@ getargs(argc, argv)
 		exit(0);
 	}
 
-# ifndef NO_REGEX
+#ifndef NO_REGEX
 	if (pat != NULL) {
-		if (ignore_case)
-			pat = conv_pat(pat);
-		RE_INIT(Re_pat);
-		RE_COMP(Re_pat, pat);
-		if (!RE_OK(Re_pat)) {
-			warnx("%s: `%s'", RE_ERROR(Re_pat), pat);
-			RE_FREE(Re_pat);
-		}
+		re_setup(&Re_pat, pat, ignore_case);
 		rot13(pat, 0);
-		RE_INIT(Re_pat13);
-		RE_COMP(Re_pat13, pat);
-		if (!RE_OK(Re_pat13)) {
-			warnx("%s: `%s'", RE_ERROR(Re_pat13), pat);
-			RE_FREE(Re_pat13);
-		}
+		re_setup(&Re_pat13, pat, ignore_case);
 	}
-# endif	/* NO_REGEX */
+#endif /* NO_REGEX */
 }
 
 /*
  * form_file_list:
  *	Form the file list from the file specifications.
  */
-int
-form_file_list(files, file_cnt)
-	char	**files;
-	int	file_cnt;
+static int
+form_file_list(char **files, int file_cnt)
 {
-	int	i, percent;
-	const char	*sp;
+	int i, percent;
+	const char *sp;
 
 	if (file_cnt == 0) {
 		if (All_forts)
@@ -501,47 +442,44 @@ form_file_list(files, file_cnt)
  * add_file:
  *	Add a file to the file list.
  */
-int
-add_file(percent, file, dir, head, tail, parent)
-	int		 percent;
-	const char	*file;
-	const char	*dir;
-	FILEDESC	**head, **tail;
-	FILEDESC	*parent;
+static int
+add_file(int percent, const char *file, const char *dir,
+	 FILEDESC **head, FILEDESC **tail, FILEDESC *parent)
 {
-	FILEDESC	*fp;
-	int		fd;
-	const char	*path;
-	char		*tpath, *offensive;
-	bool		was_malloc;
-	bool		isdir;
+	FILEDESC *fp;
+	int fd;
+	const char *path;
+	char *tpath, *offensive, *tfile = strdup(file), *tf;
+	bool isdir;
 
 	if (dir == NULL) {
-		path = file;
+		path = tfile;
 		tpath = NULL;
-		was_malloc = FALSE;
 	}
 	else {
-		tpath = do_malloc((unsigned int) (strlen(dir) + strlen(file) + 2));
+		tpath = do_malloc(strlen(dir) + strlen(file) + 2);
 		(void) strcat(strcat(strcpy(tpath, dir), "/"), file);
 		path = tpath;
-		was_malloc = TRUE;
 	}
 	if ((isdir = is_dir(path)) && parent != NULL) {
-		if (was_malloc)
+		if (tpath)
 			free(tpath);
+		free(tfile);
 		return FALSE;	/* don't recurse */
 	}
 	offensive = NULL;
 	if (!isdir && parent == NULL && (All_forts || Offend) &&
 	    !is_off_name(path)) {
 		offensive = off_name(path);
-		was_malloc = TRUE;
 		if (Offend) {
-			if (was_malloc)
+			if (tpath) {
 				free(tpath);
+				tpath = NULL;
+			}
 			path = offensive;
-			file = off_name(file);
+			tf = off_name(tfile);
+			free(tfile);
+			tfile = tf;
 		}
 	}
 
@@ -556,23 +494,35 @@ over:
 		 * individual files -- if we're scanning a directory,
 		 * we'll pick up the -o file anyway.
 		 */
-		if (All_forts && offensive != NULL) {
+		if (All_forts && offensive != NULL && path != offensive) {
 			path = offensive;
-			if (was_malloc)
+			if (tpath) {
 				free(tpath);
-			offensive = NULL;
-			was_malloc = TRUE;
-			DPRINTF(1, (stderr, "\ttrying \"%s\"\n", path));
-			file = off_name(file);
+				tpath = NULL;
+			}
+			DPRINTF(1, (stderr, "\ttrying \"%s\"\n", tfile));
+			tf = off_name(tfile);
+			free(tfile);
+			tfile = tf;
 			goto over;
 		}
-		if (dir == NULL && file[0] != '/')
-			return add_file(percent, file, FORTDIR, head, tail,
+		if (dir == NULL && tfile[0] != '/') {
+			int n = add_file(percent, tfile, FORTDIR, head, tail,
 					parent);
+			free(tfile);
+			if (offensive)
+				free(offensive);
+			return n;
+		}
 		if (parent == NULL)
 			warn("Cannot open `%s'", path);
-		if (was_malloc)
+		if (tpath) {
 			free(tpath);
+			tpath = NULL;
+		}
+		free(tfile);
+		if (offensive)
+			free(offensive);
 		return FALSE;
 	}
 
@@ -581,7 +531,7 @@ over:
 	fp = new_fp();
 	fp->fd = fd;
 	fp->percent = percent;
-	fp->name = file;
+	fp->name = tfile;
 	fp->path = path;
 	fp->parent = parent;
 
@@ -591,8 +541,10 @@ over:
 	{
 		if (parent == NULL)
 			warnx("`%s' not a fortune file or directory", path);
-		if (was_malloc)
+		if (tpath) {
 			free(tpath);
+			tpath = NULL;
+		}
 		do_free(fp->datfile);
 		do_free(fp->posfile);
 		free(fp);
@@ -605,7 +557,7 @@ over:
 	 * we are scanning a directory, since the scan will pick up the
 	 * -o file anyway.
 	 */
-	if (All_forts && parent == NULL && !is_off_name(path))
+	if (All_forts && parent == NULL && !is_off_name(path) && offensive)
 		all_forts(fp, offensive);
 	if (*head == NULL)
 		*head = *tail = fp;
@@ -619,9 +571,9 @@ over:
 		fp->next = *head;
 		*head = fp;
 	}
-#ifdef	OK_TO_WRITE_DISK
+#ifdef OK_TO_WRITE_DISK
 	fp->was_pos_file = (access(fp->posfile, W_OK) >= 0);
-#endif	/* OK_TO_WRITE_DISK */
+#endif /* OK_TO_WRITE_DISK */
 
 	return TRUE;
 }
@@ -630,12 +582,12 @@ over:
  * new_fp:
  *	Return a pointer to an initialized new FILEDESC.
  */
-FILEDESC *
-new_fp()
+static FILEDESC *
+new_fp(void)
 {
-	FILEDESC	*fp;
+	FILEDESC *fp;
 
-	fp = (FILEDESC *) do_malloc(sizeof *fp);
+	fp = do_malloc(sizeof *fp);
 	fp->datfd = -1;
 	fp->pos = POS_UNKNOWN;
 	fp->inf = NULL;
@@ -655,13 +607,12 @@ new_fp()
  * off_name:
  *	Return a pointer to the offensive version of a file of this name.
  */
-char *
-off_name(file)
-	const char	*file;
+static char *
+off_name(const char *file)
 {
-	char	*new;
+	char *new;
 
-	new = copy(file, (unsigned int) (strlen(file) + 2));
+	new = copy(file, strlen(file) + 2);
 	return strcat(new, "-o");
 }
 
@@ -669,11 +620,10 @@ off_name(file)
  * is_off_name:
  *	Is the file an offensive-style name?
  */
-int
-is_off_name(file)
-	const char	*file;
+static int
+is_off_name(const char *file)
 {
-	int	len;
+	int len;
 
 	len = strlen(file);
 	return (len >= 3 && file[len - 2] == '-' && file[len - 1] == 'o');
@@ -684,15 +634,13 @@ is_off_name(file)
  *	Modify a FILEDESC element to be the parent of two children if
  *	there are two children to be a parent of.
  */
-void
-all_forts(fp, offensive)
-	FILEDESC	*fp;
-	const char	*offensive;
+static void
+all_forts(FILEDESC *fp, const char *offensive)
 {
-	char		*sp;
-	FILEDESC	*scene, *obscene;
-	int		 fd;
-	char		*datfile, *posfile;
+	char *sp;
+	FILEDESC *scene, *obscene;
+	int fd;
+	char *datfile, *posfile;
 
 	posfile = NULL;
 
@@ -727,23 +675,22 @@ all_forts(fp, offensive)
 	obscene->datfile = datfile;
 	obscene->posfile = posfile;
 	obscene->read_tbl = FALSE;
-#ifdef	OK_TO_WRITE_DISK
+#ifdef OK_TO_WRITE_DISK
 	obscene->was_pos_file = (access(obscene->posfile, W_OK) >= 0);
-#endif	/* OK_TO_WRITE_DISK */
+#endif /* OK_TO_WRITE_DISK */
 }
 
 /*
  * add_dir:
  *	Add the contents of an entire directory.
  */
-int
-add_dir(fp)
-	FILEDESC	*fp;
+static int
+add_dir(FILEDESC *fp)
 {
-	DIR		*dir;
-	struct dirent	*dirent;
-	FILEDESC	*tailp;
-	char		*name;
+	DIR *dir;
+	struct dirent *dirent;
+	FILEDESC *tailp;
+	char *name;
 
 	(void) close(fp->fd);
 	fp->fd = -1;
@@ -763,6 +710,7 @@ add_dir(fp)
 		else
 			free(name);
 	}
+	(void) closedir(dir);
 	if (fp->num_children == 0) {
 		warnx("`%s': No fortune files in directory.", fp->path);
 		return FALSE;
@@ -774,11 +722,10 @@ add_dir(fp)
  * is_dir:
  *	Return TRUE if the file is a directory, FALSE otherwise.
  */
-int
-is_dir(file)
-	const char	*file;
+static int
+is_dir(const char *file)
 {
-	struct stat	sbuf;
+	struct stat sbuf;
 
 	if (stat(file, &sbuf) < 0)
 		return FALSE;
@@ -793,25 +740,19 @@ is_dir(file)
  *	suffixes, as contained in suflist[], are ruled out.
  */
 /* ARGSUSED */
-int
-is_fortfile(file, datp, posp, check_for_offend)
-	const char	*file;
-	char		**datp, **posp
-# ifndef OK_TO_WRITE_DISK
-	__attribute__((__unused__))
-# endif
-	;
-	int	check_for_offend;
+static int
+is_fortfile(const char *file, char **datp, char **posp, int check_for_offend)
 {
-	int	i;
-	const char	*sp;
-	char	*datfile;
-	static const char	*const suflist[] = {	/* list of "illegal" suffixes" */
-				"dat", "pos", "c", "h", "p", "i", "f",
-				"pas", "ftn", "ins.c", "ins,pas",
-				"ins.ftn", "sml",
-				NULL
-			};
+	int i;
+	const char *sp;
+	char *datfile;
+	static const char *const suflist[] = {
+		/* list of "illegal" suffixes" */
+		"dat", "pos", "c", "h", "p", "i", "f",
+		"pas", "ftn", "ins.c", "ins,pas",
+		"ins.ftn", "sml",
+		NULL
+	};
 
 	DPRINTF(2, (stderr, "is_fortfile(%s) returns ", file));
 
@@ -842,7 +783,7 @@ is_fortfile(file, datp, posp, check_for_offend)
 			}
 	}
 
-	datfile = copy(file, (unsigned int) (strlen(file) + 4)); /* +4 for ".dat" */
+	datfile = copy(file, strlen(file) + 4); /* +4 for ".dat" */
 	strcat(datfile, ".dat");
 	if (access(datfile, R_OK) < 0) {
 		free(datfile);
@@ -853,12 +794,16 @@ is_fortfile(file, datp, posp, check_for_offend)
 		*datp = datfile;
 	else
 		free(datfile);
-#ifdef	OK_TO_WRITE_DISK
+#ifdef OK_TO_WRITE_DISK
 	if (posp != NULL) {
-		*posp = copy(file, (unsigned int) (strlen(file) + 4)); /* +4 for ".dat" */
+		*posp = copy(file, strlen(file) + 4); /* +4 for ".dat" */
 		(void) strcat(*posp, ".pos");
 	}
-#endif	/* OK_TO_WRITE_DISK */
+#else
+	if (posp != NULL) {
+		*posp = NULL;
+	}
+#endif /* OK_TO_WRITE_DISK */
 	DPRINTF(2, (stderr, "TRUE\n"));
 	return TRUE;
 }
@@ -867,12 +812,10 @@ is_fortfile(file, datp, posp, check_for_offend)
  * copy:
  *	Return a malloc()'ed copy of the string
  */
-char *
-copy(str, len)
-	const char	*str;
-	unsigned int	len;
+static char *
+copy(const char *str, size_t len)
 {
-	char	*new, *sp;
+	char *new, *sp;
 
 	new = do_malloc(len + 1);
 	sp = new;
@@ -886,11 +829,10 @@ copy(str, len)
  * do_malloc:
  *	Do a malloc, checking for NULL return.
  */
-void *
-do_malloc(size)
-	unsigned int	size;
+static void *
+do_malloc(size_t size)
 {
-	void	*new;
+	void *new;
 
 	if ((new = malloc(size)) == NULL)
 		err(1, NULL);
@@ -901,9 +843,8 @@ do_malloc(size)
  * do_free:
  *	Free malloc'ed space, if any.
  */
-void
-do_free(ptr)
-	void	*ptr;
+static void
+do_free(void *ptr)
 {
 	if (ptr != NULL)
 		free(ptr);
@@ -913,11 +854,11 @@ do_free(ptr)
  * init_prob:
  *	Initialize the fortune probabilities.
  */
-void
-init_prob()
+static void
+init_prob(void)
 {
-	FILEDESC	*fp, *last;
-	int		percent, num_noprob, frac;
+	FILEDESC *fp, *last;
+	int percent, num_noprob, frac;
 
 	last = NULL;
 	/*
@@ -976,16 +917,16 @@ init_prob()
  * get_fort:
  *	Get the fortune data file's seek pointer for the next fortune.
  */
-void
-get_fort()
+static void
+get_fort(void)
 {
-	FILEDESC	*fp;
-	int		choice;
+	FILEDESC *fp;
+	int choice;
 
 	if (File_list->next == NULL || File_list->percent == NO_PROB)
 		fp = File_list;
 	else {
-		choice = random() % 100;
+		choice = arc4random_uniform(100);
 		DPRINTF(1, (stderr, "choice = %d\n", choice));
 		for (fp = File_list; fp->percent != NO_PROB; fp = fp->next)
 			if (choice < fp->percent)
@@ -1005,7 +946,7 @@ get_fort()
 	else {
 		if (fp->next != NULL) {
 			sum_noprobs(fp);
-			choice = random() % Noprob_tbl.str_numstr;
+			choice = arc4random_uniform(Noprob_tbl.str_numstr);
 			DPRINTF(1, (stderr, "choice = %d (of %d) \n", choice,
 				    Noprob_tbl.str_numstr));
 			while ((u_int32_t)choice >= fp->tbl.str_numstr) {
@@ -1039,15 +980,14 @@ get_fort()
  * pick_child
  *	Pick a child from a chosen parent.
  */
-FILEDESC *
-pick_child(parent)
-	FILEDESC	*parent;
+static FILEDESC *
+pick_child(FILEDESC *parent)
 {
-	FILEDESC	*fp;
-	int		 choice;
+	FILEDESC *fp;
+	int  choice;
 
 	if (Equal_probs) {
-		choice = random() % parent->num_children;
+		choice = arc4random_uniform(parent->num_children);
 		DPRINTF(1, (stderr, "    choice = %d (of %d)\n",
 			    choice, parent->num_children));
 		for (fp = parent->child; choice--; fp = fp->next)
@@ -1057,7 +997,7 @@ pick_child(parent)
 	}
 	else {
 		get_tbl(parent);
-		choice = random() % parent->tbl.str_numstr;
+		choice = arc4random_uniform(parent->tbl.str_numstr);
 		DPRINTF(1, (stderr, "    choice = %d (of %d)\n",
 			    choice, parent->tbl.str_numstr));
 		for (fp = parent->child; (u_int32_t)choice >= fp->tbl.str_numstr;
@@ -1076,11 +1016,10 @@ pick_child(parent)
  * sum_noprobs:
  *	Sum up all the noprob probabilities, starting with fp.
  */
-void
-sum_noprobs(fp)
-	FILEDESC	*fp;
+static void
+sum_noprobs(FILEDESC *fp)
 {
-	static bool	did_noprobs = FALSE;
+	static bool did_noprobs = FALSE;
 
 	if (did_noprobs)
 		return;
@@ -1093,9 +1032,8 @@ sum_noprobs(fp)
 	did_noprobs = TRUE;
 }
 
-int
-max(i, j)
-	int	i, j;
+static int
+max(int i, int j)
 {
 	return (i >= j ? i : j);
 }
@@ -1104,9 +1042,8 @@ max(i, j)
  * open_fp:
  *	Assocatiate a FILE * with the given FILEDESC.
  */
-void
-open_fp(fp)
-	FILEDESC	*fp;
+static void
+open_fp(FILEDESC *fp)
 {
 	if (fp->inf == NULL && (fp->inf = fdopen(fp->fd, "r")) == NULL)
 		err(1, "Cannot open `%s'", fp->path);
@@ -1116,9 +1053,8 @@ open_fp(fp)
  * open_dat:
  *	Open up the dat file if we need to.
  */
-void
-open_dat(fp)
-	FILEDESC	*fp;
+static void
+open_dat(FILEDESC *fp)
 {
 	if (fp->datfd < 0 && (fp->datfd = open(fp->datfile, O_RDONLY)) < 0)
 		err(1, "Cannot open `%s'", fp->datfile);
@@ -1129,26 +1065,25 @@ open_dat(fp)
  *	Get the position from the pos file, if there is one.  If not,
  *	return a random number.
  */
-void
-get_pos(fp)
-	FILEDESC	*fp;
+static void
+get_pos(FILEDESC *fp)
 {
-#ifdef	OK_TO_WRITE_DISK
-	int	fd;
+#ifdef OK_TO_WRITE_DISK
+	int fd;
 #endif /* OK_TO_WRITE_DISK */
 
 	assert(fp->read_tbl);
 	if (fp->pos == POS_UNKNOWN) {
-#ifdef	OK_TO_WRITE_DISK
+#ifdef OK_TO_WRITE_DISK
 		if ((fd = open(fp->posfile, O_RDONLY)) < 0 ||
 		    read(fd, &fp->pos, sizeof fp->pos) != sizeof fp->pos)
-			fp->pos = random() % fp->tbl.str_numstr;
+			fp->pos = arc4random_uniform(fp->tbl.str_numstr);
 		else if (fp->pos >= fp->tbl.str_numstr)
 			fp->pos %= fp->tbl.str_numstr;
 		if (fd >= 0)
 			(void) close(fd);
 #else
-		fp->pos = random() % fp->tbl.str_numstr;
+		fp->pos = arc4random_uniform(fp->tbl.str_numstr);
 #endif /* OK_TO_WRITE_DISK */
 	}
 	if ((u_int64_t)++(fp->pos) >= fp->tbl.str_numstr)
@@ -1161,12 +1096,11 @@ get_pos(fp)
  * get_tbl:
  *	Get the tbl data file the datfile.
  */
-void
-get_tbl(fp)
-	FILEDESC	*fp;
+static void
+get_tbl(FILEDESC *fp)
 {
-	int	 	fd;
-	FILEDESC	*child;
+	int fd;
+	FILEDESC *child;
 
 	if (fp->read_tbl)
 		return;
@@ -1197,9 +1131,8 @@ get_tbl(fp)
  * zero_tbl:
  *	Zero out the fields we care about in a tbl structure.
  */
-void
-zero_tbl(tp)
-	STRFILE	*tp;
+static void
+zero_tbl(STRFILE *tp)
 {
 	tp->str_numstr = 0;
 	tp->str_longlen = 0;
@@ -1210,9 +1143,8 @@ zero_tbl(tp)
  * sum_tbl:
  *	Merge the tbl data of t2 into t1.
  */
-void
-sum_tbl(t1, t2)
-	STRFILE	*t1, *t2;
+static void
+sum_tbl(STRFILE *t1, STRFILE *t2)
 {
 	t1->str_numstr += t2->str_numstr;
 	if (t1->str_longlen < t2->str_longlen)
@@ -1227,8 +1159,8 @@ sum_tbl(t1, t2)
  * print_file_list:
  *	Print out the file list
  */
-void
-print_file_list()
+static void
+print_file_list(void)
 {
 	print_list(File_list, 0);
 }
@@ -1237,10 +1169,8 @@ print_file_list()
  * print_list:
  *	Print out the actual list, recursively.
  */
-void
-print_list(list, lev)
-	FILEDESC	*list;
-	int		 lev;
+static void
+print_list(FILEDESC *list, int lev)
 {
 	while (list != NULL) {
 		fprintf(stderr, "%*s", lev * 4, "");
@@ -1258,59 +1188,65 @@ print_list(list, lev)
 	}
 }
 
-#ifndef	NO_REGEX
+#ifndef NO_REGEX
+
 /*
- * conv_pat:
- *	Convert the pattern to an ignore-case equivalent.
+ * re_setup:
+ *	Initialize regular expression pattern.
  */
-char *
-conv_pat(orig)
-	char	*orig;
+static void
+re_setup(struct re *rx, const char *pattern, bool ignore_case)
 {
-	char		*sp;
-	unsigned int	 cnt;
-	char		*new;
+	int code, flags;
+	char errbuf[1024];
 
-	cnt = 1;	/* allow for '\0' */
-	for (sp = orig; *sp != '\0'; sp++)
-		if (isalpha((unsigned char)*sp))
-			cnt += 4;
-		else
-			cnt++;
-	if ((new = malloc(cnt)) == NULL)
-		err(1, NULL);
+	assert(!rx->valid);
 
-	for (sp = new; *orig != '\0'; orig++) {
-		if (islower((unsigned char)*orig)) {
-			*sp++ = '[';
-			*sp++ = *orig;
-			*sp++ = toupper((unsigned char)*orig);
-			*sp++ = ']';
-		}
-		else if (isupper((unsigned char)*orig)) {
-			*sp++ = '[';
-			*sp++ = *orig;
-			*sp++ = tolower((unsigned char)*orig);
-			*sp++ = ']';
-		}
-		else
-			*sp++ = *orig;
+	flags = REG_EXTENDED | REG_NOSUB;
+	if (ignore_case) {
+		flags |= REG_ICASE;
 	}
-	*sp = '\0';
-	return new;
+	code = regcomp(&rx->regex, pattern, flags);
+
+	if (code != 0) {
+		regerror(code, &rx->regex, errbuf, sizeof(errbuf));
+		warnx("%s: `%s'", errbuf, pattern);
+		regfree(&rx->regex);
+		rx->valid = FALSE;
+	}
+	rx->valid = TRUE;
+}
+
+/*
+ * re_cleanup:
+ *	Undo re_setup.
+ */
+static void
+re_cleanup(struct re *rx)
+{
+	if (rx->valid) {
+		regfree(&rx->regex);
+		rx->valid = FALSE;
+	}
+}
+
+static bool
+re_match(struct re *rx, const char *string)
+{
+	return regexec(&rx->regex, string, 0, NULL, 0) == 0;
 }
 
 /*
  * find_matches:
  *	Find all the fortunes which match the pattern we've been given.
  */
-int
-find_matches()
+static int
+find_matches(void)
 {
 	Fort_len = maxlen_in_list(File_list);
 	DPRINTF(2, (stderr, "Maximum length is %d\n", Fort_len));
 	/* extra length, "%\n" is appended */
-	Fortbuf = do_malloc((unsigned int) Fort_len + 10);
+	Fortbuf = do_malloc(Fort_len + 10);
 
 	Found_one = FALSE;
 	matches_in_list(File_list);
@@ -1322,12 +1258,11 @@ find_matches()
  * maxlen_in_list
  *	Return the maximum fortune len in the file list.
  */
-int
-maxlen_in_list(list)
-	FILEDESC	*list;
+static size_t
+maxlen_in_list(FILEDESC *list)
 {
-	FILEDESC	*fp;
-	int		 len, maxlen;
+	FILEDESC *fp;
+	size_t len, maxlen;
 
 	maxlen = 0;
 	for (fp = list; fp != NULL; fp = fp->next) {
@@ -1337,7 +1272,7 @@ maxlen_in_list(list)
 		}
 		else {
 			get_tbl(fp);
-			if (fp->tbl.str_longlen > (u_int32_t)maxlen)
+			if (fp->tbl.str_longlen > maxlen)
 				maxlen = fp->tbl.str_longlen;
 		}
 	}
@@ -1348,15 +1283,14 @@ maxlen_in_list(list)
  * matches_in_list
  *	Print out the matches from the files in the list.
  */
-void
-matches_in_list(list)
-	FILEDESC	*list;
+static void
+matches_in_list(FILEDESC *list)
 {
-	char		*sp;
-	FILEDESC	*fp;
-	int		 in_file;
+	char *sp;
+	FILEDESC *fp;
+	int in_file;
 
-	if (!RE_OK(Re_pat) || !RE_OK(Re_pat13))
+	if (!Re_pat.valid || !Re_pat13.valid)
 		return;
 
 	for (fp = list; fp != NULL; fp = fp->next) {
@@ -1374,10 +1308,10 @@ matches_in_list(list)
 			else {
 				*sp = '\0';
 				if (fp->tbl.str_flags & STR_ROTATED)
-					Re_use = Re_pat13;
+					Re_use = &Re_pat13;
 				else
-					Re_use = Re_pat;
-				if (RE_EXEC(Re_use, Fortbuf)) {
+					Re_use = &Re_pat;
+				if (re_match(Re_use, Fortbuf)) {
 					printf("%c%c", fp->tbl.str_delim,
 					    fp->tbl.str_delim);
 					if (!in_file) {
@@ -1393,27 +1327,27 @@ matches_in_list(list)
 				sp = Fortbuf;
 			}
 	}
-	RE_FREE(Re_pat);
-	RE_FREE(Re_pat13);
+	re_cleanup(&Re_pat);
+	re_cleanup(&Re_pat13);
 }
-# endif	/* NO_REGEX */
+#endif /* NO_REGEX */
 
-void
-usage()
+static void
+usage(void)
 {
 
 	(void) fprintf(stderr, "Usage: %s [-ae", getprogname());
-#ifdef	DEBUG
+#ifdef DEBUG
 	(void) fprintf(stderr, "D");
-#endif	/* DEBUG */
+#endif /* DEBUG */
 	(void) fprintf(stderr, "f");
-#ifndef	NO_REGEX
+#ifndef NO_REGEX
 	(void) fprintf(stderr, "i");
-#endif	/* NO_REGEX */
+#endif /* NO_REGEX */
 	(void) fprintf(stderr, "losw]");
-#ifndef	NO_REGEX
+#ifndef NO_REGEX
 	(void) fprintf(stderr, " [-m pattern]");
-#endif	/* NO_REGEX */
+#endif /* NO_REGEX */
 	(void) fprintf(stderr, "[ [#%%] file/directory/all]\n");
 	exit(1);
 }

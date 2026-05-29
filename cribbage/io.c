@@ -1,4 +1,4 @@
-/*	$NetBSD: io.c,v 1.18 2004/11/05 21:30:31 dsl Exp $	*/
+/*	$NetBSD: io.c,v 1.27 2012/10/13 20:36:06 dholland Exp $	*/
 
 /*-
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)io.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: io.c,v 1.18 2004/11/05 21:30:31 dsl Exp $");
+__RCSID("$NetBSD: io.c,v 1.27 2012/10/13 20:36:06 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -58,29 +58,35 @@ __RCSID("$NetBSD: io.c,v 1.18 2004/11/05 21:30:31 dsl Exp $");
 #endif
 #define	CTRL(X)			(X - 'A' + 1)
 
-char    linebuf[LINESIZE];
+static int msgcrd(CARD, BOOLEAN, const char *, BOOLEAN);
+static void printcard(WINDOW *, unsigned, CARD, BOOLEAN);
+static int incard(CARD *);
+static void wait_for(int);
+static int readchar(void);
 
-const char   *const rankname[RANKS] = {
+static char linebuf[LINESIZE];
+
+static const char *const rankname[RANKS] = {
 	"ACE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN",
 	"EIGHT", "NINE", "TEN", "JACK", "QUEEN", "KING"
 };
 
-const char   *const rankchar[RANKS] = {
+static const char *const rankchar[RANKS] = {
 	"A", "2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K"
 };
 
-const char *const suitname[SUITS] = {"SPADES", "HEARTS", "DIAMONDS", "CLUBS"};
+static const char *const suitname[SUITS] = {
+	"SPADES", "HEARTS", "DIAMONDS", "CLUBS"
+};
 
-const char   *const suitchar[SUITS] = {"S", "H", "D", "C"};
+static const char *const suitchar[SUITS] = {"S", "H", "D", "C"};
 
 /*
  * msgcard:
  *	Call msgcrd in one of two forms
  */
 int
-msgcard(c, brief)
-	CARD c;
-	BOOLEAN brief;
+msgcard(CARD c, BOOLEAN brief)
 {
 	if (brief)
 		return (msgcrd(c, TRUE, NULL, TRUE));
@@ -92,24 +98,21 @@ msgcard(c, brief)
  * msgcrd:
  *	Print the value of a card in ascii
  */
-int
-msgcrd(c, brfrank, mid, brfsuit)
-	CARD c;
-	BOOLEAN brfrank, brfsuit;
-	const char *mid;
+static int
+msgcrd(CARD c, BOOLEAN brfrank, const char *mid, BOOLEAN brfsuit)
 {
 	if (c.rank == EMPTY || c.suit == EMPTY)
 		return (FALSE);
 	if (brfrank)
 		addmsg("%1.1s", rankchar[c.rank]);
 	else
-		addmsg(rankname[c.rank]);
+		addmsg("%s", rankname[c.rank]);
 	if (mid != NULL)
-		addmsg(mid);
+		addmsg("%s", mid);
 	if (brfsuit)
 		addmsg("%1.1s", suitchar[c.suit]);
 	else
-		addmsg(suitname[c.suit]);
+		addmsg("%s", suitname[c.suit]);
 	return (TRUE);
 }
 
@@ -117,12 +120,8 @@ msgcrd(c, brfrank, mid, brfsuit)
  * printcard:
  *	Print out a card.
  */
-void
-printcard(win, cardno, c, blank)
-	WINDOW *win;
-	int     cardno;
-	CARD    c;
-	BOOLEAN blank;
+static void
+printcard(WINDOW *win, unsigned cardno, CARD c, BOOLEAN blank)
 {
 	prcard(win, cardno * 2, cardno, c, blank);
 }
@@ -132,11 +131,7 @@ printcard(win, cardno, c, blank)
  *	Print out a card on the window at the specified location
  */
 void
-prcard(win, y, x, c, blank)
-	WINDOW *win;
-	int y, x;
-	CARD c;
-	BOOLEAN blank;
+prcard(WINDOW *win, int y, int x, CARD c, BOOLEAN blank)
 {
 	if (c.rank == EMPTY)
 		return;
@@ -159,13 +154,9 @@ prcard(win, y, x, c, blank)
  *	Print a hand of n cards
  */
 void
-prhand(h, n, win, blank)
-	const CARD h[];
-	int n;
-	WINDOW *win;
-	BOOLEAN blank;
+prhand(const CARD h[], unsigned n, WINDOW *win, BOOLEAN blank)
 {
-	int i;
+	unsigned i;
 
 	werase(win);
 	for (i = 0; i < n; i++)
@@ -179,10 +170,7 @@ prhand(h, n, win, blank)
  *	input, returns the index of the card found...
  */
 int
-infrom(hand, n, prompt)
-	const CARD hand[];
-	int n;
-	const char *prompt;
+infrom(const CARD hand[], int n, const char *prompt)
 {
 	int i, j;
 	CARD crd;
@@ -192,7 +180,7 @@ infrom(hand, n, prompt)
 		exit(74);
 	}
 	for (;;) {
-		msg(prompt);
+		msg("%s", prompt);
 		if (incard(&crd)) {	/* if card is full card */
 			if (!is_one(crd, hand, n))
 				msg("That's not in your hand");
@@ -234,9 +222,8 @@ infrom(hand, n, prompt)
  *	Inputs a card in any format.  It reads a line ending with a CR
  *	and then parses it.
  */
-int
-incard(crd)
-	CARD *crd;
+static int
+incard(CARD *crd)
 {
 	int i;
 	int rnk, sut;
@@ -245,7 +232,7 @@ incard(crd)
 
 	retval = FALSE;
 	rnk = sut = EMPTY;
-	if (!(line = getline()))
+	if (!(line = get_line()))
 		goto gotit;
 	p = p1 = line;
 	while (*p1 != ' ' && *p1 != '\0')
@@ -320,7 +307,7 @@ gotit:
  *	Reads and converts to upper case
  */
 int
-getuchar()
+getuchar(void)
 {
 	int c;
 
@@ -337,16 +324,14 @@ getuchar()
  *	"hi" inclusive.
  */
 int
-number(lo, hi, prompt)
-	int lo, hi;
-	const char *prompt;
+number(int lo, int hi, const char *prompt)
 {
 	char *p;
 	int sum;
 
 	for (sum = 0;;) {
-		msg(prompt);
-		if (!(p = getline()) || *p == '\0') {
+		msg("%s", prompt);
+		if (!(p = get_line()) || *p == '\0') {
 			msg(quiet ? "Not a number" :
 			    "That doesn't look like a number");
 			continue;
@@ -378,8 +363,8 @@ number(lo, hi, prompt)
  * msg:
  *	Display a message at the top of the screen.
  */
-char    Msgbuf[BUFSIZ] = {'\0'};
-int     Mpos = 0;
+static char Msgbuf[BUFSIZ] = {'\0'};
+static int Mpos = 0;
 static int Newpos = 0;
 
 void
@@ -388,7 +373,7 @@ msg(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	(void)vsprintf(&Msgbuf[Newpos], fmt, ap);
+	(void)vsnprintf(&Msgbuf[Newpos], sizeof(Msgbuf)-Newpos, fmt, ap);
 	Newpos = strlen(Msgbuf);
 	va_end(ap);
 	endmsg();
@@ -404,7 +389,7 @@ addmsg(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	(void)vsprintf(&Msgbuf[Newpos], fmt, ap);
+	(void)vsnprintf(&Msgbuf[Newpos], sizeof(Msgbuf)-Newpos, fmt, ap);
 	Newpos = strlen(Msgbuf);
 	va_end(ap);
 }
@@ -413,10 +398,10 @@ addmsg(const char *fmt, ...)
  * endmsg:
  *	Display a new msg.
  */
-int     Lineno = 0;
+static int Lineno = 0;
 
 void
-endmsg()
+endmsg(void)
 {
 	static int lastline = 0;
 	int len;
@@ -465,7 +450,7 @@ endmsg()
  *	Wait for the user to type ' ' before doing anything else
  */
 void
-do_wait()
+do_wait(void)
 {
 	static const char prompt[] = {'-', '-', 'M', 'o', 'r', 'e', '-', '-', '\0'};
 
@@ -486,11 +471,10 @@ do_wait()
  * wait_for
  *	Sit around until the guy types the right key
  */
-void
-wait_for(ch)
-	int ch;
+static void
+wait_for(int ch)
 {
-	char c;
+	int c;
 
 	if (ch == '\n')
 		while ((c = readchar()) != '\n')
@@ -504,15 +488,15 @@ wait_for(ch)
  * readchar:
  *	Reads and returns a character, checking for gross input errors
  */
-int
-readchar()
+static int
+readchar(void)
 {
 	int cnt;
-	char c;
+	unsigned char c;
 
 over:
 	cnt = 0;
-	while (read(STDIN_FILENO, &c, sizeof(char)) <= 0)
+	while (read(STDIN_FILENO, &c, sizeof(unsigned char)) <= 0)
 		if (cnt++ > 100) {	/* if we are getting infinite EOFs */
 			bye();		/* quit the game */
 			exit(1);
@@ -528,14 +512,14 @@ over:
 }
 
 /*
- * getline:
+ * get_line:
  *      Reads the next line up to '\n' or EOF.  Multiple spaces are
  *	compressed to one space; a space is inserted before a ','
  */
 char *
-getline()
+get_line(void)
 {
-	char *sp;
+	size_t pos;
 	int c, oy, ox;
 	WINDOW *oscr;
 
@@ -544,46 +528,42 @@ getline()
 	getyx(stdscr, oy, ox);
 	refresh();
 	/* loop reading in the string, and put it in a temporary buffer */
-	for (sp = linebuf; (c = readchar()) != '\n'; clrtoeol(), refresh()) {
-		if (c == -1)
-			continue;
-		else
+	for (pos = 0; (c = readchar()) != '\n'; clrtoeol(), refresh()) {
 			if (c == erasechar()) {	/* process erase character */
-				if (sp > linebuf) {
+				if (pos > 0) {
 					int i;
 
-					sp--;
-					for (i = strlen(unctrl(*sp)); i; i--)
+					pos--;
+					for (i = strlen(unctrl(linebuf[pos])); i; i--)
 						addch('\b');
 				}
 				continue;
 			} else
 				if (c == killchar()) {	/* process kill
 							 * character */
-					sp = linebuf;
+					pos = 0;
 					move(oy, ox);
 					continue;
 				} else
-					if (sp == linebuf && c == ' ')
+					if (pos == 0 && c == ' ')
 						continue;
-		if (sp >= &linebuf[LINESIZE - 1] || !(isprint(c) || c == ' '))
+		if (pos >= LINESIZE - 1 || !(isprint(c) || c == ' '))
 			putchar(CTRL('G'));
 		else {
 			if (islower(c))
 				c = toupper(c);
-			*sp++ = c;
+			linebuf[pos++] = c;
 			addstr(unctrl(c));
 			Mpos++;
 		}
 	}
-	*sp = '\0';
+	linebuf[pos] = '\0';
 	stdscr = oscr;
 	return (linebuf);
 }
 
 void
-receive_intr(signo)
-	int signo __attribute__((__unused__));
+receive_intr(int signo __unused)
 {
 	bye();
 	exit(1);
@@ -594,7 +574,7 @@ receive_intr(signo)
  *	Leave the program, cleaning things up as we go.
  */
 void
-bye()
+bye(void)
 {
 	signal(SIGINT, SIG_IGN);
 	mvcur(0, COLS - 1, LINES - 1, 0);

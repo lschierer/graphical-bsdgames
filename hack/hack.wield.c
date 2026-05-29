@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.wield.c,v 1.6 2003/04/02 18:36:41 jsm Exp $	*/
+/*	$NetBSD: hack.wield.c,v 1.8 2011/07/02 02:09:08 mrg Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,21 +63,20 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.wield.c,v 1.6 2003/04/02 18:36:41 jsm Exp $");
+__RCSID("$NetBSD: hack.wield.c,v 1.8 2011/07/02 02:09:08 mrg Exp $");
 #endif				/* not lint */
 
 #include "hack.h"
 #include "extern.h"
 
 void
-setuwep(obj)
-	struct obj     *obj;
+setuwep(struct obj *obj)
 {
 	setworn(obj, W_WEP);
 }
 
 int
-dowield()
+dowield(void)
 {
 	struct obj     *wep;
 	int             res = 0;
@@ -116,7 +115,7 @@ dowield()
 }
 
 void
-corrode_weapon()
+corrode_weapon(void)
 {
 	if (!uwep || uwep->olet != WEAPON_SYM)
 		return;		/* %% */
@@ -129,12 +128,10 @@ corrode_weapon()
 }
 
 int
-chwepon(otmp, amount)
-	struct obj     *otmp;
-	int amount;
+chwepon(struct obj *otmp, int amount)
 {
 	const char *color = (amount < 0) ? "black" : "green";
-	const char *time;
+	const char *stime;
 	if (!uwep || uwep->olet != WEAPON_SYM) {
 		strange_feeling(otmp,
 				(amount > 0) ? "Your hands twitch."
@@ -163,9 +160,9 @@ chwepon(otmp, amount)
 	}
 	if (!rn2(6))
 		amount *= 2;
-	time = (amount * amount == 1) ? "moment" : "while";
+	stime = (amount * amount == 1) ? "moment" : "while";
 	pline("Your %s %s for a %s.",
-	      aobjnam(uwep, "glow"), color, time);
+	      aobjnam(uwep, "glow"), color, stime);
 	uwep->spe += amount;
 	if (amount > 0)
 		uwep->cursed = 0;

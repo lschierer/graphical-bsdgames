@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.cmd.c,v 1.7 2003/04/02 18:36:35 jsm Exp $	*/
+/*	$NetBSD: hack.cmd.c,v 1.12 2011/08/06 20:42:43 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,14 +63,16 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.cmd.c,v 1.7 2003/04/02 18:36:35 jsm Exp $");
+__RCSID("$NetBSD: hack.cmd.c,v 1.12 2011/08/06 20:42:43 dholland Exp $");
 #endif				/* not lint */
 
 #include	"hack.h"
 #include	"extern.h"
 #include	"def.func_tab.h"
 
-const struct func_tab cmdlist[] = {
+static int doextcmd(void);
+
+static const struct func_tab cmdlist[] = {
 	{ '\020', doredotopl },
 	{ '\022', doredraw },
 	{ '\024', dotele },
@@ -134,15 +136,17 @@ const struct func_tab cmdlist[] = {
 	{ 0, 0 }
 };
 
-const struct ext_func_tab extcmdlist[] = {
+static const struct ext_func_tab extcmdlist[] = {
 	{ "dip", dodip },
 	{ "pray", dopray },
-	{ (char *) 0, donull }
+	{ NULL, donull }
 };
 
+static char lowc(int);
+static char unctrl(int);
+
 void
-rhack(cmd)
-	const char  *cmd;
+rhack(const char *cmd)
 {
 	const struct func_tab *tlist = cmdlist;
 	boolean         firsttime = FALSE;
@@ -155,7 +159,7 @@ rhack(cmd)
 	}
 	if (!*cmd || (*cmd & 0377) == 0377 ||
 	    (flags.no_rest_on_space && *cmd == ' ')) {
-		bell();
+		sound_bell();
 		flags.move = 0;
 		return;		/* probably we just had an interrupt */
 	}
@@ -242,8 +246,8 @@ rush:
 	multi = flags.move = 0;
 }
 
-int
-doextcmd()
+static int
+doextcmd(void)
 {				/* here after # - now read a full-word
 				 * command */
 	char            buf[BUFSZ];
@@ -263,16 +267,14 @@ doextcmd()
 	return (0);
 }
 
-char
-lowc(sym)
-	char            sym;
+static char
+lowc(int sym)
 {
 	return ((sym >= 'A' && sym <= 'Z') ? sym + 'a' - 'A' : sym);
 }
 
-char
-unctrl(sym)
-	char            sym;
+static char
+unctrl(int sym)
 {
 	return ((sym >= ('A' & 037) && sym <= ('Z' & 037)) ? sym + 0140 : sym);
 }
@@ -281,11 +283,10 @@ unctrl(sym)
 char            sdir[] = "hykulnjb><";
 schar           xdir[10] = {-1, -1, 0, 1, 1, 1, 0, -1, 0, 0};
 schar           ydir[10] = {0, -1, -1, -1, 0, 1, 1, 1, 0, 0};
-schar           zdir[10] = {0, 0, 0, 0, 0, 0, 0, 0, 1, -1};
+static schar    zdir[10] = {0, 0, 0, 0, 0, 0, 0, 0, 1, -1};
 
 int
-movecmd(sym)			/* also sets u.dz, but returns false for <> */
-	char            sym;
+movecmd(int sym)		/* also sets u.dz, but returns false for <> */
 {
 	char  *dp;
 
@@ -299,8 +300,7 @@ movecmd(sym)			/* also sets u.dz, but returns false for <> */
 }
 
 int
-getdir(s)
-	boolean         s;
+getdir(boolean s)
 {
 	char            dirsym;
 
@@ -318,7 +318,7 @@ getdir(s)
 }
 
 void
-confdir()
+confdir(void)
 {
 	int x = rn2(8);
 	u.dx = xdir[x];
@@ -327,7 +327,7 @@ confdir()
 
 #ifdef QUEST
 int
-finddir()
+finddir(void)
 {
 	int    i, ui = u.di;
 	for (i = 0; i <= 8; i++) {
@@ -365,8 +365,7 @@ finddir()
 }
 
 int
-isroom(x, y)
-	int	x, y;
+isroom(int x, int y)
 {				/* what about POOL? */
 	return (isok(x, y) && (levl[x][y].typ == ROOM ||
 			       (levl[x][y].typ >= LDOOR && flags.run >= 6)));
@@ -374,8 +373,7 @@ isroom(x, y)
 #endif	/* QUEST */
 
 int
-isok(x, y)
-	int x, y;
+isok(int x, int y)
 {
 	/* x corresponds to curx, so x==1 is the first column. Ach. %% */
 	return (x >= 1 && x <= COLNO - 1 && y >= 0 && y <= ROWNO - 1);

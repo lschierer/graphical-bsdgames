@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.o_init.c,v 1.7 2003/04/02 18:36:38 jsm Exp $	*/
+/*	$NetBSD: hack.o_init.c,v 1.15 2023/07/30 09:23:21 pho Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,7 +63,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.o_init.c,v 1.7 2003/04/02 18:36:38 jsm Exp $");
+__RCSID("$NetBSD: hack.o_init.c,v 1.15 2023/07/30 09:23:21 pho Exp $");
 #endif				/* not lint */
 
 #include <string.h>
@@ -72,9 +72,11 @@ __RCSID("$NetBSD: hack.o_init.c,v 1.7 2003/04/02 18:36:38 jsm Exp $");
 #include "def.objects.h"
 #include "hack.onames.h"	/* for LAST_GEM */
 
+static void setgemprobs(void);
+static int interesting_to_discover(int);
+
 int
-letindex(let)
-	char            let;
+letindex(int let)
 {
 	int             i = 0;
 	char            ch;
@@ -85,7 +87,7 @@ letindex(let)
 }
 
 void
-init_objects()
+init_objects(void)
 {
 	int             i, j, first, last, sum, end;
 	char            let;
@@ -138,8 +140,7 @@ check:
 }
 
 int
-probtype(let)
-	char            let;
+probtype(int let)
 {
 	int             i = bases[letindex(let)];
 	int             prob = rn2(100);
@@ -150,8 +151,8 @@ probtype(let)
 	return (i);
 }
 
-void
-setgemprobs()
+static void
+setgemprobs(void)
 {
 	int             j, first;
 
@@ -170,50 +171,64 @@ setgemprobs()
 }
 
 void
-oinit()
+oinit(void)
 {				/* level dependent initialization */
 	setgemprobs();
 }
 
 void
-savenames(fd)
-	int             fd;
+savenames(int fd)
 {
 	int             i;
-	unsigned        len;
-	bwrite(fd, (char *) bases, sizeof bases);
-	bwrite(fd, (char *) objects, sizeof objects);
+	size_t          len;
+	bwrite(fd, bases, sizeof bases);
+	bwrite(fd, objects, sizeof objects);
 	/*
-	 * as long as we use only one version of Hack/Quest we need not save
-	 * oc_name and oc_descr, but we must save oc_uname for all objects
+	 * We must save not only oc_uname but also oc_name and oc_descr,
+	 * because they are string constants whose pointer values aren't
+	 * peristent when ASLR is enabled.
 	 */
 	for (i = 0; i < SIZE(objects); i++) {
-		if (objects[i].oc_uname) {
-			len = strlen(objects[i].oc_uname) + 1;
-			bwrite(fd, (char *) &len, sizeof len);
-			bwrite(fd, objects[i].oc_uname, len);
+#define SAVE_NAME_FIELD(FIELD)					\
+		if (objects[i].FIELD) {				\
+			len = strlen(objects[i].FIELD) + 1;	\
+			bwrite(fd, &len, sizeof len);		\
+			bwrite(fd, objects[i].FIELD, len);	\
 		}
+		SAVE_NAME_FIELD(oc_name);
+		SAVE_NAME_FIELD(oc_descr);
+		SAVE_NAME_FIELD(oc_uname);
+#undef SAVE_NAME_FIELD
 	}
 }
 
 void
-restnames(fd)
-	int             fd;
+restnames(int fd)
 {
 	int             i;
-	unsigned        len;
-	mread(fd, (char *) bases, sizeof bases);
-	mread(fd, (char *) objects, sizeof objects);
-	for (i = 0; i < SIZE(objects); i++)
-		if (objects[i].oc_uname) {
-			mread(fd, (char *) &len, sizeof len);
-			objects[i].oc_uname = (char *) alloc(len);
-			mread(fd, objects[i].oc_uname, len);
+	size_t          len;
+	mread(fd, bases, sizeof bases);
+	mread(fd, objects, sizeof objects);
+	for (i = 0; i < SIZE(objects); i++) {
+#define RESTORE_NAME_FIELD(FIELD)					\
+		if (objects[i].FIELD) {					\
+			mread(fd, &len, sizeof len);			\
+			objects[i].FIELD = alloc(len);			\
+			mread(fd, __UNCONST(objects[i].FIELD), len);	\
 		}
+		/*
+		 * This leaks memory but who cares? Restoration only
+		 * happens on the process startup.
+		 */
+		RESTORE_NAME_FIELD(oc_name);
+		RESTORE_NAME_FIELD(oc_descr);
+		RESTORE_NAME_FIELD(oc_uname);
+#undef RESTORE_NAME_FIELD
+	}
 }
 
 int
-dodiscovered()
+dodiscovered(void)
 {				/* free after Robert Viduya */
 	int             i, end;
 	int             ct = 0;
@@ -229,16 +244,15 @@ dodiscovered()
 	}
 	if (ct == 0) {
 		pline("You haven't discovered anything yet...");
-		cornline(3, (char *) 0);
+		cornline(3, NULL);
 	} else
-		cornline(2, (char *) 0);
+		cornline(2, NULL);
 
 	return (0);
 }
 
-int
-interesting_to_discover(i)
-	int             i;
+static int
+interesting_to_discover(int i)
 {
 	return (
 		objects[i].oc_uname != NULL ||

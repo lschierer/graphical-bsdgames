@@ -1,4 +1,4 @@
-/*	$NetBSD: table.c,v 1.7 2004/01/27 20:30:30 jsm Exp $	*/
+/*	$NetBSD: table.c,v 1.10 2009/05/25 23:34:50 dholland Exp $	*/
 
 /*
  * Copyright (c) 1982, 1993
@@ -31,32 +31,30 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1982, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1982, 1993\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)table.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: table.c,v 1.7 2004/01/27 20:30:30 jsm Exp $");
+__RCSID("$NetBSD: table.c,v 1.10 2009/05/25 23:34:50 dholland Exp $");
 #endif
 #endif /* not lint */
 
-# define	DEBUG
+#define DEBUG
 
 /*
  * @(#)table.c	1.1 (Berkeley) 4/1/82
  */
 
-# include	"mille.h"
+#include "mille.h"
 
 int	main(int, char **);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	int	i, j, count;
 

@@ -1,4 +1,4 @@
-/*	$NetBSD: tutor.h,v 1.8 2004/01/27 20:30:28 jsm Exp $	*/
+/*	$NetBSD: tutor.h,v 1.11 2012/10/13 19:19:39 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -31,6 +31,8 @@
  *	@(#)tutor.h	8.1 (Berkeley) 5/31/93
  */
 
+struct move; /* in back.h */
+
 struct situatn {
 	int	brd[26];
 	int	roll1;
@@ -62,7 +64,5 @@ extern	const char	*const stragy[];
 extern	const struct situatn	test[];
 
 
-int	brdeq(const int *, const int *);
-void	clrest(void);
-void	leave(void) __attribute__((__noreturn__));
-void	tutor(void) __attribute__((__noreturn__));
+void	leave(void) __dead;
+void	tutor(struct move *) __dead;

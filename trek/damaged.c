@@ -1,4 +1,4 @@
-/*	$NetBSD: damaged.c,v 1.5 2003/08/07 09:37:50 agc Exp $	*/
+/*	$NetBSD: damaged.c,v 1.8 2009/05/24 21:44:56 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,11 +34,11 @@
 #if 0
 static char sccsid[] = "@(#)damaged.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: damaged.c,v 1.5 2003/08/07 09:37:50 agc Exp $");
+__RCSID("$NetBSD: damaged.c,v 1.8 2009/05/24 21:44:56 dholland Exp $");
 #endif
 #endif /* not lint */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*  DAMAGED -- check for device damaged
 **
@@ -48,8 +48,7 @@ __RCSID("$NetBSD: damaged.c,v 1.5 2003/08/07 09:37:50 agc Exp $");
 */
 
 int
-damaged(dev)
-int	dev;
+damaged(int dev)
 {
 	int		d;
 	struct event	*e;
@@ -57,8 +56,7 @@ int	dev;
 
 	d = dev;
 
-	for (i = 0; i < MAXEVENTS; i++)
-	{
+	for (i = 0; i < MAXEVENTS; i++) {
 		e = &Event[i];
 		if (e->evcode != E_FIXDV)
 			continue;

@@ -1,4 +1,4 @@
-/*	$NetBSD: play_level.c,v 1.6 2003/08/07 09:37:37 agc Exp $	*/
+/*	$NetBSD: play_level.c,v 1.9 2009/07/20 06:39:06 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,20 +34,22 @@
 #if 0
 static char sccsid[] = "@(#)play_level.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: play_level.c,v 1.6 2003/08/07 09:37:37 agc Exp $");
+__RCSID("$NetBSD: play_level.c,v 1.9 2009/07/20 06:39:06 dholland Exp $");
 #endif
 #endif /* not lint */
 
-# include	"robots.h"
+#include <curses.h>
+#include <unistd.h>
+#include "robots.h"
 
 /*
  * play_level:
  *	Let the player play the current level
  */
 void
-play_level()
+play_level(void)
 {
-	COORD	*cp;
+	COORD *cp;
 
 	move(My_pos.y, My_pos.x);
 	addch(PLAYER);
@@ -59,14 +61,14 @@ play_level()
 		addch(ROBOT);
 	}
 	refresh();
-# ifdef DEBUG
+#ifdef DEBUG
 	standout();
 	move(Min.y, Min.x);
 	addch(inch());
 	move(Max.y, Max.x);
 	addch(inch());
 	standend();
-# endif /* DEBUG */
+#endif /* DEBUG */
 	setjmp(End_move);
 	flush_in();
 	while (!Dead && Num_robots > 0) {
@@ -77,15 +79,15 @@ play_level()
 		if (Real_time)
 			alarm(0);
 		if (Field[My_pos.y][My_pos.x] != 0)
-			Dead = TRUE;
+			Dead = true;
 		if (!Dead)
-			move_robots(FALSE);
+			move_robots(false);
 		if (Was_bonus) {
 			move(Y_PROMPT, X_PROMPT);
 			clrtoeol();
 			move(Y_PROMPT + 1, X_PROMPT);
 			clrtoeol();
-			Was_bonus = FALSE;
+			Was_bonus = false;
 		}
 	}
 
@@ -94,14 +96,14 @@ play_level()
 	 */
 
 	if (!Dead) {
-		Was_bonus = FALSE;
+		Was_bonus = false;
 
 		if (Level == Start_level && Start_level > 1) {
 			move(Y_PROMPT, X_PROMPT);
 			printw("Advance bonus: %d", S_BONUS);
 			refresh();
 			add_score(S_BONUS);
-			Was_bonus = TRUE;
+			Was_bonus = true;
 		}
 
 		if (Wait_bonus != 0) {
@@ -112,7 +114,7 @@ play_level()
 			printw("Wait bonus: %d", Wait_bonus);
 			refresh();
 			add_score(Wait_bonus);
-			Was_bonus = TRUE;
+			Was_bonus = true;
 		}
 	}
 }

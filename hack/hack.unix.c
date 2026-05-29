@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.unix.c,v 1.9 2003/04/02 18:36:41 jsm Exp $	*/
+/*	$NetBSD: hack.unix.c,v 1.18 2019/02/03 10:48:46 mrg Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,7 +63,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.unix.c,v 1.9 2003/04/02 18:36:41 jsm Exp $");
+__RCSID("$NetBSD: hack.unix.c,v 1.18 2019/02/03 10:48:46 mrg Exp $");
 #endif				/* not lint */
 
 /* This file collects some Unix dependencies; hack.pager.c contains some more */
@@ -95,15 +95,18 @@ __RCSID("$NetBSD: hack.unix.c,v 1.9 2003/04/02 18:36:41 jsm Exp $");
 
 extern int locknum;
 
+static struct tm *getlt(void);
+static int veryold(int);
+
 
 void
-setrandom()
+setrandom(void)
 {
 	(void) srandom((int) time((time_t *) 0));
 }
 
-struct tm      *
-getlt()
+static struct tm *
+getlt(void)
 {
 	time_t          date;
 
@@ -112,24 +115,24 @@ getlt()
 }
 
 int
-getyear()
+getyear(void)
 {
 	return (1900 + getlt()->tm_year);
 }
 
 char           *
-getdate()
+getdatestr(void)
 {
-	static char     datestr[7];
+	static char     datestr[32];
 	struct tm      *lt = getlt();
 
-	(void) sprintf(datestr, "%02d%02d%02d",
+	(void) snprintf(datestr, sizeof(datestr), "%02d%02d%02d",
 		       lt->tm_year % 100, lt->tm_mon + 1, lt->tm_mday);
 	return (datestr);
 }
 
 int
-phase_of_the_moon()
+phase_of_the_moon(void)
 {				/* 0-7, with 0: new, 4: full *//* moon
 				 * period: 29.5306 days */
 	/* year: 365.2422 days */
@@ -146,7 +149,7 @@ phase_of_the_moon()
 }
 
 int
-night()
+night(void)
 {
 	int             hour = getlt()->tm_hour;
 
@@ -154,16 +157,15 @@ night()
 }
 
 int
-midnight()
+midnight(void)
 {
 	return (getlt()->tm_hour == 0);
 }
 
-struct stat     buf, hbuf;
+static struct stat buf, hbuf;
 
 void
-gethdate(name)
-	char           *name;
+gethdate(char *name)
 {
 #if 0
 	/* old version - for people short of space */
@@ -193,11 +195,11 @@ gethdate(name)
 		if ((np = strchr(path, ':')) == NULL)
 			np = path + strlen(path);	/* point to end str */
 		if (np - path <= 1)	/* %% */
-			(void) strcpy(filename, name);
+			(void) strlcpy(filename, name, sizeof(filename));
 		else {
-			(void) strncpy(filename, path, np - path);
-			filename[np - path] = '/';
-			(void) strcpy(filename + (np - path) + 1, name);
+			(void) snprintf(filename, sizeof(filename),
+				"%.*s/%s",
+				(int)(np - path), path, name);
 		}
 		if (stat(filename, &hbuf) == 0)
 			return;
@@ -225,9 +227,8 @@ uptodate(int fd)
 }
 
 /* see whether we should throw away this xlock file */
-int
-veryold(fd)
-	int fd;
+static int
+veryold(int fd)
 {
 	int             i;
 	time_t          date;
@@ -241,7 +242,7 @@ veryold(fd)
 		int             lockedpid;	/* should be the same size as
 						 * hackpid */
 
-		if (read(fd, (char *) &lockedpid, sizeof(lockedpid)) !=
+		if (read(fd, &lockedpid, sizeof(lockedpid)) !=
 		    sizeof(lockedpid))
 			/* strange ... */
 			return (0);
@@ -266,7 +267,7 @@ veryold(fd)
 }
 
 void
-getlock()
+getlock(void)
 {
 	int             i = 0, fd;
 
@@ -326,7 +327,7 @@ gotlock:
 	if (fd == -1) {
 		error("cannot creat lock file.");
 	} else {
-		if (write(fd, (char *) &hackpid, sizeof(hackpid))
+		if (write(fd, &hackpid, sizeof(hackpid))
 		    != sizeof(hackpid)) {
 			error("cannot write lock");
 		}
@@ -374,7 +375,7 @@ static char    *mailbox;
 static long     laststattime;
 
 void
-getmailstatus()
+getmailstatus(void)
 {
 	if (!(mailbox = getenv("MAIL")))
 		return;
@@ -389,7 +390,7 @@ getmailstatus()
 }
 
 void
-ckmailstatus()
+ckmailstatus(void)
 {
 	if (!mailbox
 #ifdef MAILCKFREQ
@@ -413,7 +414,7 @@ ckmailstatus()
 }
 
 void
-newmail()
+newmail(void)
 {
 	/* produce a scroll of mail */
 	struct obj     *obj;
@@ -439,9 +440,7 @@ newmail()
 
 /* make md run through the cave */
 void
-mdrush(md, away)
-	struct monst   *md;
-	boolean         away;
+mdrush(struct monst *md, boolean away)
 {
 	int             uroom = inroom(u.ux, u.uy);
 	if (uroom >= 0) {
@@ -499,7 +498,7 @@ mdrush(md, away)
 }
 
 void
-readmail()
+readmail(void)
 {
 #ifdef DEF_MAILREADER		/* This implies that UNIX is defined */
 	char           *mr = 0;
@@ -507,7 +506,7 @@ readmail()
 	if (!(mr = getenv("MAILREADER")))
 		mr = DEF_MAILREADER;
 	if (child(1)) {
-		execl(mr, mr, (char *) 0);
+		execl(mr, mr, (char *)NULL);
 		exit(1);
 	}
 #else	/* DEF_MAILREADER */
@@ -521,10 +520,11 @@ readmail()
 }
 #endif	/* MAIL */
 
+/*
+ * normalize file name - we don't like ..'s or /'s
+ */
 void
-regularize(s)			/* normalize file name - we don't like ..'s
-				 * or /'s */
-	char           *s;
+regularize(char *s)
 {
 	char           *lp;
 

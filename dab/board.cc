@@ -1,4 +1,4 @@
-/*	$NetBSD: board.cc,v 1.1 2003/12/27 01:16:55 christos Exp $	*/
+/*	$NetBSD: board.cc,v 1.5 2021/12/05 09:22:45 rillig Exp $	*/
 
 /*-
  * Copyright (c) 2003 The NetBSD Foundation, Inc.
@@ -15,13 +15,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -37,10 +30,11 @@
  */
 
 /*
- * board.C: Board manipulations
+ * Board manipulations
  */
+
 #include "defs.h"
-RCSID("$NetBSD: board.cc,v 1.1 2003/12/27 01:16:55 christos Exp $")
+RCSID("$NetBSD: board.cc,v 1.5 2021/12/05 09:22:45 rillig Exp $")
 
 #include <stdio.h>
 #include <string.h>
@@ -77,7 +71,7 @@ BOARD::BOARD(const BOARD& b) :
 
     for (size_t y = 0; y < _ty; y++) {
 	_b[y] = new int[_tx];
-	(void) memcpy(_b[y], b._b[y], _tx * sizeof(int));
+	static_cast<void>(memcpy(_b[y], b._b[y], _tx * sizeof(int)));
     }
 }
 
@@ -154,7 +148,7 @@ int BOARD::full(void) const
 {
     for (size_t y = 0; y < _ny; y++)
 	for (size_t x = 0; x < _nx; x++) {
-	    BOX box(y, x, (BOARD&) *this);
+	    BOX box(y, x, const_cast<BOARD&>(*this));
 	    if (box.count() != 4)
 		return 0;
 	}
@@ -173,7 +167,7 @@ void BOARD::paint(void) const
 {
     for (size_t y = 0; y < _ny; y++)
 	for (size_t x = 0; x < _nx; x++) {
-	    BOX box(y, x, (BOARD&) *this);
+	    BOX box(y, x, const_cast<BOARD&>(*this));
 	    box.paint();
 	}
 }

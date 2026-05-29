@@ -1,4 +1,4 @@
-/*	$NetBSD: setup.c,v 1.8 2003/08/07 09:37:54 agc Exp $	*/
+/*	$NetBSD: setup.c,v 1.13 2009/05/25 00:37:27 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)setup.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: setup.c,v 1.8 2003/08/07 09:37:54 agc Exp $");
+__RCSID("$NetBSD: setup.c,v 1.13 2009/05/25 00:37:27 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -44,6 +44,7 @@ __RCSID("$NetBSD: setup.c,v 1.8 2003/08/07 09:37:54 agc Exp $");
 #include <unistd.h>
 #include <stdlib.h>
 #include <err.h>
+#include <limits.h>
 #include "trek.h"
 #include "getpar.h"
 
@@ -58,8 +59,7 @@ __RCSID("$NetBSD: setup.c,v 1.8 2003/08/07 09:37:54 agc Exp $");
 **	Game restart and tournament games are handled here.
 */
 
-const struct cvntab	Lentab[] =
-{
+const struct cvntab	Lentab[] = {
 	{ "s",		"hort",		(cmdfun)1,	0 },
 	{ "m",		"edium",	(cmdfun)2,	0 },
 	{ "l",		"ong",		(cmdfun)4,	0 },
@@ -67,8 +67,7 @@ const struct cvntab	Lentab[] =
 	{ NULL,		NULL,		NULL,		0 }
 };
 
-const struct cvntab	Skitab[] =
-{
+const struct cvntab	Skitab[] = {
 	{ "n",		"ovice",	(cmdfun)1,	0 },
 	{ "f",		"air",		(cmdfun)2,	0 },
 	{ "g",		"ood",		(cmdfun)3,	0 },
@@ -79,7 +78,7 @@ const struct cvntab	Skitab[] =
 };
 
 void
-setup()
+setup(void)
 {
 	const struct cvntab		*r;
 	int		i, j;
@@ -90,12 +89,10 @@ setup()
 	struct quad	*q;
 	struct event		*e;
 
-	while (1)
-	{
+	while (1) {
 		r = getcodpar("What length game", Lentab);
 		Game.length = (long) r->value;
-		if (Game.length == 0)
-		{
+		if (Game.length == 0) {
 			if (restartgame())
 				continue;
 			return;
@@ -106,14 +103,13 @@ setup()
 	Game.skill = (long) r->value;
 	Game.tourn = 0;
 	getstrpar("Enter a password", Game.passwd, 14, 0);
-	if (strcmp(Game.passwd, "tournament") == 0)
-	{
+	if (strcmp(Game.passwd, "tournament") == 0) {
 		getstrpar("Enter tournament code", Game.passwd, 14, 0);
 		Game.tourn = 1;
 		d = 0;
 		for (i = 0; Game.passwd[i]; i++)
 			d += Game.passwd[i] << i;
-		srand(d);
+		srandom(d);
 	}
 	Param.bases = Now.bases = ranf(6 - Game.skill) + 2;
 	if (Game.skill == 6)
@@ -208,10 +204,9 @@ setup()
 	Param.navigcrud[1] = 0.75;
 	Param.cloakenergy = 1000;
 	Param.energylow = 1000;
-	for (i = 0; i < MAXEVENTS; i++)
-	{
+	for (i = 0; i < MAXEVENTS; i++) {
 		e = &Event[i];
-		e->date = 1e50;
+		e->date = TOOLARGE;
 		e->evcode = 0;
 	}
 	xsched(E_SNOVA, 1, 0, 0, 0);
@@ -231,22 +226,23 @@ setup()
 	Move.endgame = 0;
 
 	/* setup stars */
-	for (i = 0; i < NQUADS; i++)
-		for (j = 0; j < NQUADS; j++)
-		{
+	for (i = 0; i < NQUADS; i++) {
+		for (j = 0; j < NQUADS; j++) {
+			short s5;
 			q = &Quad[i][j];
 			q->klings = q->bases = 0;
 			q->scanned = -1;
 			q->stars = ranf(9) + 1;
-			q->holes = ranf(3) - q->stars / 5;
+			q->holes = ranf(3);
+			s5 = q->stars / 5;
+			q->holes = q->holes > s5 ? q->holes - s5 : 0;
 			q->qsystemname = 0;
 		}
+	}
 
 	/* select inhabited starsystems */
-	for (d = 1; d < NINHAB; d++)
-	{
-		do
-		{
+	for (d = 1; d < NINHAB; d++) {
+		do {
 			i = ranf(NQUADS);
 			j = ranf(NQUADS);
 			q = &Quad[i][j];
@@ -255,10 +251,8 @@ setup()
 	}
 
 	/* position starbases */
-	for (i = 0; i < Param.bases; i++)
-	{
-		while (1)
-		{
+	for (i = 0; i < Param.bases; i++) {
+		while (1) {
 			ix = ranf(NQUADS);
 			iy = ranf(NQUADS);
 			q = &Quad[ix][iy];
@@ -271,21 +265,18 @@ setup()
 		Now.base[i].y = iy;
 		q->scanned = 1001;
 		/* start the Enterprise near starbase */
-		if (i == 0)
-		{
+		if (i == 0) {
 			Ship.quadx = ix;
 			Ship.quady = iy;
 		}
 	}
 
 	/* position klingons */
-	for (i = Param.klings; i > 0; )
-	{
+	for (i = Param.klings; i > 0; ) {
 		klump = ranf(4) + 1;
 		if (klump > i)
 			klump = i;
-		while (1)
-		{
+		while (1) {
 			ix = ranf(NQUADS);
 			iy = ranf(NQUADS);
 			q = &Quad[ix][iy];

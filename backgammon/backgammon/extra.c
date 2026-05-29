@@ -1,4 +1,4 @@
-/*	$NetBSD: extra.c,v 1.5 2003/08/07 09:36:55 agc Exp $	*/
+/*	$NetBSD: extra.c,v 1.7 2009/08/12 05:17:57 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)extra.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: extra.c,v 1.5 2003/08/07 09:36:55 agc Exp $");
+__RCSID("$NetBSD: extra.c,v 1.7 2009/08/12 05:17:57 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -45,13 +45,15 @@ __RCSID("$NetBSD: extra.c,v 1.5 2003/08/07 09:36:55 agc Exp $");
 FILE   *trace;
 #endif
 
+static int eval(void);
+
 /*
  * dble()
  *	Have the current player double and ask opponent to accept.
  */
 
 void
-dble()
+dble(void)
 {
 	int     resp;		/* response to y/n */
 
@@ -113,7 +115,7 @@ dble()
  */
 
 int
-dblgood()
+dblgood(void)
 {
 	int     n;		/* accumulated judgment */
 	int     OFFC = *offptr;	/* no. of computer's men off */
@@ -188,8 +190,7 @@ dblgood()
 }
 
 int
-freemen(b)
-	int     b;
+freemen(int b)
 {
 	int     i, inc, lim;
 
@@ -207,8 +208,7 @@ freemen(b)
 }
 
 int
-trapped(n, inc)
-	int     n, inc;
+trapped(int n, int inc)
 {
 	int     i, j, k;
 	int     c, l, ct;
@@ -233,8 +233,8 @@ trapped(n, inc)
 	return (ct / 5);
 }
 
-int
-eval()
+static int
+eval(void)
 {
 	int     i, j;
 

@@ -1,4 +1,4 @@
-/*	$NetBSD: auto.c,v 1.7 2004/08/27 09:06:25 christos Exp $	*/
+/*	$NetBSD: auto.c,v 1.11 2009/07/20 06:39:06 dholland Exp $	*/
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -15,13 +15,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -39,14 +32,14 @@
 /*
  *	Automatic move.
  *	intelligent ?
- *	Algo : 
+ *	Algo :
  *		IF scrapheaps don't exist THEN
- *			IF not in danger THEN 
+ *			IF not in danger THEN
  *				stay at current position
  *		 	ELSE
  *				move away from the closest robot
  *			FI
- *		ELSE 
+ *		ELSE
  *			find closest heap
  *			find closest robot
  *			IF scrapheap is adjacent THEN
@@ -57,6 +50,8 @@
  *			FI
  *		FI
  */
+#include <curses.h>
+#include <string.h>
 #include "robots.h"
 
 #define ABS(a) (((a)>0)?(a):-(a))
@@ -77,21 +72,19 @@ static char move_between(COORD *, COORD *);
 static int between(COORD *, COORD *);
 
 /* distance():
- * 	return "move" number distance of the two coordinates
- */
-static int 
-distance(x1, y1, x2, y2)
-	int x1, y1, x2, y2;
-{
-	return MAX(ABS(ABS(x1) - ABS(x2)), ABS(ABS(y1) - ABS(y2)));
-} /* end distance */
-
-/* xinc():
- *	Return x coordinate moves
+ * return "move" number distance of the two coordinates
  */
 static int
-xinc(dir)
-        int dir;
+distance(int x1, int y1, int x2, int y2)
+{
+	return MAX(ABS(ABS(x1) - ABS(x2)), ABS(ABS(y1) - ABS(y2)));
+}
+
+/* xinc():
+ * Return x coordinate moves
+ */
+static int
+xinc(int dir)
 {
         switch(dir) {
         case 'b':
@@ -110,11 +103,10 @@ xinc(dir)
 }
 
 /* yinc():
- *	Return y coordinate moves
+ * Return y coordinate moves
  */
 static int
-yinc(dir)
-        int dir;
+yinc(int dir)
 {
         switch(dir) {
         case 'k':
@@ -133,10 +125,10 @@ yinc(dir)
 }
 
 /* find_moves():
- *	Find possible moves
+ * Find possible moves
  */
 static const char *
-find_moves()
+find_moves(void)
 {
         int x, y;
         COORD test;
@@ -146,17 +138,17 @@ find_moves()
         static char ans[sizeof moves];
         a = ans;
 
-        for(m = moves; *m; m++) {
+        for (m = moves; *m; m++) {
                 test.x = My_pos.x + xinc(*m);
                 test.y = My_pos.y + yinc(*m);
                 move(test.y, test.x);
                 switch(winch(stdscr)) {
                 case ' ':
                 case PLAYER:
-                        for(x = test.x - 1; x <= test.x + 1; x++) {
-                                for(y = test.y - 1; y <= test.y + 1; y++) {
+                        for (x = test.x - 1; x <= test.x + 1; x++) {
+                                for (y = test.y - 1; y <= test.y + 1; y++) {
                                         move(y, x);
-                                        if(winch(stdscr) == ROBOT)
+                                        if (winch(stdscr) == ROBOT)
 						goto bad;
                                 }
                         }
@@ -165,19 +157,18 @@ find_moves()
         bad:;
         }
         *a = 0;
-        if(ans[0])
+        if (ans[0])
                 return ans;
         else
                 return "t";
 }
 
 /* closest_robot():
- *	return the robot closest to us
- *	and put in dist its distance
+ * return the robot closest to us
+ * and put in dist its distance
  */
 static COORD *
-closest_robot(dist)
-	int *dist;
+closest_robot(int *dist)
 {
 	COORD *rob, *end, *minrob = NULL;
 	int tdist, mindist;
@@ -193,15 +184,14 @@ closest_robot(dist)
 	}
 	*dist = mindist;
 	return minrob;
-} /* end closest_robot */
-			
+}
+
 /* closest_heap():
- *	return the heap closest to us
- *	and put in dist its distance
+ * return the heap closest to us
+ * and put in dist its distance
  */
 static COORD *
-closest_heap(dist)
-	int *dist;
+closest_heap(int *dist)
 {
 	COORD *hp, *end, *minhp = NULL;
 	int mindist, tdist;
@@ -219,21 +209,20 @@ closest_heap(dist)
 	}
 	*dist = mindist;
 	return minhp;
-} /* end closest_heap */
+}
 
 /* move_towards():
- *	move as close to the given direction as possible
+ * move as close to the given direction as possible
  */
-static char 
-move_towards(dx, dy)
-	int dx, dy;
+static char
+move_towards(int dx, int dy)
 {
 	char ok_moves[10], best_move;
 	char *ptr;
 	int move_judge, cur_judge, mvx, mvy;
 
 	(void)strcpy(ok_moves, find_moves());
-	best_move = ok_moves[0]; 
+	best_move = ok_moves[0];
 	if (best_move != 't') {
 		mvx = xinc(best_move);
 		mvy = yinc(best_move);
@@ -249,38 +238,35 @@ move_towards(dx, dy)
 		}
 	}
 	return best_move;
-} /* end move_towards */
+}
 
 /* move_away():
- *	move away form the robot given
+ * move away form the robot given
  */
 static char
-move_away(rob)
-	COORD *rob;
+move_away(COORD *rob)
 {
 	int dx, dy;
 
 	dx = sign(My_pos.x - rob->x);
 	dy = sign(My_pos.y - rob->y);
 	return  move_towards(dx, dy);
-} /* end move_away */
+}
 
 
 /* move_between():
- *	move the closest heap between us and the closest robot
+ * move the closest heap between us and the closest robot
  */
 static char
-move_between(rob, hp)
-	COORD *rob;
-	COORD *hp;
+move_between(COORD *rob, COORD *hp)
 {
 	int dx, dy;
 	float slope, cons;
 
 	/* equation of the line between us and the closest robot */
 	if (My_pos.x == rob->x) {
-		/* 
-		 * me and the robot are aligned in x 
+		/*
+		 * me and the robot are aligned in x
 		 * change my x so I get closer to the heap
 		 * and my y far from the robot
 		 */
@@ -290,7 +276,7 @@ move_between(rob, hp)
 	}
 	else if (My_pos.y == rob->y) {
 		/*
-		 * me and the robot are aligned in y 
+		 * me and the robot are aligned in y
 		 * change my y so I get closer to the heap
 		 * and my x far from the robot
 		 */
@@ -304,7 +290,7 @@ move_between(rob, hp)
 		cons = slope * rob->y;
 		if (ABS(My_pos.x - rob->x) > ABS(My_pos.y - rob->y)) {
 			/*
-			 * we are closest to the robot in x 
+			 * we are closest to the robot in x
 			 * move away from the robot in x and
 			 * close to the scrap in y
 			 */
@@ -321,15 +307,13 @@ move_between(rob, hp)
 	CONSDEBUG(("me (%d,%d) robot(%d,%d) heap(%d,%d) delta(%d,%d)",
 		My_pos.x, My_pos.y, rob->x, rob->y, hp->x, hp->y, dx, dy));
 	return move_towards(dx, dy);
-} /* end move_between */
-		
+}
+
 /* between():
- * 	Return true if the heap is between us and the robot
+ * Return true if the heap is between us and the robot
  */
 int
-between(rob, hp)
-	COORD *rob;
-	COORD *hp;
+between(COORD *rob, COORD *hp)
 {
 	/* I = @ */
 	if (hp->x > rob->x && My_pos.x < rob->x)
@@ -348,14 +332,14 @@ between(rob, hp)
 	if (hp->y > rob->y && My_pos.y < rob->y)
 		return 0;
 	return 1;
-} /* end between */
+}
 
 /* automove():
- * 	find and do the best move if flag
- *	else get the first move;
+ * find and do the best move if flag
+ * else get the first move;
  */
 char
-automove() 
+automove(void)
 {
 #if 0
 	return  find_moves()[0];
@@ -367,20 +351,20 @@ automove()
 	robot_close = closest_robot(&robot_dist);
 	if (robot_dist > 1)
 		return('.');
-	if (!Num_scrap) 
+	if (!Num_scrap)
 		/* no scrap heaps just run away */
 		return move_away(robot_close);
 
 	heap_close = closest_heap(&heap_dist);
-	robot_heap = distance(robot_close->x, robot_close->y, 
-	    heap_close->x, heap_close->y);	
+	robot_heap = distance(robot_close->x, robot_close->y,
+	    heap_close->x, heap_close->y);
 	if (robot_heap <= heap_dist && !between(robot_close, heap_close)) {
-		/* 
+		/*
 		 * robot is closest to us from the heap. Run away!
 		 */
 		return  move_away(robot_close);
 	}
-	
+
 	return move_between(robot_close, heap_close);
 #endif
-} /* end automove */
+}

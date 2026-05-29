@@ -1,4 +1,4 @@
-/*	$NetBSD: rain.c,v 1.17 2004/05/02 21:31:23 christos Exp $	*/
+/*	$NetBSD: rain.c,v 1.24 2024/02/28 23:24:52 charlotte Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -31,15 +31,15 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1980, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1980, 1993\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)rain.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: rain.c,v 1.17 2004/05/02 21:31:23 christos Exp $");
+__RCSID("$NetBSD: rain.c,v 1.24 2024/02/28 23:24:52 charlotte Exp $");
 #endif
 #endif /* not lint */
 
@@ -54,14 +54,16 @@ __RCSID("$NetBSD: rain.c,v 1.17 2004/05/02 21:31:23 christos Exp $");
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <termios.h>
 #include <unistd.h>
 #include <errno.h>
 #include <limits.h>
 
 static volatile sig_atomic_t sig_caught = 0;
+static long cols;
+static long lines;
 
 int main(int, char **);
+static void winupdate(void);
 static void onsig(int);
 
 
@@ -69,15 +71,11 @@ int
 main(int argc, char **argv)
 {
 	int x, y, j;
-	long cols, lines;
-	unsigned int delay = 0;
+	unsigned int delay = 120000;
 	unsigned long val = 0;
 	int ch;
 	char *ep;
 	int xpos[5], ypos[5];
-
-	/* Revoke setgid privileges */
-	setregid(getgid(), getgid());
 
 	while ((ch = getopt(argc, argv, "d:")) != -1)
 		switch (ch) {
@@ -97,62 +95,73 @@ main(int argc, char **argv)
 			return 1;
 		}
 
-	initscr();
-	cols = COLS - 4;
-	lines = LINES - 4;
+	if (!initscr())
+		errx(0, "couldn't initialize screen");
+	winupdate();
 
 	(void)signal(SIGHUP, onsig);
 	(void)signal(SIGINT, onsig);
 	(void)signal(SIGTERM, onsig);
 
-	curs_set(0);
+	(void)curs_set(0);
 	for (j = 4; j >= 0; --j) {
 		xpos[j] = random() % cols + 2;
 		ypos[j] = random() % lines + 2;
 	}
 	for (j = 0;;) {
 		if (sig_caught) {
-			endwin();
+			(void)endwin();
 			exit(0);
+		}
+		if (is_term_resized(LINES, COLS)) {
+			resizeterm(LINES, COLS);
+			winupdate();
 		}
 		x = random() % cols + 2;
 		y = random() % lines + 2;
-		mvaddch(y, x, '.');
-		mvaddch(ypos[j], xpos[j], 'o');
+		(void)mvaddch(y, x, '.');
+		(void)mvaddch(ypos[j], xpos[j], 'o');
 		if (!j--)
 			j = 4;
-		mvaddch(ypos[j], xpos[j], 'O');
+		(void)mvaddch(ypos[j], xpos[j], 'O');
 		if (!j--)
 			j = 4;
-		mvaddch(ypos[j] - 1, xpos[j], '-');
-		mvaddstr(ypos[j], xpos[j] - 1, "|.|");
-		mvaddch(ypos[j] + 1, xpos[j], '-');
+		(void)mvaddch(ypos[j] - 1, xpos[j], '-');
+		(void)mvaddstr(ypos[j], xpos[j] - 1, "|.|");
+		(void)mvaddch(ypos[j] + 1, xpos[j], '-');
 		if (!j--)
 			j = 4;
-		mvaddch(ypos[j] - 2, xpos[j], '-');
-		mvaddstr(ypos[j] - 1, xpos[j] - 1, "/ \\");
-		mvaddstr(ypos[j], xpos[j] - 2, "| O |");
-		mvaddstr(ypos[j] + 1, xpos[j] - 1, "\\ /");
-		mvaddch(ypos[j] + 2, xpos[j], '-');
+		(void)mvaddch(ypos[j] - 2, xpos[j], '-');
+		(void)mvaddstr(ypos[j] - 1, xpos[j] - 1, "/ \\");
+		(void)mvaddstr(ypos[j], xpos[j] - 2, "| O |");
+		(void)mvaddstr(ypos[j] + 1, xpos[j] - 1, "\\ /");
+		(void)mvaddch(ypos[j] + 2, xpos[j], '-');
 		if (!j--)
 			j = 4;
-		mvaddch(ypos[j] - 2, xpos[j], ' ');
-		mvaddstr(ypos[j] - 1, xpos[j] - 1, "   ");
-		mvaddstr(ypos[j], xpos[j] - 2, "     ");
-		mvaddstr(ypos[j] + 1, xpos[j] - 1, "   ");
-		mvaddch(ypos[j] + 2, xpos[j], ' ');
+		(void)mvaddch(ypos[j] - 2, xpos[j], ' ');
+		(void)mvaddstr(ypos[j] - 1, xpos[j] - 1, "   ");
+		(void)mvaddstr(ypos[j], xpos[j] - 2, "     ");
+		(void)mvaddstr(ypos[j] + 1, xpos[j] - 1, "   ");
+		(void)mvaddch(ypos[j] + 2, xpos[j], ' ');
 		xpos[j] = x;
 		ypos[j] = y;
-		refresh();
-		if (delay)
-			usleep(delay);
-		else
-			tcdrain(STDOUT_FILENO);
+		(void)refresh();
+		if (delay) (void)usleep(delay);
 	}
 }
 
 static void
-onsig(int dummy __attribute__((__unused__)))
+winupdate(void)
+{
+	cols = COLS - 4;
+	lines = LINES - 4;
+	if (cols == 0) cols++;
+	if (lines == 0) lines++;
+}
+
+/* ARGSUSED */
+static void
+onsig(int dummy __unused)
 {
 	sig_caught = 1;
 }

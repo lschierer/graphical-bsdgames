@@ -1,4 +1,4 @@
-/*	$NetBSD: extern.c,v 1.7 2003/08/07 09:36:53 agc Exp $	*/
+/*	$NetBSD: extern.c,v 1.12 2015/06/19 06:02:31 dholland Exp $	*/
 
 /*-
  * Copyright (c) 1990, 1993
@@ -46,21 +46,30 @@
 #if 0
 static char sccsid[] = "@(#)extern.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: extern.c,v 1.7 2003/08/07 09:36:53 agc Exp $");
+__RCSID("$NetBSD: extern.c,v 1.12 2015/06/19 06:02:31 dholland Exp $");
 #endif
 #endif /* not lint */
 
-#include "include.h"
+#include <termios.h>
+
+#include "def.h"
+#include "struct.h"
+#include "extern.h"
+#include "tunable.h"
 
 char		GAMES[] =	"Game_List";
 
-int		clck, safe_planes, start_time, test_mode;
+int		clck, safe_planes, test_mode;
+time_t		start_time;
 
-const char	*file;
+const char	*filename;
 
+#if 0
 FILE		*filein, *fileout;
+#endif
 
-C_SCREEN		screen, *sp = &screen;
+static C_SCREEN screen;
+C_SCREEN *sp = &screen;
 
 LIST		air, ground;
 

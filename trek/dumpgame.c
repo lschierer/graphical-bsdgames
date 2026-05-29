@@ -1,4 +1,4 @@
-/*	$NetBSD: dumpgame.c,v 1.9 2004/01/27 20:30:31 jsm Exp $	*/
+/*	$NetBSD: dumpgame.c,v 1.15 2009/08/12 08:54:54 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)dumpgame.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: dumpgame.c,v 1.9 2004/01/27 20:30:31 jsm Exp $");
+__RCSID("$NetBSD: dumpgame.c,v 1.15 2009/08/12 08:54:54 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -45,10 +45,9 @@ __RCSID("$NetBSD: dumpgame.c,v 1.9 2004/01/27 20:30:31 jsm Exp $");
 #include "trek.h"
 
 /***  THIS CONSTANT MUST CHANGE AS THE DATA SPACES CHANGE ***/
-# define	VERSION		2
+#define VERSION		2
 
-struct dump
-{
+struct dump {
 	char	*area;
 	int	count;
 };
@@ -56,8 +55,7 @@ struct dump
 static int readdump(int);
 
 
-struct dump	Dump_template[] =
-{
+static struct dump Dump_template[] = {
 	{ (char *)&Ship,	sizeof (Ship) },
 	{ (char *)&Now,		sizeof (Now) },
 	{ (char *)&Param,	sizeof (Param) },
@@ -82,8 +80,7 @@ struct dump	Dump_template[] =
 
 /*ARGSUSED*/
 void
-dumpgame(v)
-	int v __attribute__((__unused__));
+dumpgame(int v __unused)
 {
 	int		version;
 	int		fd;
@@ -98,8 +95,7 @@ dumpgame(v)
 	write(fd, &version, sizeof version);
 
 	/* output the main data areas */
-	for (d = Dump_template; d->area; d++)
-	{
+	for (d = Dump_template; d->area; d++) {
 		write(fd, &d->area, sizeof d->area);
 		i = d->count;
 		write(fd, d->area, i);
@@ -121,7 +117,7 @@ dumpgame(v)
 */
 
 int
-restartgame()
+restartgame(void)
 {
 	int	fd;
 	int		version;
@@ -129,10 +125,10 @@ restartgame()
 	if ((fd = open("trek.dump", O_RDONLY)) < 0 ||
 	    read(fd, &version, sizeof version) != sizeof version ||
 	    version != VERSION ||
-	    readdump(fd))
-	{
+	    readdump(fd)) {
 		printf("cannot restart\n");
-		close(fd);
+		if (fd >= 0)
+			close(fd);
 		return (1);
 	}
 
@@ -151,8 +147,7 @@ restartgame()
 */
 
 static int
-readdump(fd1)
-int	fd1;
+readdump(int fd1)
 {
 	int		fd;
 	struct dump	*d;
@@ -161,8 +156,7 @@ int	fd1;
 
 	fd = fd1;
 
-	for (d = Dump_template; d->area; d++)
-	{
+	for (d = Dump_template; d->area; d++) {
 		if (read(fd, &junk, sizeof junk) != (sizeof junk))
 			return (1);
 		if ((char *)junk != d->area)

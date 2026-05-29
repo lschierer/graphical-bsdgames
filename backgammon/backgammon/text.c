@@ -1,4 +1,4 @@
-/*	$NetBSD: text.c,v 1.7 2003/08/07 09:36:56 agc Exp $	*/
+/*	$NetBSD: text.c,v 1.10 2024/08/22 20:46:40 rillig Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,11 +34,12 @@
 #if 0
 static char sccsid[] = "@(#)text.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: text.c,v 1.7 2003/08/07 09:36:56 agc Exp $");
+__RCSID("$NetBSD: text.c,v 1.10 2024/08/22 20:46:40 rillig Exp $");
 #endif
 #endif /* not lint */
 
 #include "back.h"
+#include "backlocal.h"
 
 const char   *const instr[] = {
 	"    If you did not notice by now, this program reacts to things as",
@@ -107,8 +108,7 @@ const char   *const instr[] = {
 0};
 
 int
-text(t)
-	const char  *const *t;
+wrtext(const char  *const *t)
 {
 	int     i;
 	const char   *s, *a;
@@ -123,13 +123,13 @@ text(t)
 			writec('\n');
 		} else {
 			writel("-->");
-			fixtty(&bg_raw);
+			fixtty(&raw);
 			while ((i = readc()) != ' ' && i != '\n');
 			fixtty(&noech);
 			clear();
 		}
 		t++;
 	}
-	fixtty(&bg_raw);
+	fixtty(&raw);
 	return (0);
 }

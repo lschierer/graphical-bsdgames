@@ -62,7 +62,7 @@
  */
 
 #ifndef lint
-static const char rcsid[] __attribute__((__unused__)) =
+static const char rcsid[] =
     "$NetBSD: makedefs.c,v 1.8 2003/04/02 18:36:42 jsm Exp $";
 #endif				/* not lint */
 
@@ -178,7 +178,7 @@ loop:
 			printf("Cannot skipuntil %s\n", s);
 			exit(1);
 		}
-	if ((int)strlen(s) > lpe - lp + 1) {
+	if (strlen(s) > lpe - lp + 1) {
 		char           *lp1, *lp2;
 		lp2 = lp;
 		lp1 = lp = lp0;
@@ -188,7 +188,7 @@ loop:
 		lp0 = lp1;
 		readline();
 		lp0 = lp2;
-		if ((int)strlen(s) > lpe - lp + 1) {
+		if (strlen(s) > lpe - lp + 1) {
 			printf("error in skipuntil");
 			exit(1);
 		}

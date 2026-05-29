@@ -1,4 +1,4 @@
-/*	$NetBSD: crib.c,v 1.19 2004/01/27 20:30:29 jsm Exp $	*/
+/*	$NetBSD: crib.c,v 1.27 2023/06/01 20:15:16 andvar Exp $	*/
 
 /*-
  * Copyright (c) 1980, 1993
@@ -31,15 +31,15 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1980, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1980, 1993\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)crib.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: crib.c,v 1.19 2004/01/27 20:30:29 jsm Exp $");
+__RCSID("$NetBSD: crib.c,v 1.27 2023/06/01 20:15:16 andvar Exp $");
 #endif
 #endif /* not lint */
 
@@ -56,12 +56,20 @@ __RCSID("$NetBSD: crib.c,v 1.19 2004/01/27 20:30:29 jsm Exp $");
 #include "cribcur.h"
 #include "pathnames.h"
 
-int	main(int, char *[]);
+static void makeboard(void);
+static void gamescore(void);
+static void game(void);
+static int playhand(BOOLEAN);
+static int deal(BOOLEAN);
+static void discard(BOOLEAN);
+static int cut(BOOLEAN, int);
+static void prcrib(BOOLEAN, BOOLEAN);
+static int peg(BOOLEAN);
+static void prtable(int);
+static int score(BOOLEAN);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	BOOLEAN playing;
 	FILE *f;
@@ -76,7 +84,7 @@ main(argc, argv)
 		exit(1);
 
 	/* Revoke setgid privileges */
-	setregid(getgid(), getgid());
+	setgid(getgid());
 
 	/* Set close-on-exec flag on log file */
 	if (f != NULL) {
@@ -89,7 +97,7 @@ main(argc, argv)
 			err(1, "fcntl F_SETFD");
 	}
 
-	while ((ch = getopt(argc, argv, "eqr")) != -1)
+	while ((ch = getopt(argc, argv, "eqry")) != -1)
 		switch (ch) {
 		case 'e':
 			explain = TRUE;
@@ -100,13 +108,17 @@ main(argc, argv)
 		case 'r':
 			rflag = TRUE;
 			break;
+		case 'y':
+			yes = TRUE;
+			break;
 		case '?':
 		default:
-			(void) fprintf(stderr, "usage: cribbage [-eqr]\n");
+			(void) fprintf(stderr, "usage: cribbage [-eqry]\n");
 			exit(1);
 		}
 
-	initscr();
+	if (!initscr())
+		errx(0, "couldn't initialize screen");
 	(void)signal(SIGINT, receive_intr);
 	cbreak();
 	noecho();
@@ -145,7 +157,10 @@ main(argc, argv)
 			glimit = (getuchar() == 'S' ? SGAME : LGAME);
 		game();
 		msg("Another game? ");
-		playing = (getuchar() == 'Y');
+		if (!yes)
+		    playing = (getuchar() == 'Y');
+		else
+		    playing = (getuchar() != 'N');
 	} while (playing);
 
 	if (f != NULL) {
@@ -161,8 +176,8 @@ main(argc, argv)
  * makeboard:
  *	Print out the initial board on the screen
  */
-void
-makeboard()
+static void
+makeboard(void)
 {
 	mvaddstr(SCORE_Y + 0, SCORE_X,
 	    "+---------------------------------------+");
@@ -189,8 +204,8 @@ makeboard()
  * gamescore:
  *	Print out the current game score
  */
-void
-gamescore()
+static void
+gamescore(void)
 {
 	if (pgames || cgames) {
 		mvprintw(SCORE_Y + 1, SCORE_X + 28, "Games: %3d", pgames);
@@ -205,8 +220,8 @@ gamescore()
  *	Play one game up to glimit points.  Actually, we only ASK the
  *	player what card to turn.  We do a random one, anyway.
  */
-void
-game()
+static void
+game(void)
 {
 	int i, j;
 	BOOLEAN flag;
@@ -221,7 +236,7 @@ game()
 			if (!rflag) {			/* player cuts deck */
 				msg(quiet ? "Cut for crib? " :
 			    "Cut to see whose crib it is -- low card wins? ");
-				getline();
+				get_line();
 			}
 			i = (rand() >> 4) % CARDS;	/* random cut */
 			do {	/* comp cuts deck */
@@ -299,9 +314,8 @@ game()
  * playhand:
  *	Do up one hand of the game
  */
-int
-playhand(mycrib)
-	BOOLEAN mycrib;
+static int
+playhand(BOOLEAN mycrib)
 {
 	int deckpos;
 
@@ -331,9 +345,8 @@ playhand(mycrib)
 /*
  * deal cards to both players from deck
  */
-int
-deal(mycrib)
-	BOOLEAN mycrib;
+static int
+deal(BOOLEAN mycrib)
 {
 	int i, j;
 
@@ -354,9 +367,8 @@ deal(mycrib)
  *	Handle players discarding into the crib...
  * Note: we call cdiscard() after prining first message so player doesn't wait
  */
-void
-discard(mycrib)
-	BOOLEAN mycrib;
+static void
+discard(BOOLEAN mycrib)
 {
 	const char *prompt;
 	CARD crd;
@@ -384,10 +396,8 @@ discard(mycrib)
  *	Cut the deck and set turnover.  Actually, we only ASK the
  *	player what card to turn.  We do a random one, anyway.
  */
-int
-cut(mycrib, pos)
-	BOOLEAN mycrib;
-	int  pos;
+static int
+cut(BOOLEAN mycrib, int  pos)
 {
 	int i;
 	BOOLEAN win;
@@ -397,7 +407,7 @@ cut(mycrib, pos)
 		if (!rflag) {	/* random cut */
 			msg(quiet ? "Cut the deck? " :
 		    "How many cards down do you wish to cut the deck? ");
-			getline();
+			get_line();
 		}
 		i = (rand() >> 4) % (CARDS - pos);
 		turnover = deck[i + pos];
@@ -428,9 +438,8 @@ cut(mycrib, pos)
  * prcrib:
  *	Print out the turnover card with crib indicator
  */
-void
-prcrib(mycrib, blank)
-	BOOLEAN mycrib, blank;
+static void
+prcrib(BOOLEAN mycrib, BOOLEAN blank)
 {
 	int y, cardx;
 
@@ -457,11 +466,10 @@ prcrib(mycrib, blank)
  *	Handle all the pegging...
  */
 static CARD Table[14];
-static int Tcnt;
+static unsigned Tcnt;
 
-int
-peg(mycrib)
-	BOOLEAN mycrib;
+static int
+peg(BOOLEAN mycrib)
 {
 	static CARD ch[CINHAND], ph[CINHAND];
 	int i, j, k;
@@ -485,7 +493,7 @@ peg(mycrib)
 		prhand(ph, pnum, Playwin, FALSE);
 		prhand(ch, cnum, Compwin, TRUE);
 		prtable(sum);
-		if (myturn) {	/* my tyrn to play */
+		if (myturn) {	/* my turn to play */
 			if (!anymove(ch, cnum, sum)) {	/* if no card to play */
 				if (!mego && cnum) {	/* go for comp? */
 					msg("GO");
@@ -619,12 +627,11 @@ peg(mycrib)
  * prtable:
  *	Print out the table with the current score
  */
-void
-prtable(score)
-	int score;
+static void
+prtable(int curscore)
 {
 	prhand(Table, Tcnt, Tablewin, FALSE);
-	mvwprintw(Tablewin, (Tcnt + 2) * 2, Tcnt + 1, "%2d", score);
+	mvwprintw(Tablewin, (Tcnt + 2) * 2, Tcnt + 1, "%2d", curscore);
 	wrefresh(Tablewin);
 }
 
@@ -632,9 +639,8 @@ prtable(score)
  * score:
  *	Handle the scoring of the hands
  */
-int
-score(mycrib)
-	BOOLEAN mycrib;
+static int
+score(BOOLEAN mycrib)
 {
 	sorthand(crib, CINHAND);
 	if (mycrib) {

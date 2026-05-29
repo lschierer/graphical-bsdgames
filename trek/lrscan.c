@@ -1,4 +1,4 @@
-/*	$NetBSD: lrscan.c,v 1.6 2003/08/07 09:37:52 agc Exp $	*/
+/*	$NetBSD: lrscan.c,v 1.10 2009/05/24 22:55:03 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)lrscan.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: lrscan.c,v 1.6 2003/08/07 09:37:52 agc Exp $");
+__RCSID("$NetBSD: lrscan.c,v 1.10 2009/05/24 22:55:03 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -55,21 +55,19 @@ __RCSID("$NetBSD: lrscan.c,v 1.6 2003/08/07 09:37:52 agc Exp $");
 
 /*ARGSUSED*/
 void
-lrscan(v)
-	int v __attribute__((__unused__));
+lrscan(int v __unused)
 {
 	int		i, j;
 	struct quad	*q;
 
-	if (check_out(LRSCAN))
-	{
+	if (check_out(LRSCAN)) {
 		return;
 	}
-	printf("Long range scan for quadrant %d,%d\n\n", Ship.quadx, Ship.quady);
+	printf("Long range scan for quadrant %d,%d\n\n",
+		Ship.quadx, Ship.quady);
 
 	/* print the header on top */
-	for (j = Ship.quady - 1; j <= Ship.quady + 1; j++)
-	{
+	for (j = Ship.quady - 1; j <= Ship.quady + 1; j++) {
 		if (j < 0 || j >= NQUADS)
 			printf("      ");
 		else
@@ -77,11 +75,9 @@ lrscan(v)
 	}
 
 	/* scan the quadrants */
-	for (i = Ship.quadx - 1; i <= Ship.quadx + 1; i++)
-	{
+	for (i = Ship.quadx - 1; i <= Ship.quadx + 1; i++) {
 		printf("\n  -------------------\n");
-		if (i < 0 || i >= NQUADS)
-		{
+		if (i < 0 || i >= NQUADS) {
 			/* negative energy barrier */
 			printf("  !  *  !  *  !  *  !");
 			continue;
@@ -89,17 +85,14 @@ lrscan(v)
 
 		/* print the left hand margin */
 		printf("%1d !", i);
-		for (j = Ship.quady - 1; j <= Ship.quady + 1; j++)
-		{
-			if (j < 0 || j >= NQUADS)
-			{
+		for (j = Ship.quady - 1; j <= Ship.quady + 1; j++) {
+			if (j < 0 || j >= NQUADS) {
 				/* negative energy barrier again */
 				printf("  *  !");
 				continue;
 			}
 			q = &Quad[i][j];
-			if (q->stars < 0)
-			{
+			if (q->stars < 0) {
 				/* supernova */
 				printf(" /// !");
 				q->scanned = 1000;

@@ -1,4 +1,4 @@
-.\"	$NetBSD: countmail.6,v 1.10 2004/02/08 00:31:16 jsm Exp $
+.\"	$NetBSD: countmail.6,v 1.14 2014/03/18 18:20:36 riastradh Exp $
 .\"
 .\" Copyright (c) 1997 Matthew R. Green
 .\" All rights reserved.
@@ -11,8 +11,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. The name of the author may not be used to endorse or promote products
-.\"    derived from this software without specific prior written permission.
 .\"
 .\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
 .\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -38,16 +36,21 @@
 The
 .Nm
 program counts your mail and tells you about it rather obnoxiously.
+.Sh SEE ALSO
+.Xr from 1
 .Sh HISTORY
 The
 .Nm
 program first appeared in
 .Nx 1.3 .
+.Sh AUTHORS
+.An -nosplit
 .Nm
 was first written by
-.An Noah Friedman Aq friedman@splode.com
+.An Noah Friedman Aq Mt friedman@splode.com
 in 1993.
-This version was written by Charles M. Hannum
+This version was written by
+.An Charles M. Hannum
 .Aq mycroft@NetBSD.org .
 .Sh CAVEATS
 The read loop is horrendously slow on every shell implementation tried.
@@ -57,5 +60,3 @@ uses
 and
 .Xr wc 1
 instead, though these are not shell builtins.
-.Sh SEE ALSO
-.Xr from 1

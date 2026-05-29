@@ -1,4 +1,4 @@
-/*	$NetBSD: globals.c,v 1.13 2003/08/07 09:37:42 agc Exp $	*/
+/*	$NetBSD: globals.c,v 1.16 2010/08/06 09:14:40 dholland Exp $	*/
 
 /*
  * Copyright (c) 1983, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)globals.c	8.2 (Berkeley) 4/28/95";
 #else
-__RCSID("$NetBSD: globals.c,v 1.13 2003/08/07 09:37:42 agc Exp $");
+__RCSID("$NetBSD: globals.c,v 1.16 2010/08/06 09:14:40 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -42,7 +42,9 @@ __RCSID("$NetBSD: globals.c,v 1.13 2003/08/07 09:37:42 agc Exp $");
 #include <setjmp.h>
 #include "extern.h"
 
-struct scenario scene[] = {
+static struct shipspecs specs[];
+
+struct scenario scene[NSCENE] = {
 	/*
 	 * int winddir;
 	 * int windspeed;
@@ -313,7 +315,7 @@ struct scenario scene[] = {
 };
 int nscene = sizeof scene / sizeof (struct scenario);
 
-struct shipspecs specs[] = {
+static struct shipspecs specs[] = {
 /*      bs fs ta guns   hull  crew1   crew3    gunR  carR   rig2  rig4 pts */
 /*                 class   qual   crew2    gunL   carL   rig1  rig3        */
 /*00*/{	4, 7, 3,  19, 5,  5, 4,  2,  2,  2,  2,  2, 0, 0,  4, 4, 4,  4,  7 },
@@ -452,7 +454,7 @@ const char AMMO[9][4] = {
 	{ -3, 2, 0, 3 },
 	{ -3, 2, 0, 3 }
 };
-	
+
 const char HDT[9][10] = {
 	{ 1, 0,-1,-2,-3,-3,-4,-4,-4,-4 },
 	{ 1, 1, 0,-1,-2,-2,-3,-3,-3,-3 },
@@ -524,6 +526,16 @@ const char *const classname[] = {
 	"Brig"
 };
 
+const char *const shortclassname[] = {
+	"Rowboat",
+	"Ship",
+	"Ship",
+	"Frigate",
+	"Corvette",
+	"Sloop",
+	"Brig"
+};
+
 const char *const directionname[] = {
 	"dead ahead",
 	"off the starboard bow",
@@ -536,7 +548,14 @@ const char *const directionname[] = {
 	"dead ahead"
 };
 
-const char *const qualname[] = { "dead", "mutinous", "green", "mundane", "crack", "elite" };
+const char *const qualname[] = {
+	"dead",
+	"mutinous",
+	"green",
+	"mundane",
+	"crack",
+	"elite"
+};
 
 const char loadname[] = { '-', 'G', 'C', 'R', 'D', 'E' };
 
@@ -546,15 +565,15 @@ const char dc[] = { 0, 0, -1, -1, -1, 0, 1, 1, 1 };
 int mode;
 jmp_buf restart;
 
-int randomize;				/* -x, give first available ship */
-int longfmt;				/* -l, print score in long format */
-int nobells;				/* -b, don't ring bell before Signal */
+bool randomize;				/* -x, give first available ship */
+bool longfmt;				/* -l, print score in long format */
+bool nobells;				/* -b, don't ring bell before Signal */
 
 gid_t gid;
 gid_t egid;
 
-struct scenario *cc;		/* the current scenario */
-struct ship *ls;		/* &cc->ship[cc->vessels] */
+struct scenario *cc;			/* the current scenario */
+struct ship *ls;			/* &cc->ship[cc->vessels] */
 
 int winddir;
 int windspeed;

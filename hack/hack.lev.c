@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.lev.c,v 1.6 2003/04/02 18:36:37 jsm Exp $	*/
+/*	$NetBSD: hack.lev.c,v 1.14 2011/08/06 20:32:25 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,7 +63,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.lev.c,v 1.6 2003/04/02 18:36:37 jsm Exp $");
+__RCSID("$NetBSD: hack.lev.c,v 1.14 2011/08/06 20:32:25 dholland Exp $");
 #endif				/* not lint */
 
 #include <stdlib.h>
@@ -78,10 +78,11 @@ __RCSID("$NetBSD: hack.lev.c,v 1.6 2003/04/02 18:36:37 jsm Exp $");
 
 boolean         level_exists[MAXLEVEL + 1];
 
+static void savegoldchn(int, struct gold *);
+static void savetrapchn(int, struct trap *);
+
 void
-savelev(fd, lev)
-	int             fd;
-	xchar           lev;
+savelev(int fd, xchar lev)
 {
 #ifndef NOWORM
 	struct wseg    *wtmp, *wtmp2;
@@ -93,14 +94,14 @@ savelev(fd, lev)
 	if (lev >= 0 && lev <= MAXLEVEL)
 		level_exists[lev] = TRUE;
 
-	bwrite(fd, (char *) &hackpid, sizeof(hackpid));
-	bwrite(fd, (char *) &lev, sizeof(lev));
-	bwrite(fd, (char *) levl, sizeof(levl));
-	bwrite(fd, (char *) &moves, sizeof(long));
-	bwrite(fd, (char *) &xupstair, sizeof(xupstair));
-	bwrite(fd, (char *) &yupstair, sizeof(yupstair));
-	bwrite(fd, (char *) &xdnstair, sizeof(xdnstair));
-	bwrite(fd, (char *) &ydnstair, sizeof(ydnstair));
+	bwrite(fd, &hackpid, sizeof(hackpid));
+	bwrite(fd, &lev, sizeof(lev));
+	bwrite(fd, levl, sizeof(levl));
+	bwrite(fd, &moves, sizeof(long));
+	bwrite(fd, &xupstair, sizeof(xupstair));
+	bwrite(fd, &yupstair, sizeof(yupstair));
+	bwrite(fd, &xdnstair, sizeof(xdnstair));
+	bwrite(fd, &ydnstair, sizeof(ydnstair));
 	savemonchn(fd, fmon);
 	savegoldchn(fd, fgold);
 	savetrapchn(fd, ftrap);
@@ -109,40 +110,36 @@ savelev(fd, lev)
 	billobjs = 0;
 	save_engravings(fd);
 #ifndef QUEST
-	bwrite(fd, (char *) rooms, sizeof(rooms));
-	bwrite(fd, (char *) doors, sizeof(doors));
+	bwrite(fd, rooms, sizeof(rooms));
+	bwrite(fd, doors, sizeof(doors));
 #endif	/* QUEST */
 	fgold = 0;
 	ftrap = 0;
 	fmon = 0;
 	fobj = 0;
 #ifndef NOWORM
-	bwrite(fd, (char *) wsegs, sizeof(wsegs));
+	bwrite(fd, wsegs, sizeof(wsegs));
 	for (tmp = 1; tmp < 32; tmp++) {
 		for (wtmp = wsegs[tmp]; wtmp; wtmp = wtmp2) {
 			wtmp2 = wtmp->nseg;
-			bwrite(fd, (char *) wtmp, sizeof(struct wseg));
+			bwrite(fd, wtmp, sizeof(struct wseg));
 		}
 		wsegs[tmp] = 0;
 	}
-	bwrite(fd, (char *) wgrowtime, sizeof(wgrowtime));
+	bwrite(fd, wgrowtime, sizeof(wgrowtime));
 #endif	/* NOWORM */
 }
 
 void
-bwrite(fd, loc, num)
-	int fd;
-	const void     *loc;
-	unsigned        num;
+bwrite(int fd, const void *loc, size_t num)
 {
-	if (write(fd, loc, num) != (ssize_t)num)
-		panic("cannot write %u bytes to file #%d", num, fd);
+	/* lint wants the 3rd arg of write to be an int; lint -p an unsigned */
+	if ((size_t)write(fd, loc, num) != num)
+		panic("cannot write %zu bytes to file #%d", num, fd);
 }
 
 void
-saveobjchn(fd, otmp)
-	int fd;
-	struct obj     *otmp;
+saveobjchn(int fd, struct obj *otmp)
 {
 	struct obj     *otmp2;
 	unsigned        xl;
@@ -151,18 +148,16 @@ saveobjchn(fd, otmp)
 	while (otmp) {
 		otmp2 = otmp->nobj;
 		xl = otmp->onamelth;
-		bwrite(fd, (char *) &xl, sizeof(int));
-		bwrite(fd, (char *) otmp, xl + sizeof(struct obj));
-		free((char *) otmp);
+		bwrite(fd, &xl, sizeof(int));
+		bwrite(fd, otmp, xl + sizeof(struct obj));
+		free(otmp);
 		otmp = otmp2;
 	}
-	bwrite(fd, (char *) &minusone, sizeof(int));
+	bwrite(fd, &minusone, sizeof(int));
 }
 
 void
-savemonchn(fd, mtmp)
-	int fd;
-	struct monst   *mtmp;
+savemonchn(int fd, struct monst *mtmp)
 {
 	struct monst   *mtmp2;
 	unsigned        xl;
@@ -174,50 +169,44 @@ savemonchn(fd, mtmp)
 	while (mtmp) {
 		mtmp2 = mtmp->nmon;
 		xl = mtmp->mxlth + mtmp->mnamelth;
-		bwrite(fd, (char *) &xl, sizeof(int));
-		bwrite(fd, (char *) mtmp, xl + sizeof(struct monst));
+		bwrite(fd, &xl, sizeof(int));
+		bwrite(fd, mtmp, xl + sizeof(struct monst));
 		if (mtmp->minvent)
 			saveobjchn(fd, mtmp->minvent);
-		free((char *) mtmp);
+		free(mtmp);
 		mtmp = mtmp2;
 	}
-	bwrite(fd, (char *) &minusone, sizeof(int));
+	bwrite(fd, &minusone, sizeof(int));
 }
 
-void
-savegoldchn(fd, gold)
-	int fd;
-	struct gold    *gold;
+static void
+savegoldchn(int fd, struct gold *gold)
 {
 	struct gold    *gold2;
 	while (gold) {
 		gold2 = gold->ngold;
-		bwrite(fd, (char *) gold, sizeof(struct gold));
-		free((char *) gold);
+		bwrite(fd, gold, sizeof(struct gold));
+		free(gold);
 		gold = gold2;
 	}
 	bwrite(fd, nul, sizeof(struct gold));
 }
 
-void
-savetrapchn(fd, trap)
-	int fd;
-	struct trap    *trap;
+static void
+savetrapchn(int fd, struct trap *trap)
 {
 	struct trap    *trap2;
 	while (trap) {
 		trap2 = trap->ntrap;
-		bwrite(fd, (char *) trap, sizeof(struct trap));
-		free((char *) trap);
+		bwrite(fd, trap, sizeof(struct trap));
+		free(trap);
 		trap = trap2;
 	}
 	bwrite(fd, nul, sizeof(struct trap));
 }
 
 void
-getlev(fd, pid, lev)
-	int             fd, pid;
-	xchar           lev;
+getlev(int fd, int pid, xchar lev)
 {
 	struct gold    *gold;
 	struct trap    *trap;
@@ -230,8 +219,8 @@ getlev(fd, pid, lev)
 	xchar           dlvl;
 
 	/* First some sanity checks */
-	mread(fd, (char *) &hpid, sizeof(hpid));
-	mread(fd, (char *) &dlvl, sizeof(dlvl));
+	mread(fd, &hpid, sizeof(hpid));
+	mread(fd, &dlvl, sizeof(dlvl));
 	if ((pid && pid != hpid) || (lev && dlvl != lev)) {
 		pline("Strange, this map is not as I remember it.");
 		pline("Somebody is trying some trickery here ...");
@@ -240,12 +229,12 @@ getlev(fd, pid, lev)
 	}
 	fgold = 0;
 	ftrap = 0;
-	mread(fd, (char *) levl, sizeof(levl));
-	mread(fd, (char *) &omoves, sizeof(omoves));
-	mread(fd, (char *) &xupstair, sizeof(xupstair));
-	mread(fd, (char *) &yupstair, sizeof(yupstair));
-	mread(fd, (char *) &xdnstair, sizeof(xdnstair));
-	mread(fd, (char *) &ydnstair, sizeof(ydnstair));
+	mread(fd, levl, sizeof(levl));
+	mread(fd, &omoves, sizeof(omoves));
+	mread(fd, &xupstair, sizeof(xupstair));
+	mread(fd, &yupstair, sizeof(yupstair));
+	mread(fd, &xdnstair, sizeof(xdnstair));
+	mread(fd, &ydnstair, sizeof(ydnstair));
 
 	fmon = restmonchn(fd);
 
@@ -277,58 +266,55 @@ getlev(fd, pid, lev)
 
 	setgd();
 	gold = newgold();
-	mread(fd, (char *) gold, sizeof(struct gold));
+	mread(fd, gold, sizeof(struct gold));
 	while (gold->gx) {
 		gold->ngold = fgold;
 		fgold = gold;
 		gold = newgold();
-		mread(fd, (char *) gold, sizeof(struct gold));
+		mread(fd, gold, sizeof(struct gold));
 	}
-	free((char *) gold);
+	free(gold);
 	trap = newtrap();
-	mread(fd, (char *) trap, sizeof(struct trap));
+	mread(fd, trap, sizeof(struct trap));
 	while (trap->tx) {
 		trap->ntrap = ftrap;
 		ftrap = trap;
 		trap = newtrap();
-		mread(fd, (char *) trap, sizeof(struct trap));
+		mread(fd, trap, sizeof(struct trap));
 	}
-	free((char *) trap);
+	free(trap);
 	fobj = restobjchn(fd);
 	billobjs = restobjchn(fd);
 	rest_engravings(fd);
 #ifndef QUEST
-	mread(fd, (char *) rooms, sizeof(rooms));
-	mread(fd, (char *) doors, sizeof(doors));
+	mread(fd, rooms, sizeof(rooms));
+	mread(fd, doors, sizeof(doors));
 #endif	/* QUEST */
 #ifndef NOWORM
-	mread(fd, (char *) wsegs, sizeof(wsegs));
+	mread(fd, wsegs, sizeof(wsegs));
 	for (tmp = 1; tmp < 32; tmp++)
 		if (wsegs[tmp]) {
 			wheads[tmp] = wsegs[tmp] = wtmp = newseg();
 			while (1) {
-				mread(fd, (char *) wtmp, sizeof(struct wseg));
+				mread(fd, wtmp, sizeof(struct wseg));
 				if (!wtmp->nseg)
 					break;
 				wheads[tmp]->nseg = wtmp = newseg();
 				wheads[tmp] = wtmp;
 			}
 		}
-	mread(fd, (char *) wgrowtime, sizeof(wgrowtime));
+	mread(fd, wgrowtime, sizeof(wgrowtime));
 #endif	/* NOWORM */
 }
 
 void
-mread(fd, buf, len)
-	int fd;
-	char           *buf;
-	unsigned        len;
+mread(int fd, void *buf, size_t len)
 {
-	int             rlen;
+	ssize_t rlen;
 
-	rlen = read(fd, buf, (int) len);
-	if (rlen != (int)len) {
-		pline("Read %d instead of %u bytes.\n", rlen, len);
+	rlen = read(fd, buf, len);
+	if (rlen < 0 || (size_t)rlen != len) {
+		pline("Read %zd instead of %zu bytes.\n", rlen, len);
 		if (restoring) {
 			(void) unlink(SAVEF);
 			error("Error restoring old game.");
@@ -338,7 +324,7 @@ mread(fd, buf, len)
 }
 
 void
-mklev()
+mklev(void)
 {
 	if (getbones())
 		return;

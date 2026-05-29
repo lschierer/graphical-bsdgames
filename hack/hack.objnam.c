@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.objnam.c,v 1.6 2003/04/02 18:36:39 jsm Exp $	*/
+/*	$NetBSD: hack.objnam.c,v 1.11 2011/08/07 06:03:45 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,20 +63,22 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.objnam.c,v 1.6 2003/04/02 18:36:39 jsm Exp $");
+__RCSID("$NetBSD: hack.objnam.c,v 1.11 2011/08/07 06:03:45 dholland Exp $");
 #endif				/* not lint */
 
 #include <stdlib.h>
 #include "hack.h"
 #include "extern.h"
-#define Sprintf (void) sprintf
+#define Snprintf (void) snprintf
 #define Strcat  (void) strcat
 #define	Strcpy	(void) strcpy
 #define	PREFIX	15
 
-char           *
-strprepend(s, pref)
-	char           *s, *pref;
+static char *strprepend(char *, char *);
+static char *sitoa(int);
+
+static char *
+strprepend(char *s, char *pref)
 {
 	int             i = strlen(pref);
 	if (i > PREFIX) {
@@ -88,20 +90,19 @@ strprepend(s, pref)
 	return (s);
 }
 
-char           *
-sitoa(a)
-	int             a;
+static char *
+sitoa(int a)
 {
 	static char     buf[13];
-	Sprintf(buf, (a < 0) ? "%d" : "+%d", a);
+	Snprintf(buf, sizeof(buf), (a < 0) ? "%d" : "+%d", a);
 	return (buf);
 }
 
 char           *
-typename(otyp)
-	int             otyp;
+typename(int otyp)
 {
 	static char     buf[BUFSZ];
+	size_t bufpos;
 	struct objclass *ocl = &objects[otyp];
 	const char     *an = ocl->oc_name;
 	const char     *dn = ocl->oc_descr;
@@ -125,40 +126,58 @@ typename(otyp)
 			Strcpy(buf, an);
 			if (otyp >= TURQUOISE && otyp <= JADE)
 				Strcat(buf, " stone");
-			if (un)
-				Sprintf(eos(buf), " called %s", un);
-			if (dn)
-				Sprintf(eos(buf), " (%s)", dn);
+			if (un) {
+				bufpos = strlen(buf);
+				Snprintf(buf+bufpos, sizeof(buf)-bufpos,
+					" called %s", un);
+			}
+			if (dn) {
+				bufpos = strlen(buf);
+				Snprintf(buf+bufpos, sizeof(buf)-bufpos,
+					" (%s)", dn);
+			}
 		} else {
-			Strcpy(buf, dn ? dn : an);
-			if (ocl->oc_olet == GEM_SYM)
-				Strcat(buf, " gem");
-			if (un)
-				Sprintf(eos(buf), " called %s", un);
+			strlcpy(buf, dn ? dn : an, sizeof(buf));
+			if (ocl->oc_olet == GEM_SYM) {
+				strlcat(buf, " gem", sizeof(buf));
+			}
+			if (un) {
+				bufpos = strlen(buf);
+				Snprintf(buf+bufpos, sizeof(buf)-bufpos,
+					" called %s", un);
+			}
 		}
 		return (buf);
 	}
 	/* here for ring/scroll/potion/wand */
-	if (nn)
-		Sprintf(eos(buf), " of %s", an);
-	if (un)
-		Sprintf(eos(buf), " called %s", un);
-	if (dn)
-		Sprintf(eos(buf), " (%s)", dn);
+	if (nn) {
+		bufpos = strlen(buf);
+		Snprintf(buf+bufpos, sizeof(buf)-bufpos, " of %s", an);
+	}
+	if (un) {
+		bufpos = strlen(buf);
+		Snprintf(buf+bufpos, sizeof(buf)-bufpos, " called %s", un);
+	}
+	if (dn) {
+		bufpos = strlen(buf);
+		Snprintf(buf+bufpos, sizeof(buf)-bufpos, " (%s)", dn);
+	}
 	return (buf);
 }
 
 char           *
-xname(obj)
-	struct obj     *obj;
+xname(struct obj *obj)
 {
 	static char     bufr[BUFSZ];
+	/* caution: doname() and aobjnam() below "know" these sizes */
 	char           *buf = &(bufr[PREFIX]);	/* leave room for "17 -3 " */
+	size_t          bufmax = sizeof(bufr) - PREFIX;
 	int             nn = objects[obj->otyp].oc_name_known;
 	const char     *an = objects[obj->otyp].oc_name;
 	const char     *dn = objects[obj->otyp].oc_descr;
 	char           *un = objects[obj->otyp].oc_uname;
 	int             pl = (obj->quan != 1);
+
 	if (!obj->dknown && !Blind)
 		obj->dknown = 1;/* %% doesnt belong here */
 	switch (obj->olet) {
@@ -169,10 +188,10 @@ xname(obj)
 		break;
 	case TOOL_SYM:
 		if (!nn) {
-			Strcpy(buf, dn);
+			strlcpy(buf, dn, bufmax);
 			break;
 		}
-		Strcpy(buf, an);
+		strlcpy(buf, an, bufmax);
 		break;
 	case FOOD_SYM:
 		if (obj->otyp == DEAD_HOMUNCULUS && pl) {
@@ -181,7 +200,7 @@ xname(obj)
 			break;
 		}
 		/* fungis ? */
-		/* fall into next case */
+		/* FALLTHROUGH */
 	case WEAPON_SYM:
 		if (obj->otyp == WORM_TOOTH && pl) {
 			pl = 0;
@@ -193,14 +212,14 @@ xname(obj)
 			Strcpy(buf, "crysknives");
 			break;
 		}
-		/* fall into next case */
+		/* FALLTHROUGH */
 	case ARMOR_SYM:
 	case CHAIN_SYM:
 	case ROCK_SYM:
-		Strcpy(buf, an);
+		strlcpy(buf, an, bufmax);
 		break;
 	case BALL_SYM:
-		Sprintf(buf, "%sheavy iron ball",
+		Snprintf(buf, bufmax, "%sheavy iron ball",
 		  (obj->owt > objects[obj->otyp].oc_weight) ? "very " : "");
 		break;
 	case POTION_SYM:
@@ -214,14 +233,14 @@ xname(obj)
 				break;
 			if (un) {
 				Strcat(buf, " called ");
-				Strcat(buf, un);
+				strlcat(buf, un, bufmax);
 			} else {
 				Strcat(buf, " of ");
-				Strcat(buf, an);
+				strlcat(buf, an, bufmax);
 			}
 		} else {
-			Strcpy(buf, dn);
-			Strcat(buf, " potion");
+			strlcpy(buf, dn, bufmax);
+			strlcat(buf, " potion", bufmax);
 		}
 		break;
 	case SCROLL_SYM:
@@ -234,34 +253,34 @@ xname(obj)
 			break;
 		if (nn) {
 			Strcat(buf, " of ");
-			Strcat(buf, an);
+			strlcat(buf, an, bufmax);
 		} else if (un) {
 			Strcat(buf, " called ");
-			Strcat(buf, un);
+			strlcat(buf, un, bufmax);
 		} else {
 			Strcat(buf, " labeled ");
-			Strcat(buf, dn);
+			strlcat(buf, dn, bufmax);
 		}
 		break;
 	case WAND_SYM:
 		if (!obj->dknown)
-			Sprintf(buf, "wand");
+			Snprintf(buf, bufmax, "wand");
 		else if (nn)
-			Sprintf(buf, "wand of %s", an);
+			Snprintf(buf, bufmax, "wand of %s", an);
 		else if (un)
-			Sprintf(buf, "wand called %s", un);
+			Snprintf(buf, bufmax, "wand called %s", un);
 		else
-			Sprintf(buf, "%s wand", dn);
+			Snprintf(buf, bufmax, "%s wand", dn);
 		break;
 	case RING_SYM:
 		if (!obj->dknown)
-			Sprintf(buf, "ring");
+			Snprintf(buf, bufmax, "ring");
 		else if (nn)
-			Sprintf(buf, "ring of %s", an);
+			Snprintf(buf, bufmax, "ring of %s", an);
 		else if (un)
-			Sprintf(buf, "ring called %s", un);
+			Snprintf(buf, bufmax, "ring called %s", un);
 		else
-			Sprintf(buf, "%s ring", dn);
+			Snprintf(buf, bufmax, "%s ring", dn);
 		break;
 	case GEM_SYM:
 		if (!obj->dknown) {
@@ -269,15 +288,15 @@ xname(obj)
 			break;
 		}
 		if (!nn) {
-			Sprintf(buf, "%s gem", dn);
+			Snprintf(buf, bufmax, "%s gem", dn);
 			break;
 		}
-		Strcpy(buf, an);
+		strlcpy(buf, an, bufmax);
 		if (obj->otyp >= TURQUOISE && obj->otyp <= JADE)
-			Strcat(buf, " stone");
+			strlcat(buf, " stone", bufmax);
 		break;
 	default:
-		Sprintf(buf, "glorkum %c (0%o) %u %d",
+		Snprintf(buf, bufmax, "glorkum %c (0%o) %u %d",
 			obj->olet, obj->olet, obj->otyp, obj->spe);
 	}
 	if (pl) {
@@ -298,29 +317,37 @@ xname(obj)
 		}
 		p = eos(buf) - 1;
 		if (*p == 's' || *p == 'z' || *p == 'x' ||
-		    (*p == 'h' && p[-1] == 's'))
-			Strcat(buf, "es");	/* boxes */
-		else if (*p == 'y' && !strchr(vowels, p[-1]))
-			Strcpy(p, "ies");	/* rubies, zruties */
-		else
-			Strcat(buf, "s");
+		    (*p == 'h' && p[-1] == 's')) {
+			/* boxes */
+			strlcat(buf, "es", bufmax);
+		} else if (*p == 'y' && !strchr(vowels, p[-1])) {
+			/* rubies, zruties */
+			*p = '\0';
+			strlcat(buf, "ies", bufmax);
+		} else {
+			strlcat(buf, "s", bufmax);
+		}
 	}
 nopl:
 	if (obj->onamelth) {
-		Strcat(buf, " named ");
-		Strcat(buf, ONAME(obj));
+		strlcat(buf, " named ", bufmax);
+		strlcat(buf, ONAME(obj), bufmax);
 	}
 	return (buf);
 }
 
 char           *
-doname(obj)
-	struct obj     *obj;
+doname(struct obj *obj)
 {
 	char            prefix[PREFIX];
 	char           *bp = xname(obj);
+	size_t          bppos, bpmax;
+
+	/* XXX do this better somehow w/o knowing internals of xname() */
+	bpmax = BUFSZ - PREFIX;
+
 	if (obj->quan != 1)
-		Sprintf(prefix, "%u ", obj->quan);
+		Snprintf(prefix, sizeof(prefix), "%u ", obj->quan);
 	else
 		Strcpy(prefix, "a ");
 	switch (obj->olet) {
@@ -330,33 +357,35 @@ doname(obj)
 		break;
 	case ARMOR_SYM:
 		if (obj->owornmask & W_ARMOR)
-			Strcat(bp, " (being worn)");
-		/* fall into next case */
+			strlcat(bp, " (being worn)", bpmax);
+		/* FALLTHROUGH */
 	case WEAPON_SYM:
 		if (obj->known) {
-			Strcat(prefix, sitoa(obj->spe));
-			Strcat(prefix, " ");
+			strlcat(prefix, sitoa(obj->spe), sizeof(prefix));
+			strlcat(prefix, " ", sizeof(prefix));
 		}
 		break;
 	case WAND_SYM:
-		if (obj->known)
-			Sprintf(eos(bp), " (%d)", obj->spe);
+		if (obj->known) {
+			bppos = strlen(bp);
+			Snprintf(bp+bppos, bpmax-bppos, " (%d)", obj->spe);
+		}
 		break;
 	case RING_SYM:
 		if (obj->owornmask & W_RINGR)
-			Strcat(bp, " (on right hand)");
+			strlcat(bp, " (on right hand)", bpmax);
 		if (obj->owornmask & W_RINGL)
-			Strcat(bp, " (on left hand)");
+			strlcat(bp, " (on left hand)", bpmax);
 		if (obj->known && (objects[obj->otyp].bits & SPEC)) {
-			Strcat(prefix, sitoa(obj->spe));
-			Strcat(prefix, " ");
+			strlcat(prefix, sitoa(obj->spe), sizeof(prefix));
+			strlcat(prefix, " ", sizeof(prefix));
 		}
 		break;
 	}
 	if (obj->owornmask & W_WEP)
-		Strcat(bp, " (weapon in hand)");
+		strlcat(bp, " (weapon in hand)", bpmax);
 	if (obj->unpaid)
-		Strcat(bp, " (unpaid)");
+		strlcat(bp, " (unpaid)", bpmax);
 	if (!strcmp(prefix, "a ") && strchr(vowels, *bp))
 		Strcpy(prefix, "an ");
 	bp = strprepend(bp, prefix);
@@ -365,43 +394,45 @@ doname(obj)
 
 /* used only in hack.fight.c (thitu) */
 void
-setan(const char *str, char *buf)
+setan(const char *str, char *buf, size_t bufmax)
 {
 	if (strchr(vowels, *str))
-		Sprintf(buf, "an %s", str);
+		Snprintf(buf, bufmax, "an %s", str);
 	else
-		Sprintf(buf, "a %s", str);
+		Snprintf(buf, bufmax, "a %s", str);
 }
 
 char           *
-aobjnam(otmp, verb)
-	struct obj     *otmp;
-	const char           *verb;
+aobjnam(struct obj *otmp, const char *verb)
 {
 	char           *bp = xname(otmp);
 	char            prefix[PREFIX];
+	size_t          bpmax;
+
+	/* XXX do this better somehow w/o knowing internals of xname() */
+	bpmax = BUFSZ - PREFIX;
+
 	if (otmp->quan != 1) {
-		Sprintf(prefix, "%u ", otmp->quan);
+		Snprintf(prefix, sizeof(prefix), "%u ", otmp->quan);
 		bp = strprepend(bp, prefix);
 	}
 	if (verb) {
 		/* verb is given in plural (i.e., without trailing s) */
-		Strcat(bp, " ");
+		strlcat(bp, " ", bpmax);
 		if (otmp->quan != 1)
-			Strcat(bp, verb);
+			strlcat(bp, verb, bpmax);
 		else if (!strcmp(verb, "are"))
-			Strcat(bp, "is");
+			strlcat(bp, "is", bpmax);
 		else {
-			Strcat(bp, verb);
-			Strcat(bp, "s");
+			strlcat(bp, verb, bpmax);
+			strlcat(bp, "s", bpmax);
 		}
 	}
 	return (bp);
 }
 
 char           *
-Doname(obj)
-	struct obj     *obj;
+Doname(struct obj *obj)
 {
 	char           *s = doname(obj);
 
@@ -410,15 +441,15 @@ Doname(obj)
 	return (s);
 }
 
-const char *const wrp[] = {"wand", "ring", "potion", "scroll", "gem"};
-const char wrpsym[] = {WAND_SYM, RING_SYM, POTION_SYM, SCROLL_SYM, GEM_SYM};
+static const char *const wrp[] = {"wand", "ring", "potion", "scroll", "gem"};
+static const char wrpsym[] = {WAND_SYM, RING_SYM, POTION_SYM, SCROLL_SYM, GEM_SYM};
 
 struct obj     *
-readobjnam(bp)
-	char           *bp;
+readobjnam(char *bp)
 {
 	char           *p;
-	int             i;
+	unsigned        ii;
+	int		i;
 	int             cnt, spe, spesgn, typ, heavy;
 	char            let;
 	char           *un, *dn, *an;
@@ -550,18 +581,18 @@ sing:
 		an = bp;
 		goto srch;
 	}
-	for (i = 0; i < (int)sizeof(wrpsym); i++) {
-		int             j = strlen(wrp[i]);
-		if (!strncmp(bp, wrp[i], j)) {
-			let = wrpsym[i];
+	for (ii = 0; ii < sizeof(wrpsym); ii++) {
+		int             j = strlen(wrp[ii]);
+		if (!strncmp(bp, wrp[ii], j)) {
+			let = wrpsym[ii];
 			bp += j;
 			if (!strncmp(bp, " of ", 4))
 				an = bp + 4;
 			/* else if(*bp) ?? */
 			goto srch;
 		}
-		if (!strcmp(p - j, wrp[i])) {
-			let = wrpsym[i];
+		if (!strcmp(p - j, wrp[ii])) {
+			let = wrpsym[ii];
 			p -= j;
 			*p = 0;
 			if (p[-1] == ' ')

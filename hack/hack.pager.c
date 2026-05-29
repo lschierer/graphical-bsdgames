@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.pager.c,v 1.7 2003/04/02 18:36:39 jsm Exp $	*/
+/*	$NetBSD: hack.pager.c,v 1.21 2011/09/01 07:18:50 plunky Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,7 +63,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.pager.c,v 1.7 2003/04/02 18:36:39 jsm Exp $");
+__RCSID("$NetBSD: hack.pager.c,v 1.21 2011/09/01 07:18:50 plunky Exp $");
 #endif				/* not lint */
 
 /* This file contains the command routine dowhatis() and a pager. */
@@ -73,14 +73,20 @@ __RCSID("$NetBSD: hack.pager.c,v 1.7 2003/04/02 18:36:39 jsm Exp $");
  */
 
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "hack.h"
 #include "extern.h"
 
+static void intruph(int);
+static void page_more(FILE *, int);
+static int page_file(const char *, boolean);
+static int child(int);
+
 int
-dowhatis()
+dowhatis(void)
 {
 	FILE           *fp;
 	char            bufr[BUFSZ + 6];
@@ -98,13 +104,18 @@ dowhatis()
 					if (ep)
 						*ep = 0;
 					/* else: bad data file */
+					else {
+						pline("Bad data file!");
+						(void) fclose(fp);
+						return(0);
+					}
 					/* Expand tab 'by hand' */
 					if (buf[1] == '\t') {
 						buf = bufr;
 						buf[0] = q;
 						(void) strncpy(buf + 1, "       ", 7);
 					}
-					pline(buf);
+					pline("%s", buf);
 					if (ep[-1] == ';') {
 						pline("More info? ");
 						if (readchar() == 'y') {
@@ -124,25 +135,22 @@ dowhatis()
 /* make the paging of a file interruptible */
 static int      got_intrup;
 
-void
-intruph(n)
-	int n __attribute__((__unused__));
+static void
+intruph(int n __unused)
 {
 	got_intrup++;
 }
 
 /* simple pager, also used from dohelp() */
-void
-page_more(fp, strip)
-	FILE           *fp;
-	int             strip;	/* nr of chars to be stripped from each line
-				 * (0 or 1) */
+/* strip: nr of chars to be stripped from each line (0 or 1) */
+static void
+page_more(FILE *fp, int strip)
 {
 	char           *bufr, *ep;
 	sig_t           prevsig = signal(SIGINT, intruph);
 
 	set_pager(0);
-	bufr = (char *) alloc((unsigned) CO);
+	bufr = alloc(CO);
 	bufr[CO - 1] = 0;
 	while (fgets(bufr, CO - 1, fp) && (!strip || *bufr == '\t') && !got_intrup) {
 		ep = strchr(bufr, '\n');
@@ -166,14 +174,14 @@ static boolean  whole_screen = TRUE;
 				 * map */
 
 void
-set_whole_screen()
+set_whole_screen(void)
 {				/* called in termcap as soon as LI is known */
 	whole_screen = (LI - ROWNO - 2 <= PAGMIN || !CD);
 }
 
 #ifdef NEWS
 int
-readnews()
+readnews(void)
 {
 	int             ret;
 
@@ -184,9 +192,9 @@ readnews()
 }
 #endif	/* NEWS */
 
+/* mode:  0: open  1: wait+close  2: close */
 void
-set_pager(mode)
-	int             mode;	/* 0: open  1: wait+close  2: close */
+set_pager(int mode)
 {
 	static boolean  so;
 	if (mode == 0) {
@@ -216,8 +224,7 @@ set_pager(mode)
 }
 
 int
-page_line(s)			/* returns 1 if we should quit */
-	const char           *s;
+page_line(const char *s)	/* returns 1 if we should quit */
 {
 	if (cury == LI - 1) {
 		if (!*s)
@@ -253,9 +260,7 @@ page_line(s)			/* returns 1 if we should quit */
  */
 
 void
-cornline(mode, text)
-	int             mode;
-	const char           *text;
+cornline(int mode, const char *text)
 {
 	static struct line {
 		struct line    *next_line;
@@ -284,8 +289,7 @@ cornline(mode, text)
 		len = strlen(text);
 		if (len > maxlen)
 			maxlen = len;
-		tl = (struct line *)
-			alloc((unsigned) (len + sizeof(struct line) + 1));
+		tl = alloc(len + sizeof(*tl) + 1);
 		tl->next_line = 0;
 		tl->line_text = (char *) (tl + 1);
 		(void) strcpy(tl->line_text, text);
@@ -298,7 +302,7 @@ cornline(mode, text)
 	}
 	/* --- now we really do it --- */
 	if (mode == 2 && linect == 1)	/* topline only */
-		pline(texthead->line_text);
+		pline("%s", texthead->line_text);
 	else if (mode == 2) {
 		int             curline, lth;
 
@@ -344,28 +348,26 @@ cornline(mode, text)
 cleanup:
 	while ((tl = texthead) != NULL) {
 		texthead = tl->next_line;
-		free((char *) tl);
+		free(tl);
 	}
 }
 
 int
-dohelp()
+dohelp(void)
 {
 	char            c;
 
 	pline("Long or short help? ");
 	while (((c = readchar()) != 'l') && (c != 's') && !strchr(quitchars, c))
-		bell();
+		sound_bell();
 	if (!strchr(quitchars, c))
 		(void) page_file((c == 'l') ? HELP : SHELP, FALSE);
 	return (0);
 }
 
-int
-page_file(fnam, silent)		/* return: 0 - cannot open fnam; 1 -
-				 * otherwise */
-	const char           *fnam;
-	boolean         silent;
+/* return: 0 - cannot open fnam; 1 - otherwise */
+static int
+page_file(const char *fnam, boolean silent)
 {
 #ifdef DEF_PAGER		/* this implies that UNIX is defined */
 	{
@@ -390,7 +392,7 @@ page_file(fnam, silent)		/* return: 0 - cannot open fnam; 1 -
 				if (!silent)
 					printf("Cannot open %s as stdin.\n", fnam);
 			} else {
-				execl(catmore, "page", (char *) 0);
+				execl(catmore, "page", (char *)NULL);
 				if (!silent)
 					printf("Cannot exec %s.\n", catmore);
 			}
@@ -421,14 +423,14 @@ page_file(fnam, silent)		/* return: 0 - cannot open fnam; 1 -
 #ifdef UNIX
 #ifdef SHELL
 int
-dosh()
+dosh(void)
 {
 	char           *str;
 	if (child(0)) {
 		if ((str = getenv("SHELL")) != NULL)
-			execl(str, str, (char *) 0);
+			execl(str, str, (char *)NULL);
 		else
-			execl("/bin/sh", "sh", (char *) 0);
+			execl("/bin/sh", "sh", (char *)NULL);
 		pline("sh: cannot execute.");
 		exit(1);
 	}
@@ -436,26 +438,7 @@ dosh()
 }
 #endif	/* SHELL */
 
-#ifdef NOWAITINCLUDE
-union wait {			/* used only for the cast  (union wait *) 0  */
-	int             w_status;
-	struct {
-		unsigned short  w_Termsig:7;
-		unsigned short  w_Coredump:1;
-		unsigned short  w_Retcode:8;
-	}               w_T;
-};
-
-#else
-
-#ifdef BSD
-#include	<sys/wait.h>
-#else
-#include	<wait.h>
-#endif	/* BSD */
-#endif	/* NOWAITINCLUDE */
-
-int
+static int
 child(int wt)
 {
 	int             status;
@@ -463,7 +446,7 @@ child(int wt)
 
 	f = fork();
 	if (f == 0) {		/* child */
-		settty((char *) 0);	/* also calls end_screen() */
+		settty(NULL);	/* also calls end_screen() */
 		(void) setuid(getuid());
 		(void) setgid(getgid());
 #ifdef CHDIR

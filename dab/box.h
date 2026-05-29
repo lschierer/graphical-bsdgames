@@ -1,4 +1,4 @@
-/*	$NetBSD: box.h,v 1.1.1.1 2003/12/26 17:57:03 christos Exp $	*/
+/*	$NetBSD: box.h,v 1.4 2021/12/05 09:53:15 rillig Exp $	*/
 
 /*-
  * Copyright (c) 2003 The NetBSD Foundation, Inc.
@@ -15,13 +15,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -37,8 +30,8 @@
  */
 
 /*
- * box.C: Single box utilities; A box is an entity with four edges, four
- *	  corners, and a center that maps directly to a board
+ * Single box utilities; A box is an entity with four edges, four corners, and
+ * a center that maps directly to a board
  */
 
 #ifndef _H_BOX
@@ -74,7 +67,7 @@ class BOX {
     int& name(void);
     int& edge(int e);
 
-    // Edge maniputations
+    // Edge manipulations
     void set(int e);
     void clr(int e);
     int isset(int e) const;

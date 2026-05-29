@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.eat.c,v 1.6 2003/04/02 18:36:36 jsm Exp $	*/
+/*	$NetBSD: hack.eat.c,v 1.13 2019/02/04 03:33:15 mrg Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,12 +63,12 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.eat.c,v 1.6 2003/04/02 18:36:36 jsm Exp $");
+__RCSID("$NetBSD: hack.eat.c,v 1.13 2019/02/04 03:33:15 mrg Exp $");
 #endif				/* not lint */
 
 #include "hack.h"
 #include "extern.h"
-char            POISONOUS[] = "ADKSVabhks";
+static char POISONOUS[] = "ADKSVabhks";
 
 /* hunger texts used on bottom line (each 8 chars long) */
 #define	SATIATED	0
@@ -89,15 +89,21 @@ const char           *const hu_stat[] = {
 	"Starved "
 };
 
+static int opentin(void);
+static int Meatdone(void);
+static int unfaint(void);
+static void newuhs(boolean);
+static int eatcorpse(struct obj *);
+
 void
-init_uhunger()
+init_uhunger(void)
 {
 	u.uhunger = 900;
 	u.uhs = NOT_HUNGRY;
 }
 
 #define	TTSZ	SIZE(tintxts)
-const struct {
+static const struct {
 	const char           *txt;
 	int             nut;
 }               tintxts[] = {
@@ -114,8 +120,8 @@ static struct {
 	int             usedtime, reqtime;
 }               tin;
 
-int
-opentin()
+static int
+opentin(void)
 {
 	int             r;
 
@@ -132,7 +138,7 @@ opentin()
 	useup(tin.tin);
 	r = rn2(2 * TTSZ);
 	if (r < TTSZ) {
-		pline(tintxts[r].txt);
+		pline("%s", tintxts[r].txt);
 		lesshungry(tintxts[r].nut);
 		if (r == 1) {	/* SALMON */
 			Glib = rnd(15);
@@ -150,8 +156,8 @@ opentin()
 	return (0);
 }
 
-int
-Meatdone()
+static int
+Meatdone(void)
 {
 	u.usym = '@';
 	prme();
@@ -159,7 +165,7 @@ Meatdone()
 }
 
 int
-doeat()
+doeat(void)
 {
 	struct obj     *otmp;
 	struct objclass *ftmp;
@@ -206,7 +212,7 @@ gotit:
 				goto no_opener;
 			}
 			pline("Using your %s you try to open the tin.",
-			      aobjnam(uwep, (char *) 0));
+			      aobjnam(uwep, NULL));
 		} else {
 	no_opener:
 			pline("It is not so easy to open this tin.");
@@ -330,7 +336,8 @@ gotit:
 eatx:
 	if (multi < 0 && !nomovemsg) {
 		static char     msgbuf[BUFSZ];
-		(void) sprintf(msgbuf, "You finished eating the %s.",
+		(void) snprintf(msgbuf, sizeof(msgbuf),
+			       "You finished eating the %s.",
 			       ftmp->oc_name);
 		nomovemsg = msgbuf;
 	}
@@ -340,7 +347,7 @@ eatx:
 
 /* called in hack.main.c */
 void
-gethungry()
+gethungry(void)
 {
 	--u.uhunger;
 	if (moves % 2) {
@@ -364,8 +371,7 @@ gethungry()
 
 /* called after vomiting and after performing feats of magic */
 void
-morehungry(num)
-	int num;
+morehungry(int num)
 {
 	u.uhunger -= num;
 	newuhs(TRUE);
@@ -373,24 +379,22 @@ morehungry(num)
 
 /* called after eating something (and after drinking fruit juice) */
 void
-lesshungry(num)
-	int num;
+lesshungry(int num)
 {
 	u.uhunger += num;
 	newuhs(FALSE);
 }
 
-int
-unfaint()
+static int
+unfaint(void)
 {
 	u.uhs = FAINTING;
 	flags.botl = 1;
 	return 0;
 }
 
-void
-newuhs(incr)
-	boolean         incr;
+static void
+newuhs(boolean incr)
 {
 	int             newhs, h = u.uhunger;
 
@@ -449,16 +453,14 @@ newuhs(incr)
 		     ?  'a' + (otyp - DEAD_ACID_BLOB)\
 		     :	'@' + (otyp - DEAD_HUMAN))
 int
-poisonous(otmp)
-	struct obj     *otmp;
+poisonous(struct obj *otmp)
 {
 	return (strchr(POISONOUS, CORPSE_I_TO_C(otmp->otyp)) != 0);
 }
 
 /* returns 1 if some text was printed */
-int
-eatcorpse(otmp)
-	struct obj     *otmp;
+static int
+eatcorpse(struct obj *otmp)
 {
 	char            let = CORPSE_I_TO_C(otmp->otyp);
 	int             tp = 0;
@@ -493,11 +495,11 @@ eatcorpse(otmp)
 	case 'n':
 		u.uhp = u.uhpmax;
 		flags.botl = 1;
-		/* fall into next case */
+		/* FALLTHROUGH */
 	case '@':
 		pline("You cannibal! You will be sorry for this!");
 		/* not tp++; */
-		/* fall into next case */
+		/* FALLTHROUGH */
 	case 'd':
 		Aggravate_monster |= INTRINSIC;
 		break;
@@ -510,12 +512,12 @@ eatcorpse(otmp)
 			Invis |= INTRINSIC;
 			See_invisible |= INTRINSIC;
 		}
-		/* fall into next case */
+		/* FALLTHROUGH */
 	case 'y':
 #ifdef QUEST
 		u.uhorizon++;
 #endif	/* QUEST */
-		/* fall into next case */
+		/* FALLTHROUGH */
 	case 'B':
 		Confusion = 50;
 		break;
@@ -537,7 +539,7 @@ eatcorpse(otmp)
 		pline("You turn to stone.");
 		killer = "dead cockatrice";
 		done("died");
-		/* NOTREACHED */
+		break;
 	case 'a':
 		if (Stoned) {
 			pline("What a pity - you just destroyed a future piece of art!");

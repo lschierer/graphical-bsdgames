@@ -1,43 +1,43 @@
-/*	$NetBSD: terminal.c,v 1.4 2003/06/11 12:00:23 wiz Exp $	*/
+/*	$NetBSD: terminal.c,v 1.8 2021/05/02 12:50:45 rillig Exp $	*/
 /*
  * Copyright (c) 1983-2003, Regents of the University of California.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without 
- * modification, are permitted provided that the following conditions are 
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
  * met:
- * 
- * + Redistributions of source code must retain the above copyright 
+ *
+ * + Redistributions of source code must retain the above copyright
  *   notice, this list of conditions and the following disclaimer.
- * + Redistributions in binary form must reproduce the above copyright 
- *   notice, this list of conditions and the following disclaimer in the 
+ * + Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the distribution.
- * + Neither the name of the University of California, San Francisco nor 
- *   the names of its contributors may be used to endorse or promote 
- *   products derived from this software without specific prior written 
+ * + Neither the name of the University of California, San Francisco nor
+ *   the names of its contributors may be used to endorse or promote
+ *   products derived from this software without specific prior written
  *   permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS 
- * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED 
- * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
- * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY 
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: terminal.c,v 1.4 2003/06/11 12:00:23 wiz Exp $");
+__RCSID("$NetBSD: terminal.c,v 1.8 2021/05/02 12:50:45 rillig Exp $");
 #endif /* not lint */
 
 #include <stdarg.h>
 #include "hunt.h"
-#define	TERM_WIDTH	80	/* Assume terminals are 80-char wide */
+#define TERM_WIDTH	80	/* Assume terminals are 80-char wide */
 
 /*
  * cgoto:
@@ -45,9 +45,7 @@ __RCSID("$NetBSD: terminal.c,v 1.4 2003/06/11 12:00:23 wiz Exp $");
  *	terminal.
  */
 void
-cgoto(pp, y, x)
-	PLAYER	*pp;
-	int	y, x;
+cgoto(PLAYER *pp, int y, int x)
 {
 	if (x == pp->p_curx && y == pp->p_cury)
 		return;
@@ -61,9 +59,7 @@ cgoto(pp, y, x)
  *	Put out a single character.
  */
 void
-outch(pp, ch)
-	PLAYER	*pp;
-	char	ch;
+outch(PLAYER *pp, int ch)
 {
 	if (++pp->p_curx >= TERM_WIDTH) {
 		pp->p_curx = 0;
@@ -77,10 +73,7 @@ outch(pp, ch)
  *	Put out a string of the given length.
  */
 void
-outstr(pp, str, len)
-	PLAYER	*pp;
-	const char	*str;
-	int	len;
+outstr(PLAYER *pp, const char *str, int len)
 {
 	pp->p_curx += len;
 	pp->p_cury += (pp->p_curx / TERM_WIDTH);
@@ -94,8 +87,7 @@ outstr(pp, str, len)
  *	Clear the screen, and reset the current position on the screen.
  */
 void
-clrscr(pp)
-	PLAYER	*pp;
+clrscr(PLAYER *pp)
 {
 	sendcom(pp, CLEAR);
 	pp->p_cury = 0;
@@ -107,20 +99,18 @@ clrscr(pp)
  *	Clear to the end of the line
  */
 void
-ce(pp)
-	PLAYER	*pp;
+ce(PLAYER *pp)
 {
 	sendcom(pp, CLRTOEOL);
 }
 
-#if 0		/* XXX lukem*/
+#if 0		/* XXX lukem */
 /*
  * ref;
  *	Refresh the screen
  */
 void
-ref(pp)
-	PLAYER	*pp;
+ref(PLAYER *pp)
 {
 	sendcom(pp, REFRESH);
 }
@@ -134,7 +124,7 @@ void
 sendcom(PLAYER *pp, int command, ...)
 {
 	va_list	ap;
-	int	arg1, arg2;
+	int arg1, arg2;
 
 	va_start(ap, command);
 	(void) putc(command, pp->p_output);

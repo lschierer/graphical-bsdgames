@@ -1,4 +1,4 @@
-/*	$NetBSD: wizard.c,v 1.11 2003/08/07 09:36:51 agc Exp $	*/
+/*	$NetBSD: wizard.c,v 1.17 2021/05/02 12:50:43 rillig Exp $	*/
 
 /*-
  * Copyright (c) 1991, 1993
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[] = "@(#)wizard.c	8.1 (Berkeley) 6/2/93";
 #else
-__RCSID("$NetBSD: wizard.c,v 1.11 2003/08/07 09:36:51 agc Exp $");
+__RCSID("$NetBSD: wizard.c,v 1.17 2021/05/02 12:50:43 rillig Exp $");
 #endif
 #endif				/* not lint */
 
@@ -52,9 +52,10 @@ __RCSID("$NetBSD: wizard.c,v 1.11 2003/08/07 09:36:51 agc Exp $");
 #include "hdr.h"
 #include "extern.h"
 
+static int wizard(void);
+
 void
-datime(d, t)
-	int    *d, *t;
+datime(int *d, int *t)
 {
 	time_t  tvec;
 	struct tm *tptr;
@@ -72,17 +73,17 @@ datime(d, t)
 }				/* pretty painless              */
 
 
-char    magic[6];
+static char magic[6];
 
 void
-poof()
+poof(void)
 {
 	strcpy(magic, DECR('d', 'w', 'a', 'r', 'f'));
-	latncy = 45;
+	latency = 45;
 }
 
 int
-Start()
+Start(void)
 {
 	int     d, t, delay;
 
@@ -90,13 +91,13 @@ Start()
 	delay = (d - saveday) * 1440 + (t - savet);	/* good for about a
 							 * month     */
 
-	if (delay >= latncy) {
+	if (delay >= latency) {
 		saved = -1;
 		return (FALSE);
 	}
 	printf("This adventure was suspended a mere %d minute%s ago.",
 	    delay, delay == 1 ? "" : "s");
-	if (delay <= latncy / 3) {
+	if (delay <= latency / 3) {
 		mspeak(2);
 		exit(0);
 	}
@@ -109,9 +110,10 @@ Start()
 	return (FALSE);
 }
 
-int
-wizard()
-{				/* not as complex as advent/10 (for now)        */
+/* not as complex as advent/10 (for now)        */
+static int
+wizard(void)
+{
 	char   *word, *x;
 	if (!yesm(16, 0, 7))
 		return (FALSE);
@@ -126,32 +128,32 @@ wizard()
 }
 
 void
-ciao()
+ciao(void)
 {
-	char   *c;
-	char    fname[80];
+	char fname[80];
+	size_t pos;
 
 	printf("What would you like to call the saved version?\n");
 	/* XXX - should use fgetln to avoid arbitrary limit */
-	for (c = fname; c < fname + sizeof fname - 1; c++) {
+	for (pos = 0; pos < sizeof(fname) - 1; pos++) {
 		int ch;
 		ch = getchar();
 		if (ch == '\n' || ch == EOF)
 			break;
-		*c = ch;
+		fname[pos] = ch;
 	}
-	*c = 0;
+	fname[pos] = '\0';
 	if (save(fname) != 0)
 		return;		/* Save failed */
 	printf("To resume, say \"adventure %s\".\n", fname);
-	printf("\"With these rooms I might now have been familiarly acquainted.\"\n");
+	printf("\"With these rooms I might now have been familiarly ");
+	printf("acquainted.\"\n");
 	exit(0);
 }
 
 
 int
-ran(range)
-	int     range;
+ran(int range)
 {
 	long    i;
 

@@ -1,4 +1,4 @@
-/*	$NetBSD: win.c,v 1.7 2003/08/07 09:37:55 agc Exp $	*/
+/*	$NetBSD: win.c,v 1.12 2009/05/25 00:39:45 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)win.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: win.c,v 1.7 2003/08/07 09:37:55 agc Exp $");
+__RCSID("$NetBSD: win.c,v 1.12 2009/05/25 00:39:45 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -60,10 +60,10 @@ __RCSID("$NetBSD: win.c,v 1.7 2003/08/07 09:37:55 agc Exp $");
 extern jmp_buf env;
 
 void
-win()
+win(void)
 {
 	long		s;
-	const struct cvntab	*p = NULL;
+	const struct cvntab *p;
 
 	sleep(1);
 	printf("\nCongratulations, you have saved the Federation\n");
@@ -73,18 +73,17 @@ win()
 	s = score();
 
 	/* decide if she gets a promotion */
-	if (Game.helps == 0 && Game.killb == 0 && Game.killinhab == 0 && 5 * Game.kills + Game.deaths < 100 &&
-			s >= 1000 && Ship.ship == ENTERPRISE)
-	{
+	if (Game.helps == 0 && Game.killb == 0 && Game.killinhab == 0 &&
+	    5 * Game.kills + Game.deaths < 100 &&
+	    s >= 1000 && Ship.ship == ENTERPRISE) {
 		printf("In fact, you are promoted one step in rank,\n");
-		if (Game.skill >= 6)
+		if (Game.skill >= 6) {
 			printf("to the exalted rank of Commodore Emeritus\n");
-		else
-		{
+		} else {
 			p = &Skitab[Game.skill - 1];
-			printf("from %s%s ", p->abrev, p->full);
+			printf("from %s%s ", p->abbrev, p->full);
 			p++;
-			printf("to %s%s\n", p->abrev, p->full);
+			printf("to %s%s\n", p->abbrev, p->full);
 		}
 	}
 

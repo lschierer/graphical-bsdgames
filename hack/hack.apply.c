@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.apply.c,v 1.8 2004/01/27 20:30:29 jsm Exp $	*/
+/*	$NetBSD: hack.apply.c,v 1.13 2011/08/07 06:03:45 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,7 +63,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.apply.c,v 1.8 2004/01/27 20:30:29 jsm Exp $");
+__RCSID("$NetBSD: hack.apply.c,v 1.13 2011/08/07 06:03:45 dholland Exp $");
 #endif				/* not lint */
 
 #include	"hack.h"
@@ -83,7 +83,7 @@ static int dig(void);
 static int use_pick_axe(struct obj *);
 
 int
-doapply()
+doapply(void)
 {
 	struct obj *obj;
 	int    res = 1;
@@ -108,7 +108,7 @@ doapply()
 			use_magic_whistle(obj);
 			break;
 		}
-		/* fall into next case */
+		/* FALLTHROUGH */
 	case WHISTLE:
 		use_whistle(obj);
 		break;
@@ -136,8 +136,7 @@ xit:
 
 /* ARGSUSED */
 static void
-use_camera(obj) /* */ 
-	struct obj     *obj __attribute__((__unused__));
+use_camera(struct obj *obj __unused)
 {
 	struct monst *mtmp;
 	if (!getdir(1)) {	/* ask: in what direction? */
@@ -187,8 +186,7 @@ static
 struct obj     *current_ice_box;/* a local variable of use_ice_box, to be
 				 * used by its local procedures in/ck_ice_box */
 static int
-in_ice_box(obj)
-	struct obj *obj;
+in_ice_box(struct obj *obj)
 {
 	if (obj == current_ice_box ||
 	    (Punished && (obj == uball || obj == uchain))) {
@@ -220,15 +218,13 @@ in_ice_box(obj)
 }
 
 static int
-ck_ice_box(obj)
-	struct obj *obj;
+ck_ice_box(struct obj *obj)
 {
 	return (obj->o_cnt_id == current_ice_box->o_id);
 }
 
 static int
-out_ice_box(obj)
-	struct obj *obj;
+out_ice_box(struct obj *obj)
 {
 	struct obj *otmp;
 	if (obj == fcobj)
@@ -246,8 +242,7 @@ out_ice_box(obj)
 }
 
 static void
-use_ice_box(obj)
-	struct obj *obj;
+use_ice_box(struct obj *obj)
 {
 	int    cnt = 0;
 	struct obj *otmp;
@@ -260,7 +255,7 @@ use_ice_box(obj)
 	else {
 		pline("Do you want to take something out of the ice-box? [yn] ");
 		if (readchar() == 'y')
-			if (askchain(fcobj, (char *) 0, 0, out_ice_box, ck_ice_box, 0))
+			if (askchain(fcobj, NULL, 0, out_ice_box, ck_ice_box, 0))
 				return;
 		pline("That was all. Do you wish to put something in? [yn] ");
 		if (readchar() != 'y')
@@ -273,9 +268,7 @@ use_ice_box(obj)
 }
 
 static struct monst *
-bchit(ddx, ddy, range, sym)
-	int    ddx, ddy, range;
-	char            sym;
+bchit(int ddx, int ddy, int range, int sym)
 {
 	struct monst *mtmp = (struct monst *) 0;
 	int    bchx = u.ux, bchy = u.uy;
@@ -302,8 +295,7 @@ bchit(ddx, ddy, range, sym)
 
 /* ARGSUSED */
 static void
-use_whistle(obj)
-	struct obj     *obj __attribute__((__unused__));
+use_whistle(struct obj *obj __unused)
 {
 	struct monst *mtmp = fmon;
 	pline("You produce a high whistling sound.");
@@ -320,8 +312,7 @@ use_whistle(obj)
 
 /* ARGSUSED */
 static void
-use_magic_whistle(obj)
-	struct obj     *obj __attribute__((__unused__));
+use_magic_whistle(struct obj *obj __unused)
 {
 	struct monst *mtmp = fmon;
 	pline("You produce a strange whistling sound.");
@@ -338,7 +329,7 @@ static coord    dig_pos;
 static boolean  dig_down;
 
 static int
-dig()
+dig(void)
 {
 	struct rm *lev;
 	int dpx = dig_pos.x, dpy = dig_pos.y;
@@ -392,7 +383,7 @@ dig()
 			digtxt = "Now what exactly was it that you were digging in?";
 		mnewsym(dpx, dpy);
 		prl(dpx, dpy);
-		pline(digtxt);	/* after mnewsym & prl */
+		pline("%s", digtxt);	/* after mnewsym & prl */
 		return (0);
 	} else {
 		if (IS_WALL(levl[dpx][dpy].typ)) {
@@ -410,13 +401,13 @@ dig()
 
 /* When will hole be finished? Very rough indication used by shopkeeper. */
 int
-holetime()
+holetime(void)
 {
 	return ((occupation == dig) ? (250 - dig_effort) / 20 : -1);
 }
 
 void
-dighole()
+dighole(void)
 {
 	struct trap *ttmp = t_at(u.ux, u.uy);
 
@@ -443,8 +434,7 @@ dighole()
 }
 
 static int
-use_pick_axe(obj)
-	struct obj     *obj;
+use_pick_axe(struct obj *obj)
 {
 	char            dirsyms[12];
 	char  *dsp = dirsyms, *sdp = sdir;
@@ -500,7 +490,7 @@ use_pick_axe(obj)
 			 && !sobj_at(ENORMOUS_ROCK, rx, ry)) {
 			/* ACCESSIBLE or POOL */
 			pline("You swing your %s through thin air.",
-			      aobjnam(obj, (char *) 0));
+			      aobjnam(obj, NULL));
 		} else {
 			if (dig_pos.x != rx || dig_pos.y != ry
 			    || dig_level != dlevel || dig_down) {

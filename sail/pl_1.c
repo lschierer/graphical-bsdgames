@@ -1,4 +1,4 @@
-/*	$NetBSD: pl_1.c,v 1.18 2004/01/27 20:23:36 jsm Exp $	*/
+/*	$NetBSD: pl_1.c,v 1.21 2009/03/14 22:52:52 dholland Exp $	*/
 
 /*
  * Copyright (c) 1983, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)pl_1.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: pl_1.c,v 1.18 2004/01/27 20:23:36 jsm Exp $");
+__RCSID("$NetBSD: pl_1.c,v 1.21 2009/03/14 22:52:52 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -92,7 +92,6 @@ leave(int conditions)
 			printf("The driver died.\n");
 			break;
 		case LEAVE_FORK:
-			perror("fork");
 			break;
 		case LEAVE_SYNC:
 			printf("Synchronization error\n.");
@@ -108,7 +107,7 @@ leave(int conditions)
 		if (conditions != LEAVE_SYNC) {
 			makemsg(ms, "Captain %s relinquishing.",
 				mf->captain);
-			Write(W_END, ms, 0, 0, 0, 0);
+			send_end(ms);
 			Sync();
 		}
 	}
@@ -120,14 +119,14 @@ leave(int conditions)
 
 /*ARGSUSED*/
 void
-choke(int n __attribute__((__unused__)))
+choke(int n __unused)
 {
 	leave(LEAVE_QUIT);
 }
 
 /*ARGSUSED*/
 void
-child(int n __attribute__((__unused__)))
+child(int n __unused)
 {
 	int status;
 	int pid;

@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.wizard.c,v 1.6 2003/04/02 18:36:41 jsm Exp $	*/
+/*	$NetBSD: hack.wizard.c,v 1.10 2011/08/07 06:03:45 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,7 +63,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.wizard.c,v 1.6 2003/04/02 18:36:41 jsm Exp $");
+__RCSID("$NetBSD: hack.wizard.c,v 1.10 2011/08/07 06:03:45 dholland Exp $");
 #endif				/* not lint */
 
 /* wizard code - inspired by rogue code from Merlyn Leroy (digi-g!brian) */
@@ -76,11 +76,15 @@ __RCSID("$NetBSD: hack.wizard.c,v 1.6 2003/04/02 18:36:41 jsm Exp $");
 #define	BOLT_LIM    8		/* from this distance D and 1 will try to hit
 				 * you */
 
-const char            wizapp[] = "@DNPTUVXcemntx";
+static const char wizapp[] = "@DNPTUVXcemntx";
+
+static void aggravate(void);
+static void clonewiz(struct monst *);
+
 
 /* If he has found the Amulet, make the wizard appear after some time */
 void
-amulet()
+amulet(void)
 {
 	struct obj     *otmp;
 	struct monst   *mtmp;
@@ -102,8 +106,7 @@ amulet()
 }
 
 int
-wiz_hit(mtmp)
-	struct monst   *mtmp;
+wiz_hit(struct monst *mtmp)
 {
 	/* if we have stolen or found the amulet, we disappear */
 	if (mtmp->minvent && mtmp->minvent->olet == AMULET_SYM &&
@@ -141,16 +144,16 @@ hithim:
 		 * on level 26 again.
 		 */
 		if (hitu(mtmp, d(mtmp->data->damn, mtmp->data->damd))
-		    && !rn2(20) && stealamulet(mtmp))
-			(void)0;
+		    && !rn2(20) && stealamulet(mtmp)) {
+			/* nothing */
+		}
 	} else
 		inrange(mtmp);	/* try magic */
 	return (0);
 }
 
 void
-inrange(mtmp)
-	struct monst   *mtmp;
+inrange(struct monst *mtmp)
 {
 	schar           tx, ty;
 
@@ -218,7 +221,7 @@ inrange(mtmp)
 					pline("\"Destroy the thief, my pets!\"");
 					aggravate();	/* aggravate all the
 							 * monsters */
-					/* fall into next case */
+					/* FALLTHROUGH */
 				case 2:
 					if (flags.no_of_wizards == 1 && rnd(5) == 0)
 						/*
@@ -254,7 +257,7 @@ inrange(mtmp)
 }
 
 void
-aggravate()
+aggravate(void)
 {
 	struct monst   *mtmp;
 
@@ -266,8 +269,7 @@ aggravate()
 }
 
 void
-clonewiz(mtmp)
-	struct monst   *mtmp;
+clonewiz(struct monst *mtmp)
 {
 	struct monst   *mtmp2;
 

@@ -1,4 +1,4 @@
-/*	$NetBSD: room.c,v 1.11 2003/08/07 09:37:03 agc Exp $	*/
+/*	$NetBSD: room.c,v 1.15 2021/05/02 12:50:43 rillig Exp $	*/
 
 /*
  * Copyright (c) 1983, 1993
@@ -34,14 +34,14 @@
 #if 0
 static char sccsid[] = "@(#)room.c	8.2 (Berkeley) 4/28/95";
 #else
-__RCSID("$NetBSD: room.c,v 1.11 2003/08/07 09:37:03 agc Exp $");
+__RCSID("$NetBSD: room.c,v 1.15 2021/05/02 12:50:43 rillig Exp $");
 #endif
 #endif				/* not lint */
 
 #include "extern.h"
 
 void
-writedes()
+writedes(void)
 {
 	int     compass;
 	const char   *p;
@@ -58,14 +58,14 @@ writedes()
 					putchar(c);
 			} else {
 				if (c != '*')
-					printf(truedirec(compass, c));
+					printf("%s", truedirec(compass, c));
 				compass++;
 			}
 	}
 }
 
 void
-printobjs()
+printobjs(void)
 {
 	unsigned int *p = location[position].objects;
 	int     n;
@@ -77,8 +77,7 @@ printobjs()
 }
 
 void
-whichway(here)
-	struct room here;
+whichway(struct room here)
 {
 	switch (direction) {
 
@@ -113,10 +112,8 @@ whichway(here)
 	}
 }
 
-const char   *
-truedirec(way, option)
-	int     way;
-	char    option;
+const char *
+truedirec(int way, int option)
 {
 	switch (way) {
 
@@ -132,6 +129,7 @@ truedirec(way, option)
 		case WEST:
 			return ("right");
 		}
+		break;
 
 	case SOUTH:
 		switch (direction) {
@@ -145,6 +143,7 @@ truedirec(way, option)
 		case WEST:
 			return ("left");
 		}
+		break;
 
 	case EAST:
 		switch (direction) {
@@ -158,6 +157,7 @@ truedirec(way, option)
 			return (option == '+' ? "behind you" :
 			    "back");
 		}
+		break;
 
 	case WEST:
 		switch (direction) {
@@ -171,16 +171,16 @@ truedirec(way, option)
 		case WEST:
 			return ("ahead");
 		}
-
-	default:
-		printf("Error: room %d.  More than four directions wanted.", position);
-		return ("!!");
+		break;
 	}
+
+	printf("Error: room %d.  More than four directions wanted.",
+	    position);
+	return ("!!");
 }
 
 void
-newway(thisway)
-	int     thisway;
+newway(int thisway)
 {
 	switch (direction) {
 

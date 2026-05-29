@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.end.c,v 1.6 2003/04/02 18:36:36 jsm Exp $	*/
+/*	$NetBSD: hack.end.c,v 1.19 2020/02/07 22:04:02 fox Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,7 +63,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.end.c,v 1.6 2003/04/02 18:36:36 jsm Exp $");
+__RCSID("$NetBSD: hack.end.c,v 1.19 2020/02/07 22:04:02 fox Exp $");
 #endif				/* not lint */
 
 #include <signal.h>
@@ -71,12 +71,20 @@ __RCSID("$NetBSD: hack.end.c,v 1.6 2003/04/02 18:36:36 jsm Exp $");
 #include <stdlib.h>
 #include "hack.h"
 #include "extern.h"
-#define	Sprintf	(void) sprintf
+#define	Snprintf	(void) snprintf
 
 xchar           maxdlevel = 1;
 
+struct toptenentry;
+
+static void topten(void);
+static void outheader(void);
+static int outentry(int, struct toptenentry *, int);
+static char *itoa(int);
+static const char *ordin(int);
+
 int
-dodone()
+dodone(void)
 {
 	done1(0);
 	return 0;
@@ -85,8 +93,7 @@ dodone()
 
 /*ARGSUSED*/
 void
-done1(n)
-	int n __attribute__((__unused__));
+done1(int n __unused)
 {
 	(void) signal(SIGINT, SIG_IGN);
 	pline("Really quit?");
@@ -102,22 +109,20 @@ done1(n)
 	/* NOTREACHED */
 }
 
-int             done_stopprint;
-int             done_hup;
+static int done_stopprint;
+static int done_hup;
 
 /*ARGSUSED*/
-void
-done_intr(n)
-	int n __attribute__((__unused__));
+static void
+done_intr(int n __unused)
 {
 	done_stopprint++;
 	(void) signal(SIGINT, SIG_IGN);
 	(void) signal(SIGQUIT, SIG_IGN);
 }
 
-void
-done_hangup(n)
-	int n;
+static void
+done_hangup(int n)
 {
 	done_hup++;
 	(void) signal(SIGHUP, SIG_IGN);
@@ -125,20 +130,20 @@ done_hangup(n)
 }
 
 void
-done_in_by(mtmp)
-	struct monst   *mtmp;
+done_in_by(struct monst *mtmp)
 {
 	static char     buf[BUFSZ];
 	pline("You die ...");
 	if (mtmp->data->mlet == ' ') {
-		Sprintf(buf, "the ghost of %s", (char *) mtmp->mextra);
+		Snprintf(buf, sizeof(buf),
+			"the ghost of %s", (char *) mtmp->mextra);
 		killer = buf;
 	} else if (mtmp->mnamelth) {
-		Sprintf(buf, "%s called %s",
+		Snprintf(buf, sizeof(buf), "%s called %s",
 			mtmp->data->mname, NAME(mtmp));
 		killer = buf;
 	} else if (mtmp->minvis) {
-		Sprintf(buf, "invisible %s", mtmp->data->mname);
+		Snprintf(buf, sizeof(buf), "invisible %s", mtmp->data->mname);
 		killer = buf;
 	} else
 		killer = mtmp->data->mname;
@@ -151,8 +156,7 @@ done_in_by(mtmp)
  */
 /* Be careful not to call panic from here! */
 void
-done(st1)
-	const char           *st1;
+done(const char *st1)
 {
 
 #ifdef WIZARD
@@ -202,7 +206,7 @@ done(st1)
 	}
 	if (*st1 == 'c')
 		killer = st1;	/* after outrip() */
-	settty((char *) 0);	/* does a clear_screen() */
+	settty(NULL);		/* does a clear_screen() */
 	if (!done_stopprint)
 		printf("Goodbye %s %s...\n\n", pl_character, plname);
 	{
@@ -296,7 +300,7 @@ done(st1)
 	exit(0);
 }
 
-#define newttentry() (struct toptenentry *) alloc(sizeof(struct toptenentry))
+#define newttentry() ((struct toptenentry *) alloc(sizeof(struct toptenentry)))
 #define	NAMSZ	8
 #define	DTHSZ	40
 #define	PERSMAX	1
@@ -313,10 +317,12 @@ struct toptenentry {
 	char            name[NAMSZ + 1];
 	char            death[DTHSZ + 1];
 	char            date[7];/* yymmdd */
-}              *tt_head;
+};
 
-void
-topten()
+static struct toptenentry *tt_head;
+
+static void
+topten(void)
 {
 	int             uid = getuid();
 	int             rank, rank0 = -1, rank1 = 0;
@@ -360,7 +366,7 @@ topten()
 	(t0->name)[NAMSZ] = 0;
 	(void) strncpy(t0->death, killer, DTHSZ);
 	(t0->death)[DTHSZ] = 0;
-	(void) strcpy(t0->date, getdate());
+	(void) strcpy(t0->date, getdatestr());
 
 	/* assure minimum number of points */
 	if (t0->points < POINTSMIN)
@@ -458,7 +464,7 @@ topten()
 #endif	/* PERS_IS_UID */
 			continue;
 		if (rank == rank0 - (int)flags.end_around &&
-		    rank0 > (int)(flags.end_top + flags.end_around + 1) &&
+		    rank0 > (int)flags.end_top + (int)flags.end_around + 1 &&
 		    !flags.end_own)
 			(void) putchar('\n');
 		if (rank != rank0)
@@ -477,12 +483,13 @@ topten()
 		if (!done_stopprint)
 			(void) outentry(0, t0, 1);
 	(void) fclose(rfile);
+	free(t0);
 unlock:
 	(void) unlink(reclock);
 }
 
-void
-outheader()
+static void
+outheader(void)
 {
 	char            linebuf[BUFSZ];
 	char           *bp;
@@ -494,106 +501,141 @@ outheader()
 	puts(linebuf);
 }
 
-/* so>0: standout line; so=0: ordinary line; so<0: no output, return lth */
-int
+/* so>0: standout line; so=0: ordinary line; so<0: no output, return length */
+static int
 outentry(int rank, struct toptenentry *t1, int so)
 {
-	boolean         quit = FALSE, killed = FALSE, starv = FALSE;
+	boolean         quit = FALSE, gotkilled = FALSE, starv = FALSE;
 	char            linebuf[BUFSZ];
-	linebuf[0] = 0;
+	size_t pos;
+
+	linebuf[0] = '\0';
+	pos = 0;
+
 	if (rank)
-		Sprintf(eos(linebuf), "%3d", rank);
+		Snprintf(linebuf+pos, sizeof(linebuf)-pos, "%3d", rank);
 	else
-		Sprintf(eos(linebuf), "   ");
-	Sprintf(eos(linebuf), " %6ld %8s", t1->points, t1->name);
+		Snprintf(linebuf+pos, sizeof(linebuf)-pos, "   ");
+	pos = strlen(linebuf);
+
+	Snprintf(linebuf+pos, sizeof(linebuf)-pos, " %6ld %8s",
+		t1->points, t1->name);
+	pos = strlen(linebuf);
+
 	if (t1->plchar == 'X')
-		Sprintf(eos(linebuf), " ");
+		Snprintf(linebuf+pos, sizeof(linebuf)-pos, " ");
 	else
-		Sprintf(eos(linebuf), "-%c ", t1->plchar);
+		Snprintf(linebuf+pos, sizeof(linebuf)-pos, "-%c ", t1->plchar);
+	pos = strlen(linebuf);
+
 	if (!strncmp("escaped", t1->death, 7)) {
 		if (!strcmp(" (with amulet)", t1->death + 7))
-			Sprintf(eos(linebuf), "escaped the dungeon with amulet");
+			Snprintf(linebuf+pos, sizeof(linebuf)-pos,
+				"escaped the dungeon with amulet");
 		else
-			Sprintf(eos(linebuf), "escaped the dungeon [max level %d]",
+			Snprintf(linebuf+pos, sizeof(linebuf)-pos,
+				"escaped the dungeon [max level %d]",
 				t1->maxlvl);
+		pos = strlen(linebuf);
 	} else {
 		if (!strncmp(t1->death, "quit", 4)) {
 			quit = TRUE;
 			if (t1->maxhp < 3 * t1->hp && t1->maxlvl < 4)
-				Sprintf(eos(linebuf), "cravenly gave up");
+				Snprintf(linebuf+pos, sizeof(linebuf)-pos,
+					"cravenly gave up");
 			else
-				Sprintf(eos(linebuf), "quit");
-		} else if (!strcmp(t1->death, "choked"))
-			Sprintf(eos(linebuf), "choked on %s food",
+				Snprintf(linebuf+pos, sizeof(linebuf)-pos,
+					"quit");
+		} else if (!strcmp(t1->death, "choked")) {
+			Snprintf(linebuf+pos, sizeof(linebuf)-pos,
+				"choked on %s food",
 				(t1->sex == 'F') ? "her" : "his");
-		else if (!strncmp(t1->death, "starv", 5))
-			Sprintf(eos(linebuf), "starved to death"), starv = TRUE;
-		else
-			Sprintf(eos(linebuf), "was killed"), killed = TRUE;
-		Sprintf(eos(linebuf), " on%s level %d",
-			(killed || starv) ? "" : " dungeon", t1->level);
+		} else if (!strncmp(t1->death, "starv", 5)) {
+			Snprintf(linebuf+pos, sizeof(linebuf)-pos,
+				"starved to death");
+			starv = TRUE;
+		} else {
+			Snprintf(linebuf+pos, sizeof(linebuf)-pos,
+				"was killed");
+			gotkilled = TRUE;
+		}
+		pos = strlen(linebuf);
+
+		Snprintf(linebuf+pos, sizeof(linebuf)-pos, " on%s level %d",
+			(gotkilled || starv) ? "" : " dungeon", t1->level);
+		pos = strlen(linebuf);
+
 		if (t1->maxlvl != t1->level)
-			Sprintf(eos(linebuf), " [max %d]", t1->maxlvl);
+			Snprintf(linebuf+pos, sizeof(linebuf)-pos,
+				" [max %d]", t1->maxlvl);
+		pos = strlen(linebuf);
+
 		if (quit && t1->death[4])
-			Sprintf(eos(linebuf), t1->death + 4);
+			Snprintf(linebuf+pos, sizeof(linebuf)-pos,
+				 "%s", t1->death + 4);
+		pos = strlen(linebuf);
 	}
-	if (killed)
-		Sprintf(eos(linebuf), " by %s%s",
+	if (gotkilled) {
+		Snprintf(linebuf+pos, sizeof(linebuf)-pos, " by %s%s",
 			(!strncmp(t1->death, "trick", 5) || !strncmp(t1->death, "the ", 4))
 			? "" :
 			strchr(vowels, *t1->death) ? "an " : "a ",
 			t1->death);
-	Sprintf(eos(linebuf), ".");
+		pos = strlen(linebuf);
+	}
+	strlcat(linebuf, ".", sizeof(linebuf));
+	pos = strlen(linebuf);
 	if (t1->maxhp) {
-		char           *bp = eos(linebuf);
 		char            hpbuf[10];
-		int             hppos;
-		Sprintf(hpbuf, (t1->hp > 0) ? itoa(t1->hp) : "-");
+		unsigned        hppos;
+
+		strlcpy(hpbuf, (t1->hp > 0) ? itoa(t1->hp) : "-", sizeof(hpbuf));
 		hppos = COLNO - 7 - strlen(hpbuf);
-		if (bp <= linebuf + hppos) {
-			while (bp < linebuf + hppos)
-				*bp++ = ' ';
-			(void) strcpy(bp, hpbuf);
-			Sprintf(eos(bp), " [%d]", t1->maxhp);
+		if (pos <= hppos) {
+			while (pos < hppos)
+				linebuf[pos++] = ' ';
+			(void) strlcpy(linebuf+pos, hpbuf, sizeof(linebuf)-pos);
+			pos = strlen(linebuf);
+			Snprintf(linebuf+pos, sizeof(linebuf)-pos,
+				" [%d]", t1->maxhp);
+			pos = strlen(linebuf);
 		}
 	}
 	if (so == 0)
 		puts(linebuf);
 	else if (so > 0) {
-		char           *bp = eos(linebuf);
 		if (so >= COLNO)
 			so = COLNO - 1;
-		while (bp < linebuf + so)
-			*bp++ = ' ';
-		*bp = 0;
+		while (pos < (unsigned)so)
+			linebuf[pos++] = ' ';
+		linebuf[pos] = '\0';
 		standoutbeg();
 		fputs(linebuf, stdout);
 		standoutend();
 		(void) putchar('\n');
 	}
-	return (strlen(linebuf));
+	return /*(strlen(linebuf))*/ pos;
 }
 
-char           *
-itoa(a)
-	int             a;
+static char *
+itoa(int a)
 {
 	static char     buf[12];
-	Sprintf(buf, "%d", a);
+	Snprintf(buf, sizeof(buf), "%d", a);
 	return (buf);
 }
 
-const char           *
-ordin(n)
-	int             n;
+static const char *
+ordin(int n)
 {
-	int             d = n % 10;
-	return ((d == 0 || d > 3 || n / 10 == 1) ? "th" : (d == 1) ? "st" :
-		(d == 2) ? "nd" : "rd");
+	int             dg = n % 10;
+
+	return ((dg == 0 || dg > 3 || n / 10 == 1) ? "th" : (dg == 1) ? "st" :
+		(dg == 2) ? "nd" : "rd");
 }
 
 void
-clearlocks()
+clearlocks(void)
 {
 	int x;
 	(void) signal(SIGHUP, SIG_IGN);
@@ -606,8 +648,7 @@ clearlocks()
 #ifdef NOSAVEONHANGUP
 /*ARGSUSED*/
 void
-hangup(n)
-	int n;
+hang_up(int n __unused)
 {
 	(void) signal(SIGINT, SIG_IGN);
 	clearlocks();
@@ -616,8 +657,7 @@ hangup(n)
 #endif	/* NOSAVEONHANGUP */
 
 char           *
-eos(s)
-	char           *s;
+eos(char *s)
 {
 	while (*s)
 		s++;
@@ -626,8 +666,7 @@ eos(s)
 
 /* it is the callers responsibility to check that there is room for c */
 void
-charcat(s, c)
-	char           *s, c;
+charcat(char *s, int c)
 {
 	while (*s)
 		s++;
@@ -641,9 +680,7 @@ charcat(s, c)
  * if argc == -1).
  */
 void
-prscore(argc, argv)
-	int             argc;
-	char          **argv;
+prscore(int argc, char **argv)
 {
 	char          **players = NULL;
 	int             playerct;
@@ -767,7 +804,7 @@ prscore(argc, argv)
 					break;
 				}
 			}
-		free((char *) t1);
+		free(t1);
 	}
 #ifdef nonsense
 	totchars[totcharct] = 0;

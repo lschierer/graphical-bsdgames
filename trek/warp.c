@@ -1,4 +1,4 @@
-/*	$NetBSD: warp.c,v 1.8 2003/08/07 09:37:55 agc Exp $	*/
+/*	$NetBSD: warp.c,v 1.11 2009/05/24 22:55:03 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)warp.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: warp.c,v 1.8 2003/08/07 09:37:55 agc Exp $");
+__RCSID("$NetBSD: warp.c,v 1.11 2009/05/24 22:55:03 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -62,8 +62,7 @@ __RCSID("$NetBSD: warp.c,v 1.8 2003/08/07 09:37:55 agc Exp $");
 */
 
 void
-dowarp(fl)
-	int fl;
+dowarp(int fl)
 {
 	int c;
 	double d;
@@ -74,9 +73,7 @@ dowarp(fl)
 }
 
 void
-warp(fl, c, d)
-int	fl, c;
-double	d;
+warp(int fl, int c, double d)
 {
 	char	       *p;
 	int		course;
@@ -87,13 +84,13 @@ double	d;
 	double		frac;
 	int		percent;
 	int		i;
+	double repairs;
 
 	if (Ship.cond == DOCKED) {
 		printf("%s is docked\n", Ship.shipname);
 		return;
 	}
-	if (damaged(WARP))
-	{
+	if (damaged(WARP)) {
 		out(WARP);
 		return;
 	}
@@ -104,9 +101,9 @@ double	d;
 	/* check to see that we are not using an absurd amount of power */
 	power = (dist + 0.05) * Ship.warp3;
 	percent = 100 * power / Ship.energy + 0.5;
-	if (percent >= 85)
-	{
-		printf("Scotty: That would consume %d%% of our remaining energy.\n",
+	if (percent >= 85) {
+		printf("Scotty: That would consume %d%% of our remaining "
+		       "energy.\n",
 			percent);
 		if (!getynpar("Are you sure that is wise"))
 			return;
@@ -118,8 +115,7 @@ double	d;
 
 	/* check to see that that value is not ridiculous */
 	percent = 100 * time / Now.time + 0.5;
-	if (percent >= 85)
-	{
+	if (percent >= 85) {
 		printf("Spock: That would take %d%% of our remaining time.\n",
 			percent);
 		if (!getynpar("Are you sure that is wise"))
@@ -127,12 +123,12 @@ double	d;
 	}
 
 	/* compute how far we will go if we get damages */
-	if (Ship.warp > 6.0 && ranf(100) < 20 + 15 * (Ship.warp - 6.0))
-	{
+	if (Ship.warp > 6.0 && ranf(100) < 20 + 15 * (Ship.warp - 6.0)) {
 		frac = franf();
 		dist *= frac;
 		time *= frac;
-		damage(WARP, (frac + 1.0) * Ship.warp * (franf() + 0.25) * 0.20);
+		repairs = (frac + 1.0) * Ship.warp * (franf() + 0.25) * 0.20;
+		damage(WARP, repairs);
 	}
 
 	/* do the move */
@@ -151,26 +147,23 @@ double	d;
 	sleep(2);
 	printf("Crew experiencing extreme sensory distortion\n");
 	sleep(4);
-	if (ranf(100) >= 100 * dist)
-	{
+	if (ranf(100) >= 100 * dist) {
 		printf("Equilibrium restored -- all systems normal\n");
 		return;
 	}
 
 	/* select a bizzare thing to happen to us */
 	percent = ranf(100);
-	if (percent < 70)
-	{
+	if (percent < 70) {
 		/* time warp */
-		if (percent < 35 || !Game.snap)
-		{
+		if (percent < 35 || !Game.snap) {
 			/* positive time warp */
 			time = (Ship.warp - 8.0) * dist * (franf() + 1.0);
 			Now.date += time;
-			printf("Positive time portal entered -- it is now Stardate %.2f\n",
+			printf("Positive time portal entered -- "
+			       "it is now Stardate %.2f\n",
 				Now.date);
-			for (i = 0; i < MAXEVENTS; i++)
-			{
+			for (i = 0; i < MAXEVENTS; i++) {
 				percent = Event[i].evcode;
 				if (percent == E_FIXDV || percent == E_LRTB)
 					Event[i].date += time;
@@ -186,7 +179,8 @@ double	d;
 		memcpy(p, Event, sizeof Event);
 		p += sizeof Event;
 		memcpy(p, &Now, sizeof Now);
-		printf("Negative time portal entered -- it is now Stardate %.2f\n",
+		printf("Negative time portal entered -- "
+		       "it is now Stardate %.2f\n",
 			Now.date);
 		for (i = 0; i < MAXEVENTS; i++)
 			if (Event[i].evcode == E_FIXDV)
@@ -197,7 +191,8 @@ double	d;
 	/* test for just a lot of damage */
 	if (percent < 80)
 		lose(L_TOOFAST);
-	printf("Equilibrium restored -- extreme damage occurred to ship systems\n");
+	printf("Equilibrium restored -- "
+	       "extreme damage occurred to ship systems\n");
 	for (i = 0; i < NDEV; i++)
 		damage(i, (3.0 * (franf() + franf()) + 1.0) * Param.damfac[i]);
 	Ship.shldup = 0;

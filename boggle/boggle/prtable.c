@@ -1,4 +1,4 @@
-/*	$NetBSD: prtable.c,v 1.8 2004/01/27 20:30:29 jsm Exp $	*/
+/*	$NetBSD: prtable.c,v 1.11 2021/05/02 12:50:43 rillig Exp $	*/
 
 /*-
  * Copyright (c) 1993
@@ -36,7 +36,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: prtable.c,v 1.8 2004/01/27 20:30:29 jsm Exp $");
+__RCSID("$NetBSD: prtable.c,v 1.11 2021/05/02 12:50:43 rillig Exp $");
 #endif /* not lint */
 
 #include <curses.h>
@@ -57,17 +57,15 @@ static int	get_maxlen(const char *const [], int, int (*)(const char *const *, in
  *	width	- max line width if not zero
  *	prentry - address of the routine to call to print the string
  *	length  - address of the routine to call to determine the length
- *		  of string to be printed 
+ *		  of string to be printed
  *
  * prtable and length are called with the address of the base and
  * an index
  */
 void
-prtable(base, num, d_cols, width, prentry, length)
-	const char *const base[];
-	int num, d_cols, width;
-	void (*prentry)(const char *const [], int);
-	int (*length)(const char *const [], int);
+prtable(const char *const base[], int num, int d_cols, int width,
+        void (*prentry)(const char *const [], int),
+        int (*length)(const char *const [], int))
 {
         int c, j;
         int a, b, cols, loc, maxlen, nrows, z;
@@ -108,16 +106,15 @@ prtable(base, num, d_cols, width, prentry, length)
 			}
                 }
 		getyx(stdscr, row, col);
+		__USE(col);
 		move(row + 1, 0);
         }
 	refresh();
 }
 
 static int
-get_maxlen(base, num, length)
-	const char *const base[];
-	int num;
-	int (*length)(const char *const *, int);
+get_maxlen(const char *const base[], int num,
+           int (*length)(const char *const *, int))
 {
 	int i, len, max;
 

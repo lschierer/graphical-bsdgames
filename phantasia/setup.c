@@ -1,15 +1,33 @@
-/*	$NetBSD: setup.c,v 1.14 2004/12/09 05:15:59 jmc Exp $	*/
+/*	$NetBSD: setup.c,v 1.23 2021/05/02 12:50:46 rillig Exp $	*/
 
 /*
  * setup.c - set up all files for Phantasia
+ * n.b.: this is used at build-time - i.e. during build.sh.
  */
-#include <sys/param.h>
+#ifdef __NetBSD__
+#include <sys/cdefs.h>
+#endif
+
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "include.h"
+#include <setjmp.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+
+#ifndef __dead /* Not NetBSD */
+#define __dead
+#endif
+
+#include "phantdefs.h"
+#include "phantstruct.h"
+#include "phantglobs.h"
+#include "pathnames.h"
 
 int main(int, char *[]);
-void Error(const char *, const char *) __attribute__((__noreturn__));
+void Error(const char *, const char *) __dead;
 double drandom(void);
 
 /**/
@@ -25,15 +43,15 @@ double drandom(void);
 /
 / RETURN VALUE: none
 /
-/ MODULES CALLED: time(), exit(), stat(), Error(), creat(), close(), fopen(), 
-/	fgets(), floor(), srandom(), umask(), drandom(), strcpy(), getuid(), 
+/ MODULES CALLED: time(), exit(), stat(), Error(), creat(), close(), fopen(),
+/	fgets(), floor(), srandom(), umask(), drandom(), strcpy(), getuid(),
 /	unlink(), fwrite(), fclose(), sscanf(), printf(), strlen(), fprintf()
 /
 / GLOBAL INPUTS: Curmonster, _iob[], Databuf[], *Monstfp, Enrgyvoid
 /
 / GLOBAL OUTPUTS: Curmonster, Databuf[], *Monstfp, Enrgyvoid
 /
-/ DESCRIPTION: 
+/ DESCRIPTION:
 /
 /	This program tries to verify the parameters specified in
 /	the Makefile.
@@ -59,9 +77,7 @@ static const char *const files[] = {		/* all files to create */
 const char *monsterfile = "monsters.asc";
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	const char *const *filename; /* for pointing to file names */
 	int		fd;		/* file descriptor */
@@ -220,8 +236,7 @@ main(argc, argv)
 / ************************************************************************/
 
 void
-Error(str, file)
-	const char	*str, *file;
+Error(const char *str, const char *file)
 {
     fprintf(stderr, "Error: ");
     fprintf(stderr, str, file);
@@ -248,12 +263,12 @@ Error(str, file)
 /
 / GLOBAL OUTPUTS: none
 /
-/ DESCRIPTION: 
+/ DESCRIPTION:
 /
 / ************************************************************************/
 
 double
-drandom()
+drandom(void)
 {
     if (sizeof(int) != 2)
 	return((double) (random() & 0x7fff) / 32768.0);

@@ -1,5 +1,5 @@
 %{
-/*	$NetBSD: lex.l,v 1.7 2003/08/07 09:36:54 agc Exp $	*/
+/*	$NetBSD: lex.l,v 1.9 2015/06/19 06:02:31 dholland Exp $	*/
 
 /*-
  * Copyright (c) 1990, 1993
@@ -47,17 +47,17 @@
 #if 0
 static char sccsid[] = "@(#)lex.l	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: lex.l,v 1.7 2003/08/07 09:36:54 agc Exp $");
+__RCSID("$NetBSD: lex.l,v 1.9 2015/06/19 06:02:31 dholland Exp $");
 #endif
 #endif /* not lint */
 
-#include "include.h"
 #undef ECHO		/* XXX: work around lex(1) vs termios lameness */
 #include "grammar.h"
 
 extern int	line;
 
 %}
+%option nounput noinput
 %%
 [0-9]+			{ yylval.ival = atoi(yytext);  return(ConstOp); }
 height			{ return(HeightOp); }

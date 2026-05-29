@@ -1,4 +1,4 @@
-/*	$NetBSD: init.c,v 1.14 2003/08/07 09:36:50 agc Exp $	*/
+/*	$NetBSD: init.c,v 1.22 2021/05/02 12:50:43 rillig Exp $	*/
 
 /*-
  * Copyright (c) 1993
@@ -39,7 +39,7 @@
 #if 0
 static char sccsid[] = "@(#)init.c	8.1 (Berkeley) 6/2/93";
 #else
-__RCSID("$NetBSD: init.c,v 1.14 2003/08/07 09:36:50 agc Exp $");
+__RCSID("$NetBSD: init.c,v 1.22 2021/05/02 12:50:43 rillig Exp $");
 #endif
 #endif /* not lint */
 
@@ -55,87 +55,90 @@ __RCSID("$NetBSD: init.c,v 1.14 2003/08/07 09:36:50 agc Exp $");
 #include "hdr.h"
 #include "extern.h"
 
+static void linkdata(void);
+
 int     blklin = TRUE;
 
-int     setbit[16] = {1, 2, 4, 010, 020, 040, 0100, 0200, 0400, 01000, 02000, 04000,
-010000, 020000, 040000, 0100000};
+int     setbit[16] = {1, 2, 4, 010, 020, 040, 0100, 0200, 0400, 01000, 02000,
+		      04000, 010000, 020000, 040000, 0100000};
 
-int     datfd;			/* message file descriptor */
 volatile sig_atomic_t delhit;
 int     yea;
 
-int     loc, newloc, oldloc, oldlc2, wzdark, gaveup, kq, k, k2;
+int     loc, newloc, oldloc, oldloc2, wasdark, gaveup, kq, k, k2;
 char   *wd1, *wd2;		/* the complete words */
 int     verb, obj, spk;
-int     saveday, savet, mxscor, latncy;
+int     saveday, savet, maxscore, latency;
 
 struct hashtab voc[HTSIZE];
 
-struct text rtext[RTXSIZ];	/* random text messages */
+struct text rtext[RTXSIZE];	/* random text messages */
 
-struct text mtext[MAGSIZ];	/* magic messages */
+struct text mtext[MAGSIZE];	/* magic messages */
 
-int     clsses;
+int     classes;
 
 struct text ctext[CLSMAX];	/* classes of adventurer */
 int     cval[CLSMAX];
 
 struct text ptext[101];		/* object descriptions */
 
-struct text ltext[LOCSIZ];	/* long loc description */
-struct text stext[LOCSIZ];	/* short loc descriptions */
+struct text ltext[LOCSIZE];	/* long loc description */
+struct text stext[LOCSIZE];	/* short loc descriptions */
 
-struct travlist *travel[LOCSIZ], *tkk;	/* travel is closer to keys(...) */
+struct travlist *travel[LOCSIZE], *tkk;	/* travel is closer to keys(...) */
 
-int     atloc[LOCSIZ];
+int     atloc[LOCSIZE];
 
 int     plac[101];		/* initial object placement */
 int     fixd[101], fixed[101];	/* location fixed? */
 
-int     actspk[35];		/* rtext msg for verb <n> */
+int     actspeak[35];		/* rtext msg for verb <n> */
 
-int     cond[LOCSIZ];		/* various condition bits */
+int     cond[LOCSIZE];		/* various condition bits */
 
-int     hntmax;
+int     hintmax;
 int     hints[20][5];		/* info on hints */
 int     hinted[20], hintlc[20];
 
 int     place[101], prop[101], links[201];
-int     abb[LOCSIZ];
+int     abb[LOCSIZE];
 
 int     maxtrs, tally, tally2;	/* treasure values */
 
 int     keys, lamp, grate, cage, rod, rod2, steps,	/* mnemonics */
-        bird, door, pillow, snake, fissur, tablet, clam, oyster,
-        magzin, dwarf, knife, food, bottle, water, oil, plant, plant2,
-        axe, mirror, dragon, chasm, troll, troll2, bear, messag,
-        vend, batter, nugget, coins, chest, eggs, tridnt, vase,
-        emrald, pyram, pearl, rug, chain, spices, back, look, cave,
-        null, entrnc, dprssn, enter, stream, pour, say, lock, throw,
+        bird, door, pillow, snake, fissure, tablet, clam, oyster,
+        magazine, dwarf, knife, food, bottle, water, oil, plant, plant2,
+        axe, mirror, dragon, chasm, troll, troll2, bear, message,
+        vend, batter, nugget, coins, chest, eggs, trident, vase,
+        emerald, pyramid, pearl, rug, chain, spices, back, look, cave,
+        null, entrance, depression, say, lock, throw,
         find, invent;
 
+static int enter, /*stream,*/ pour;
+
 int     chloc, chloc2, dseen[7], dloc[7],	/* dwarf stuff */
-        odloc[7], dflag, daltlc;
+        odloc[7], dflag, daltloc;
 
 int     tk[21], stick, dtotal, attack;
 int     turns, lmwarn, iwest, knfloc, detail,	/* various flags and
 						 * counters */
-        abbnum, maxdie, numdie, holdng, dkill, foobar, bonus, clock1,
-        clock2, saved, closng, panic, closed, scorng;
+        abbnum, maxdie, numdie, holding, dkill, foobar, bonus, clock1,
+        clock2, saved, isclosing, panic, closed, scoring;
 
 int     demo, limit;
 
+/* everything for 1st time run */
 void
-init()			/* everything for 1st time run */
+init(void)
 {
 	rdata();		/* read data from orig. file */
 	linkdata();
 	poof();
 }
 
-char   *
-decr(a, b, c, d, e)
-	char    a, b, c, d, e;
+__noinline char *
+decr(int a, int b, int c, int d, int e)
 {
 	static char buf[6];
 
@@ -148,13 +151,13 @@ decr(a, b, c, d, e)
 	return buf;
 }
 
-void
-linkdata()
+static void
+linkdata(void)
 {				/* secondary data manipulation */
 	int     i, j;
 
 	/* array linkages */
-	for (i = 1; i <= LOCSIZ; i++)
+	for (i = 1; i < LOCSIZE; i++)
 		if (ltext[i].seekadr != 0 && travel[i] != 0)
 			if ((travel[i]->tverb) == 1)
 				cond[i] = 2;
@@ -191,11 +194,11 @@ linkdata()
 	door = vocab(DECR('d', 'o', 'o', 'r', '\0'), 1, 0);
 	pillow = vocab(DECR('p', 'i', 'l', 'l', 'o'), 1, 0);
 	snake = vocab(DECR('s', 'n', 'a', 'k', 'e'), 1, 0);
-	fissur = vocab(DECR('f', 'i', 's', 's', 'u'), 1, 0);
+	fissure = vocab(DECR('f', 'i', 's', 's', 'u'), 1, 0);
 	tablet = vocab(DECR('t', 'a', 'b', 'l', 'e'), 1, 0);
 	clam = vocab(DECR('c', 'l', 'a', 'm', '\0'), 1, 0);
 	oyster = vocab(DECR('o', 'y', 's', 't', 'e'), 1, 0);
-	magzin = vocab(DECR('m', 'a', 'g', 'a', 'z'), 1, 0);
+	magazine = vocab(DECR('m', 'a', 'g', 'a', 'z'), 1, 0);
 	dwarf = vocab(DECR('d', 'w', 'a', 'r', 'f'), 1, 0);
 	knife = vocab(DECR('k', 'n', 'i', 'f', 'e'), 1, 0);
 	food = vocab(DECR('f', 'o', 'o', 'd', '\0'), 1, 0);
@@ -211,7 +214,7 @@ linkdata()
 	troll = vocab(DECR('t', 'r', 'o', 'l', 'l'), 1, 0);
 	troll2 = troll + 1;
 	bear = vocab(DECR('b', 'e', 'a', 'r', '\0'), 1, 0);
-	messag = vocab(DECR('m', 'e', 's', 's', 'a'), 1, 0);
+	message = vocab(DECR('m', 'e', 's', 's', 'a'), 1, 0);
 	vend = vocab(DECR('v', 'e', 'n', 'd', 'i'), 1, 0);
 	batter = vocab(DECR('b', 'a', 't', 't', 'e'), 1, 0);
 
@@ -219,10 +222,10 @@ linkdata()
 	coins = vocab(DECR('c', 'o', 'i', 'n', 's'), 1, 0);
 	chest = vocab(DECR('c', 'h', 'e', 's', 't'), 1, 0);
 	eggs = vocab(DECR('e', 'g', 'g', 's', '\0'), 1, 0);
-	tridnt = vocab(DECR('t', 'r', 'i', 'd', 'e'), 1, 0);
+	trident = vocab(DECR('t', 'r', 'i', 'd', 'e'), 1, 0);
 	vase = vocab(DECR('v', 'a', 's', 'e', '\0'), 1, 0);
-	emrald = vocab(DECR('e', 'm', 'e', 'r', 'a'), 1, 0);
-	pyram = vocab(DECR('p', 'y', 'r', 'a', 'm'), 1, 0);
+	emerald = vocab(DECR('e', 'm', 'e', 'r', 'a'), 1, 0);
+	pyramid = vocab(DECR('p', 'y', 'r', 'a', 'm'), 1, 0);
 	pearl = vocab(DECR('p', 'e', 'a', 'r', 'l'), 1, 0);
 	rug = vocab(DECR('r', 'u', 'g', '\0', '\0'), 1, 0);
 	chain = vocab(DECR('c', 'h', 'a', 'i', 'n'), 1, 0);
@@ -231,8 +234,8 @@ linkdata()
 	look = vocab(DECR('l', 'o', 'o', 'k', '\0'), 0, 0);
 	cave = vocab(DECR('c', 'a', 'v', 'e', '\0'), 0, 0);
 	null = vocab(DECR('n', 'u', 'l', 'l', '\0'), 0, 0);
-	entrnc = vocab(DECR('e', 'n', 't', 'r', 'a'), 0, 0);
-	dprssn = vocab(DECR('d', 'e', 'p', 'r', 'e'), 0, 0);
+	entrance = vocab(DECR('e', 'n', 't', 'r', 'a'), 0, 0);
+	depression = vocab(DECR('d', 'e', 'p', 'r', 'e'), 0, 0);
 	enter = vocab(DECR('e', 'n', 't', 'e', 'r'), 0, 0);
 
 	pour = vocab(DECR('p', 'o', 'u', 'r', '\0'), 2, 0);
@@ -254,7 +257,7 @@ linkdata()
 	dloc[4] = 44;
 	dloc[5] = 64;
 	dloc[6] = chloc;
-	daltlc = 18;
+	daltloc = 18;
 
 	/* random flags & ctrs */
 	turns = 0;
@@ -266,18 +269,16 @@ linkdata()
 	for (i = 0; i <= 4; i++)
 		if (rtext[2 * i + 81].seekadr != 0)
 			maxdie = i + 1;
-	numdie = holdng = dkill = foobar = bonus = 0;
+	numdie = holding = dkill = foobar = bonus = 0;
 	clock1 = 30;
 	clock2 = 50;
 	saved = 0;
-	closng = panic = closed = scorng = FALSE;
+	isclosing = panic = closed = scoring = FALSE;
 }
 
-
-
+/* come here if he hits a del */
 void
-trapdel(n)			/* come here if he hits a del */
-	int     n __attribute__((__unused__));
+trapdel(int n __unused)
 {
 	delhit = 1;		/* main checks, treats as QUIT */
 	signal(SIGINT, trapdel);/* catch subsequent DELs */
@@ -285,10 +286,10 @@ trapdel(n)			/* come here if he hits a del */
 
 
 void
-startup()
+startup(void)
 {
 	demo = Start();
-	srand((int) (time((time_t *) NULL)));	/* random seed */
+	srand((int)time(NULL));	/* random seed */
 #if 0
 	srand(371);		/* non-random seed */
 #endif

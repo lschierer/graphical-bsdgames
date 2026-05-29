@@ -1,106 +1,130 @@
-/*	$NetBSD: answer.c,v 1.7 2004/11/05 21:30:32 dsl Exp $	*/
+/*	$NetBSD: answer.c,v 1.24 2021/05/02 12:50:45 rillig Exp $	*/
 /*
  * Copyright (c) 1983-2003, Regents of the University of California.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without 
- * modification, are permitted provided that the following conditions are 
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
  * met:
- * 
- * + Redistributions of source code must retain the above copyright 
+ *
+ * + Redistributions of source code must retain the above copyright
  *   notice, this list of conditions and the following disclaimer.
- * + Redistributions in binary form must reproduce the above copyright 
- *   notice, this list of conditions and the following disclaimer in the 
+ * + Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the distribution.
- * + Neither the name of the University of California, San Francisco nor 
- *   the names of its contributors may be used to endorse or promote 
- *   products derived from this software without specific prior written 
+ * + Neither the name of the University of California, San Francisco nor
+ *   the names of its contributors may be used to endorse or promote
+ *   products derived from this software without specific prior written
  *   permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS 
- * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED 
- * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
- * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY 
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: answer.c,v 1.7 2004/11/05 21:30:32 dsl Exp $");
+__RCSID("$NetBSD: answer.c,v 1.24 2021/05/02 12:50:45 rillig Exp $");
 #endif /* not lint */
 
-# include	<ctype.h>
-# include	<errno.h>
-# include	<fcntl.h>
-# include	<stdlib.h>
-# include	<unistd.h>
-# include	<sys/time.h>
-# include	"hunt.h"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <assert.h>
+#include "hunt.h"
 
-# define	SCOREDECAY	15
+#define SCOREDECAY	15
 
-static char	Ttyname[NAMELEN];
+static char Ttyname[WIRE_NAMELEN];
 
-int
-answer()
+static IDENT *get_ident(uint32_t, uint32_t, const char *, char);
+static void stmonitor(PLAYER *);
+static void stplayer(PLAYER *, int);
+
+bool
+answer(void)
 {
-	PLAYER			*pp;
-	int			newsock;
-	static u_long		mode;
-	static char		name[NAMELEN];
-	static char		team;
-	static int		enter_status;
-	static int		socklen;
-	static u_long		machine;
-	static u_int32_t	uid;
-	static SOCKET		sockstruct;
-	char			*cp1, *cp2;
-	int			flags;
-	u_int32_t		version;
-	int			i;
+	PLAYER *pp;
+	int newsock;
+	static uint32_t mode;
+	static char name[WIRE_NAMELEN];
+	static char team;
+	static int32_t enter_status;
+	static socklen_t socklen;
+	static uint32_t machine;
+	static uint32_t uid;
+	static struct sockaddr_storage newaddr;
+	char *cp1, *cp2;
+	int flags;
+	uint32_t version;
+	int i;
 
-# ifdef INTERNET
-	socklen = sizeof sockstruct;
-# else
-	socklen = sizeof sockstruct - 1;
-# endif
-	errno = 0;
-	newsock = accept(Socket, (struct sockaddr *) &sockstruct, &socklen);
-	if (newsock < 0)
-	{
+	socklen = sizeof(newaddr);
+	newsock = accept(huntsock, (struct sockaddr *)&newaddr, &socklen);
+	if (newsock < 0) {
 		if (errno == EINTR)
-			return FALSE;
-# ifdef LOG
-		syslog(LOG_ERR, "accept: %m");
-# else
-		perror("accept");
-# endif
+			return false;
+		complain(LOG_ERR, "accept");
 		cleanup(1);
 	}
 
-# ifdef INTERNET
-	machine = ntohl(((struct sockaddr_in *) &sockstruct)->sin_addr.s_addr);
-# else
-	if (machine == 0)
+	/*
+	 * XXX this is pretty bollocks
+	 */
+	switch (newaddr.ss_family) {
+	    case AF_INET:
+		machine = ((struct sockaddr_in *)&newaddr)->sin_addr.s_addr;
+		machine = ntohl(machine);
+		break;
+	    case AF_INET6:
+		{
+			struct sockaddr_in6 *sin6;
+
+			sin6 = (struct sockaddr_in6 *)&newaddr;
+			assert(sizeof(sin6->sin6_addr.s6_addr) >
+			       sizeof(machine));
+			memcpy(&machine, sin6->sin6_addr.s6_addr,
+			       sizeof(machine));
+		}
+		break;
+	    case AF_UNIX:
 		machine = gethostid();
-# endif
-	version = htonl((u_int32_t) HUNT_VERSION);
-	(void) write(newsock, (char *) &version, LONGLEN);
-	(void) read(newsock, (char *) &uid, LONGLEN);
-	uid = ntohl((unsigned long) uid);
-	(void) read(newsock, name, NAMELEN);
+		break;
+	    default:
+		machine = 0; /* ? */
+		break;
+	}
+
+	version = htonl((uint32_t) HUNT_VERSION);
+	(void) write(newsock, &version, sizeof(version));
+	(void) read(newsock, &uid, sizeof(uid));
+	uid = ntohl(uid);
+	(void) read(newsock, name, sizeof(name));
 	(void) read(newsock, &team, 1);
-	(void) read(newsock, (char *) &enter_status, LONGLEN);
-	enter_status = ntohl((unsigned long) enter_status);
-	(void) read(newsock, Ttyname, NAMELEN);
-	(void) read(newsock, (char *) &mode, sizeof mode);
+	(void) read(newsock, &enter_status, sizeof(enter_status));
+	enter_status = ntohl(enter_status);
+	(void) read(newsock, Ttyname, sizeof(Ttyname));
+	(void) read(newsock, &mode, sizeof(mode));
 	mode = ntohl(mode);
+
+	/*
+	 * Ensure null termination.
+	 */
+	name[sizeof(name)-1] = '\0';
+	Ttyname[sizeof(Ttyname)-1] = '\0';
 
 	/*
 	 * Turn off blocking I/O, so a slow or dead terminal won't stop
@@ -120,15 +144,15 @@ answer()
 			*cp2++ = *cp1;
 	*cp2 = '\0';
 
-# ifdef INTERNET
 	if (mode == C_MESSAGE) {
 		char	buf[BUFSIZ + 1];
 		int	n;
 
 		if (team == ' ')
-			(void) sprintf(buf, "%s: ", name);
+			(void) snprintf(buf, sizeof(buf), "%s: ", name);
 		else
-			(void) sprintf(buf, "%s[%c]: ", name, team);
+			(void) snprintf(buf, sizeof(buf), "%s[%c]: ", name,
+					team);
 		n = strlen(buf);
 		for (pp = Player; pp < End_player; pp++) {
 			cgoto(pp, HEIGHT, 0);
@@ -144,33 +168,32 @@ answer()
 			(void) fflush(pp->p_output);
 		}
 		(void) close(newsock);
-		return FALSE;
+		return false;
 	}
 	else
-# endif
-# ifdef MONITOR
+#ifdef MONITOR
 	if (mode == C_MONITOR)
 		if (End_monitor < &Monitor[MAXMON]) {
 			pp = End_monitor++;
 			i = pp - Monitor + MAXPL + 3;
 		} else {
 			socklen = 0;
-			(void) write(newsock, (char *) &socklen,
+			(void) write(newsock, &socklen,
 				sizeof socklen);
 			(void) close(newsock);
-			return FALSE;
+			return false;
 		}
 	else
-# endif
+#endif
 		if (End_player < &Player[MAXPL]) {
 			pp = End_player++;
 			i = pp - Player + 3;
 		} else {
 			socklen = 0;
-			(void) write(newsock, (char *) &socklen,
+			(void) write(newsock, &socklen,
 				sizeof socklen);
 			(void) close(newsock);
-			return FALSE;
+			return false;
 		}
 
 #ifdef MONITOR
@@ -187,28 +210,28 @@ answer()
 	pp->p_y = 0;
 	pp->p_x = 0;
 
-# ifdef MONITOR
+#ifdef MONITOR
 	if (mode == C_MONITOR)
 		stmonitor(pp);
 	else
-# endif
+#endif
 		stplayer(pp, enter_status);
-	return TRUE;
+	return true;
 }
 
-# ifdef MONITOR
-void
-stmonitor(pp)
-	PLAYER	*pp;
+#ifdef MONITOR
+static void
+stmonitor(PLAYER *pp)
 {
-	int	line;
-	PLAYER	*npp;
+	int line;
+	PLAYER *npp;
 
 	memcpy(pp->p_maze, Maze, sizeof Maze);
 
 	drawmaze(pp);
 
-	(void) sprintf(Buf, "%5.5s%c%-10.10s %c", " ", stat_char(pp),
+	(void) snprintf(Buf, sizeof(Buf), "%5.5s%c%-10.10s %c", " ",
+		stat_char(pp),
 		pp->p_ident->i_name, pp->p_ident->i_team);
 	line = STAT_MON_ROW + 1 + (pp - Monitor);
 	for (npp = Player; npp < End_player; npp++) {
@@ -224,15 +247,13 @@ stmonitor(pp)
 	sendcom(pp, READY, 0);
 	(void) fflush(pp->p_output);
 }
-# endif
+#endif
 
-void
-stplayer(newpp, enter_status)
-	PLAYER	*newpp;
-	int	enter_status;
+static void
+stplayer(PLAYER *newpp, int enter_status)
 {
-	int	x, y;
-	PLAYER	*pp;
+	int x, y;
+	PLAYER *pp;
 
 	Nplayer++;
 
@@ -258,9 +279,9 @@ stplayer(newpp, enter_status)
 	newpp->p_over = SPACE;
 	newpp->p_x = x;
 	newpp->p_y = y;
-	newpp->p_undershot = FALSE;
+	newpp->p_undershot = false;
 
-# ifdef FLY
+#ifdef FLY
 	if (enter_status == Q_FLY) {
 		newpp->p_flying = rand_num(20);
 		newpp->p_flyx = 2 * rand_num(6) - 5;
@@ -268,7 +289,7 @@ stplayer(newpp, enter_status)
 		newpp->p_face = FLYER;
 	}
 	else
-# endif
+#endif
 	{
 		newpp->p_flying = -1;
 		newpp->p_face = rand_dir();
@@ -279,9 +300,9 @@ stplayer(newpp, enter_status)
 	newpp->p_ncount = 0;
 	newpp->p_nexec = 0;
 	newpp->p_ammo = ISHOTS;
-# ifdef BOOTS
+#ifdef BOOTS
 	newpp->p_nboots = 0;
-# endif
+#endif
 	if (enter_status == Q_SCAN) {
 		newpp->p_scan = SCANLEN;
 		newpp->p_cloak = 0;
@@ -297,53 +318,55 @@ stplayer(newpp, enter_status)
 		y = rand_num(HEIGHT - 1) + 1;
 	} while (Maze[y][x] != SPACE);
 	Maze[y][x] = GMINE;
-# ifdef MONITOR
+#ifdef MONITOR
 	for (pp = Monitor; pp < End_monitor; pp++)
 		check(pp, y, x);
-# endif
+#endif
 
 	do {
 		x = rand_num(WIDTH - 1) + 1;
 		y = rand_num(HEIGHT - 1) + 1;
 	} while (Maze[y][x] != SPACE);
 	Maze[y][x] = MINE;
-# ifdef MONITOR
+#ifdef MONITOR
 	for (pp = Monitor; pp < End_monitor; pp++)
 		check(pp, y, x);
-# endif
+#endif
 
-	(void) sprintf(Buf, "%5.2f%c%-10.10s %c", newpp->p_ident->i_score,
+	(void) snprintf(Buf, sizeof(Buf), "%5.2f%c%-10.10s %c",
+		newpp->p_ident->i_score,
 		stat_char(newpp), newpp->p_ident->i_name,
 		newpp->p_ident->i_team);
 	y = STAT_PLAY_ROW + 1 + (newpp - Player);
 	for (pp = Player; pp < End_player; pp++) {
 		if (pp != newpp) {
-			char	smallbuf[10];
+			char	smallbuf[16];
 
 			pp->p_ammo += NSHOTS;
 			newpp->p_ammo += NSHOTS;
 			cgoto(pp, y, STAT_NAME_COL);
 			outstr(pp, Buf, STAT_NAME_LEN);
-			(void) sprintf(smallbuf, "%3d", pp->p_ammo);
+			(void) snprintf(smallbuf, sizeof(smallbuf),
+					"%3d", pp->p_ammo);
 			cgoto(pp, STAT_AMMO_ROW, STAT_VALUE_COL);
 			outstr(pp, smallbuf, 3);
 		}
 	}
-# ifdef MONITOR
+#ifdef MONITOR
 	for (pp = Monitor; pp < End_monitor; pp++) {
 		cgoto(pp, y, STAT_NAME_COL);
 		outstr(pp, Buf, STAT_NAME_LEN);
 	}
-# endif
+#endif
 
 	drawmaze(newpp);
-	drawplayer(newpp, TRUE);
+	drawplayer(newpp, true);
 	look(newpp);
-# ifdef	FLY
+#ifdef FLY
 	if (enter_status == Q_FLY)
 		/* Make sure that the position you enter in will be erased */
 		showexpl(newpp->p_y, newpp->p_x, FLYER);
-# endif
+#endif
 	sendcom(newpp, REFRESH);
 	sendcom(newpp, READY, 0);
 	(void) fflush(newpp->p_output);
@@ -354,7 +377,7 @@ stplayer(newpp, enter_status)
  *	Return a random direction
  */
 int
-rand_dir()
+rand_dir(void)
 {
 	switch (rand_num(4)) {
 	  case 0:
@@ -374,21 +397,17 @@ rand_dir()
  * get_ident:
  *	Get the score structure of a player
  */
-IDENT *
-get_ident(machine, uid, name, team)
-	u_long	machine;
-	u_long	uid;
-	const char	*name;
-	char	team;
+static IDENT *
+get_ident(uint32_t machine, uint32_t uid, const char *name, char team)
 {
-	IDENT		*ip;
-	static IDENT	punt;
+	IDENT *ip;
+	static IDENT punt;
 
 	for (ip = Scores; ip != NULL; ip = ip->i_next)
-		if ((unsigned long)ip->i_machine == machine
-		&&  (unsigned long)ip->i_uid == uid
+		if (ip->i_machine == machine
+		&&  ip->i_uid == uid
 		&&  ip->i_team == team
-		&&  strncmp(ip->i_name, name, NAMELEN) == 0)
+		&&  strncmp(ip->i_name, name, WIRE_NAMELEN) == 0)
 			break;
 
 	if (ip != NULL) {
@@ -400,7 +419,7 @@ get_ident(machine, uid, name, team)
 		ip->i_score = ip->i_kills / (double) ip->i_entries;
 	}
 	else {
-		ip = (IDENT *) malloc(sizeof (IDENT));
+		ip = malloc(sizeof(*ip));
 		if (ip == NULL) {
 			/* Fourth down, time to punt */
 			ip = &punt;
@@ -408,7 +427,7 @@ get_ident(machine, uid, name, team)
 		ip->i_machine = machine;
 		ip->i_team = team;
 		ip->i_uid = uid;
-		strncpy(ip->i_name, name, NAMELEN);
+		strncpy(ip->i_name, name, sizeof(ip->i_name));
 		ip->i_kills = 0;
 		ip->i_entries = 1;
 		ip->i_score = 0;

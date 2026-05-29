@@ -1,4 +1,4 @@
-/*	$NetBSD: graphics.c,v 1.10 2003/08/07 09:36:54 agc Exp $	*/
+/*	$NetBSD: graphics.c,v 1.21 2021/05/02 12:50:43 rillig Exp $	*/
 
 /*-
  * Copyright (c) 1990, 1993
@@ -46,11 +46,20 @@
 #if 0
 static char sccsid[] = "@(#)graphics.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: graphics.c,v 1.10 2003/08/07 09:36:54 agc Exp $");
+__RCSID("$NetBSD: graphics.c,v 1.21 2021/05/02 12:50:43 rillig Exp $");
 #endif
 #endif /* not lint */
 
-#include "include.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <curses.h>
+#include <errno.h>
+#include <err.h>
+
+#include "def.h"
+#include "struct.h"
+#include "extern.h"
+#include "tunable.h"
 
 #define C_TOPBOTTOM		'-'
 #define C_LEFTRIGHT		'|'
@@ -60,10 +69,12 @@ __RCSID("$NetBSD: graphics.c,v 1.10 2003/08/07 09:36:54 agc Exp $");
 #define C_BEACON		'*'
 #define C_CREDIT		'*'
 
-WINDOW	*radar, *cleanradar, *credit, *input, *planes;
+static void draw_line(WINDOW *, int, int, int, int, const char *);
+
+static WINDOW *radar, *cleanradar, *credit, *input, *planes;
 
 int
-getAChar()
+getAChar(void)
 {
 	int c;
 
@@ -76,85 +87,95 @@ getAChar()
 }
 
 void
-erase_all()
+erase_all(void)
 {
 	PLANE	*pp;
 
 	for (pp = air.head; pp != NULL; pp = pp->next) {
-		wmove(cleanradar, pp->ypos, pp->xpos * 2);
-		wmove(radar, pp->ypos, pp->xpos * 2);
-		waddch(radar, winch(cleanradar));
-		wmove(cleanradar, pp->ypos, pp->xpos * 2 + 1);
-		wmove(radar, pp->ypos, pp->xpos * 2 + 1);
-		waddch(radar, winch(cleanradar));
+		(void)wmove(cleanradar, pp->ypos, pp->xpos * 2);
+		(void)wmove(radar, pp->ypos, pp->xpos * 2);
+		(void)waddch(radar, winch(cleanradar));
+		(void)wmove(cleanradar, pp->ypos, pp->xpos * 2 + 1);
+		(void)wmove(radar, pp->ypos, pp->xpos * 2 + 1);
+		(void)waddch(radar, winch(cleanradar));
 	}
 }
 
 void
-draw_all()
+draw_all(void)
 {
 	PLANE	*pp;
 
 	for (pp = air.head; pp != NULL; pp = pp->next) {
 		if (pp->status == S_MARKED)
-			wstandout(radar);
-		wmove(radar, pp->ypos, pp->xpos * 2);
-		waddch(radar, name(pp));
-		waddch(radar, '0' + pp->altitude);
+			(void)wstandout(radar);
+		(void)wmove(radar, pp->ypos, pp->xpos * 2);
+		(void)waddch(radar, name(pp));
+		(void)waddch(radar, '0' + pp->altitude);
 		if (pp->status == S_MARKED)
-			wstandend(radar);
+			(void)wstandend(radar);
 	}
-	wrefresh(radar);
-	planewin();
-	wrefresh(input);		/* return cursor */
-	fflush(stdout);
+	(void)wrefresh(radar);
+	(void)planewin();
+	(void)wrefresh(input);		/* return cursor */
+	(void)fflush(stdout);
 }
 
 void
-init_gr()
+init_gr(void)
 {
 	static char	buffer[BUFSIZ];
 
-	initscr();
+	if (!initscr())
+		errx(0, "couldn't initialize screen");
 	setbuf(stdout, buffer);
 	input = newwin(INPUT_LINES, COLS - PLANE_COLS, LINES - INPUT_LINES, 0);
-	credit = newwin(INPUT_LINES, PLANE_COLS, LINES - INPUT_LINES, 
+	credit = newwin(INPUT_LINES, PLANE_COLS, LINES - INPUT_LINES,
 		COLS - PLANE_COLS);
 	planes = newwin(LINES - INPUT_LINES, PLANE_COLS, 0, COLS - PLANE_COLS);
 }
 
 void
-setup_screen(scp)
-	const C_SCREEN	*scp;
+shutdown_gr(void)
+{
+	(void)clear();	/* move to top of screen */
+	(void)refresh();
+	(void)fflush(stdout);
+	(void)endwin();
+}
+
+void
+setup_screen(const C_SCREEN *scp)
 {
 	int	i, j;
+	unsigned iu;
 	char	str[3];
 	const char *airstr;
 
 	str[2] = '\0';
 
 	if (radar != NULL)
-		delwin(radar);
+		(void)delwin(radar);
 	radar = newwin(scp->height, scp->width * 2, 0, 0);
 
 	if (cleanradar != NULL)
-		delwin(cleanradar);
+		(void)delwin(cleanradar);
 	cleanradar = newwin(scp->height, scp->width * 2, 0, 0);
 
 	/* minus one here to prevent a scroll */
 	for (i = 0; i < PLANE_COLS - 1; i++) {
-		wmove(credit, 0, i);
-		waddch(credit, C_CREDIT);
-		wmove(credit, INPUT_LINES - 1, i);
-		waddch(credit, C_CREDIT);
+		(void)wmove(credit, 0, i);
+		(void)waddch(credit, C_CREDIT);
+		(void)wmove(credit, INPUT_LINES - 1, i);
+		(void)waddch(credit, C_CREDIT);
 	}
-	wmove(credit, INPUT_LINES / 2, 1);
-	waddstr(credit, AUTHOR_STR);
+	(void)wmove(credit, INPUT_LINES / 2, 1);
+	(void)waddstr(credit, AUTHOR_STR);
 
 	for (i = 1; i < scp->height - 1; i++) {
 		for (j = 1; j < scp->width - 1; j++) {
-			wmove(radar, i, j * 2);
-			waddch(radar, C_BACKROUND);
+			(void)wmove(radar, i, j * 2);
+			(void)waddch(radar, C_BACKROUND);
 		}
 	}
 
@@ -163,72 +184,69 @@ setup_screen(scp)
 	 * through beacons and exit points.
 	 */
 	str[0] = C_LINE;
-	for (i = 0; i < scp->num_lines; i++) {
+	for (iu = 0; iu < scp->num_lines; iu++) {
 		str[1] = ' ';
-		draw_line(radar, scp->line[i].p1.x, scp->line[i].p1.y,
-			scp->line[i].p2.x, scp->line[i].p2.y, str);
+		draw_line(radar, scp->line[iu].p1.x, scp->line[iu].p1.y,
+			scp->line[iu].p2.x, scp->line[iu].p2.y, str);
 	}
 
 	str[0] = C_TOPBOTTOM;
 	str[1] = C_TOPBOTTOM;
-	wmove(radar, 0, 0);
+	(void)wmove(radar, 0, 0);
 	for (i = 0; i < scp->width - 1; i++)
-		waddstr(radar, str);
-	waddch(radar, C_TOPBOTTOM);
+		(void)waddstr(radar, str);
+	(void)waddch(radar, C_TOPBOTTOM);
 
 	str[0] = C_TOPBOTTOM;
 	str[1] = C_TOPBOTTOM;
-	wmove(radar, scp->height - 1, 0);
+	(void)wmove(radar, scp->height - 1, 0);
 	for (i = 0; i < scp->width - 1; i++)
-		waddstr(radar, str);
-	waddch(radar, C_TOPBOTTOM);
+		(void)waddstr(radar, str);
+	(void)waddch(radar, C_TOPBOTTOM);
 
 	for (i = 1; i < scp->height - 1; i++) {
-		wmove(radar, i, 0);
-		waddch(radar, C_LEFTRIGHT);
-		wmove(radar, i, (scp->width - 1) * 2);
-		waddch(radar, C_LEFTRIGHT);
+		(void)wmove(radar, i, 0);
+		(void)waddch(radar, C_LEFTRIGHT);
+		(void)wmove(radar, i, (scp->width - 1) * 2);
+		(void)waddch(radar, C_LEFTRIGHT);
 	}
 
 	str[0] = C_BEACON;
-	for (i = 0; i < scp->num_beacons; i++) {
-		str[1] = '0' + i;
-		wmove(radar, scp->beacon[i].y, scp->beacon[i].x * 2);
-		waddstr(radar, str);
+	for (iu = 0; iu < scp->num_beacons; iu++) {
+		str[1] = '0' + iu;
+		(void)wmove(radar, scp->beacon[iu].y, scp->beacon[iu].x * 2);
+		(void)waddstr(radar, str);
 	}
 
-	for (i = 0; i < scp->num_exits; i++) {
-		wmove(radar, scp->exit[i].y, scp->exit[i].x * 2);
-		waddch(radar, '0' + i);
+	for (iu = 0; iu < scp->num_exits; iu++) {
+		(void)wmove(radar, scp->exit[iu].y, scp->exit[iu].x * 2);
+		(void)waddch(radar, '0' + iu);
 	}
 
 	airstr = "^?>?v?<?";
-	for (i = 0; i < scp->num_airports; i++) {
-		str[0] = airstr[scp->airport[i].dir];
-		str[1] = '0' + i;
-		wmove(radar, scp->airport[i].y, scp->airport[i].x * 2);
-		waddstr(radar, str);
+	for (iu = 0; iu < scp->num_airports; iu++) {
+		str[0] = airstr[scp->airport[iu].dir];
+		str[1] = '0' + iu;
+		(void)wmove(radar, scp->airport[iu].y, scp->airport[iu].x * 2);
+		(void)waddstr(radar, str);
 	}
-	
-	overwrite(radar, cleanradar);
-	wrefresh(radar);
-	wrefresh(credit);
-	fflush(stdout);
+
+	(void)overwrite(radar, cleanradar);
+	(void)wrefresh(radar);
+	(void)wrefresh(credit);
+	(void)fflush(stdout);
 }
 
-void
-draw_line(w, x, y, lx, ly, s)
-	WINDOW	*w;
-	int	 x, y, lx, ly;
-	const char	*s;
+static void
+draw_line(WINDOW *w, int x, int y, int lx, int ly, const char *s)
 {
 	int	dx, dy;
 
 	dx = SGN(lx - x);
 	dy = SGN(ly - y);
 	for (;;) {
-		wmove(w, y, x * 2);
-		waddstr(w, s);
+		(void)wmove(w, y, x * 2);
+		(void)waddstr(w, s);
 		if (x == lx && y == ly)
 			break;
 		x += dx;
@@ -237,205 +255,159 @@ draw_line(w, x, y, lx, ly, s)
 }
 
 void
-ioclrtoeol(pos)
-	int pos;
+ioclrtoeol(int pos)
 {
-	wmove(input, 0, pos);
-	wclrtoeol(input);
-	wrefresh(input);
-	fflush(stdout);
+	(void)wmove(input, 0, pos);
+	(void)wclrtoeol(input);
+	(void)wrefresh(input);
+	(void)fflush(stdout);
 }
 
 void
-iomove(pos)
-	int pos;
+iomove(int pos)
 {
-	wmove(input, 0, pos);
-	wrefresh(input);
-	fflush(stdout);
+	(void)wmove(input, 0, pos);
+	(void)wrefresh(input);
+	(void)fflush(stdout);
 }
 
 void
-ioaddstr(pos, str)
-	int	 pos;
-	const char	*str;
+ioaddstr(int pos, const char *str)
 {
-	wmove(input, 0, pos);
-	waddstr(input, str);
-	wrefresh(input);
-	fflush(stdout);
+	(void)wmove(input, 0, pos);
+	(void)waddstr(input, str);
+	(void)wrefresh(input);
+	(void)fflush(stdout);
 }
 
 void
-ioclrtobot()
+ioclrtobot(void)
 {
-	wclrtobot(input);
-	wrefresh(input);
-	fflush(stdout);
+	(void)wclrtobot(input);
+	(void)wrefresh(input);
+	(void)fflush(stdout);
 }
 
 void
-ioerror(pos, len, str)
-	int	 pos, len;
-	const char	*str;
+ioerror(int pos, int len, const char *str)
 {
 	int	i;
 
-	wmove(input, 1, pos);
+	(void)wmove(input, 1, pos);
 	for (i = 0; i < len; i++)
-		waddch(input, '^');
-	wmove(input, 2, 0);
-	waddstr(input, str);
-	wrefresh(input);
-	fflush(stdout);
+		(void)waddch(input, '^');
+	(void)wmove(input, 2, 0);
+	(void)waddstr(input, str);
+	(void)wrefresh(input);
+	(void)fflush(stdout);
 }
 
+static int ioquit_x, ioquit_y;
+
 void
-quit(dummy)
-	int dummy __attribute__((__unused__));
+ioaskquit(void)
 {
-	int			c, y, x;
-#ifdef BSD
-	struct itimerval	itv;
-#endif
-
-	getyx(input, y, x);
-	wmove(input, 2, 0);
-	waddstr(input, "Really quit? (y/n) ");
-	wclrtobot(input);
-	wrefresh(input);
-	fflush(stdout);
-
-	c = getchar();
-	if (c == EOF || c == 'y') {
-		/* disable timer */
-#ifdef BSD
-		itv.it_value.tv_sec = 0;
-		itv.it_value.tv_usec = 0;
-		setitimer(ITIMER_REAL, &itv, NULL);
-#endif
-#ifdef SYSV
-		alarm(0);
-#endif
-		fflush(stdout);
-		clear();
-		refresh();
-		endwin();
-		log_score(0);
-		exit(0);
-	}
-	wmove(input, 2, 0);
-	wclrtobot(input);
-	wmove(input, y, x);
-	wrefresh(input);
-	fflush(stdout);
+	getyx(input, ioquit_y, ioquit_x);
+	(void)wmove(input, 2, 0);
+	(void)waddstr(input, "Really quit? (y/n) ");
+	(void)wclrtobot(input);
+	(void)wrefresh(input);
+	(void)fflush(stdout);
 }
 
 void
-planewin()
+ionoquit(void)
+{
+	(void)wmove(input, 2, 0);
+	(void)wclrtobot(input);
+	(void)wmove(input, ioquit_y, ioquit_x);
+	(void)wrefresh(input);
+	(void)fflush(stdout);
+}
+
+void
+planewin(void)
 {
 	PLANE	*pp;
 	int	warning = 0;
 
 #ifdef BSD
-	werase(planes);
+	(void)wclear(planes);
 #endif
 
-	wmove(planes, 0,0);
+	(void)wmove(planes, 0,0);
 
 #ifdef SYSV
 	wclrtobot(planes);
 #endif
-	wprintw(planes, "Time: %-4d Safe: %d", clck, safe_planes);
-	wmove(planes, 2, 0);
+	(void)wprintw(planes, "Time: %-4d Safe: %d", clck, safe_planes);
+	(void)wmove(planes, 2, 0);
 
-	waddstr(planes, "pl dt  comm");
+	(void)waddstr(planes, "pl dt  comm");
 	for (pp = air.head; pp != NULL; pp = pp->next) {
 		if (waddch(planes, '\n') == ERR) {
 			warning++;
 			break;
 		}
-		waddstr(planes, command(pp));
+		(void)waddstr(planes, command(pp));
 	}
-	waddch(planes, '\n');
+	(void)waddch(planes, '\n');
 	for (pp = ground.head; pp != NULL; pp = pp->next) {
 		if (waddch(planes, '\n') == ERR) {
 			warning++;
 			break;
 		}
-		waddstr(planes, command(pp));
+		(void)waddstr(planes, command(pp));
 	}
 	if (warning) {
-		wmove(planes, LINES - INPUT_LINES - 1, 0);
-		waddstr(planes, "---- more ----");
-		wclrtoeol(planes);
+		(void)wmove(planes, LINES - INPUT_LINES - 1, 0);
+		(void)waddstr(planes, "---- more ----");
+		(void)wclrtoeol(planes);
 	}
-	wrefresh(planes);
-	fflush(stdout);
+	(void)wrefresh(planes);
+	(void)fflush(stdout);
 }
 
 void
-loser(p, s)
-	const PLANE	*p;
-	const char	*s;
+losermsg(const PLANE *p, const char *msg)
 {
-	int			c;
-#ifdef BSD
-	struct itimerval	itv;
-#endif
-
-	/* disable timer */
-#ifdef BSD
-	itv.it_value.tv_sec = 0;
-	itv.it_value.tv_usec = 0;
-	setitimer(ITIMER_REAL, &itv, NULL);
-#endif
-#ifdef SYSV
-	alarm(0);
-#endif
-
-	wmove(input, 0, 0);
-	wclrtobot(input);
+	(void)wmove(input, 0, 0);
+	(void)wclrtobot(input);
 	/* p may be NULL if we ran out of memory */
 	if (p == NULL)
-		wprintw(input, "%s\n\nHit space for top players list...", s);
-	else
-		wprintw(input, "Plane '%c' %s\n\nHit space for top players list...",
-			name(p), s);
-	wrefresh(input);
-	fflush(stdout);
-	while ((c = getchar()) != EOF && c != ' ')
-		;
-	clear();	/* move to top of screen */
-	refresh();
-	endwin();
-	log_score(0);
-	exit(0);
+		(void)wprintw(input, "%s\n\nHit space for top players list...",
+		    msg);
+	else {
+		(void)wprintw(input, "Plane '%c' %s\n\n", name(p), msg);
+		(void)wprintw(input, "Hit space for top players list...");
+	}
+	(void)wrefresh(input);
+	(void)fflush(stdout);
 }
 
 void
-redraw()
+redraw(void)
 {
-	clear();
-	refresh();
+	(void)clear();
+	(void)refresh();
 
-	touchwin(radar);
-	wrefresh(radar);
-	touchwin(planes);
-	wrefresh(planes);
-	touchwin(credit);
-	wrefresh(credit);
+	(void)touchwin(radar);
+	(void)wrefresh(radar);
+	(void)touchwin(planes);
+	(void)wrefresh(planes);
+	(void)touchwin(credit);
+	(void)wrefresh(credit);
 
 	/* refresh input last to get cursor in right place */
-	touchwin(input);
-	wrefresh(input);
-	fflush(stdout);
+	(void)touchwin(input);
+	(void)wrefresh(input);
+	(void)fflush(stdout);
 }
 
 void
-done_screen()
+done_screen(void)
 {
-	clear();
-	refresh();
-	endwin();	  /* clean up curses */
+	(void)clear();
+	(void)refresh();
+	(void)endwin();	  /* clean up curses */
 }

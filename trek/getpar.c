@@ -1,4 +1,4 @@
-/*	$NetBSD: getpar.c,v 1.12 2004/01/27 20:30:31 jsm Exp $	*/
+/*	$NetBSD: getpar.c,v 1.18 2009/08/12 08:54:54 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)getpar.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: getpar.c,v 1.12 2004/01/27 20:30:31 jsm Exp $");
+__RCSID("$NetBSD: getpar.c,v 1.18 2009/08/12 08:54:54 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -51,14 +51,12 @@ static int testterm(void);
  **/
 
 int
-getintpar(s)
-	const char	*s;
+getintpar(const char *s)
 {
 	int	i;
 	int		n;
 
-	while (1)
-	{
+	while (1) {
 		if (testnl() && s)
 			printf("%s: ", s);
 		i = scanf("%d", &n);
@@ -75,14 +73,13 @@ getintpar(s)
  **	get floating parameter
  **/
 
-double getfltpar(s)
-	const char	*s;
+double
+getfltpar(const char *s)
 {
 	int		i;
 	double			d;
 
-	while (1)
-	{
+	while (1) {
 		if (testnl() && s)
 			printf("%s: ", s);
 		i = scanf("%lf", &d);
@@ -99,16 +96,14 @@ double getfltpar(s)
  **	get yes/no parameter
  **/
 
-const struct cvntab	Yntab[] =
-{
+static const struct cvntab Yntab[] = {
 	{ "y",	"es",	(cmdfun)1,	1 },
 	{ "n",	"o",	(cmdfun)0,	0 },
 	{ NULL,	NULL,	NULL,		0 }
 };
 
 int
-getynpar(s)
-	const char	*s;
+getynpar(const char *s)
 {
 	const struct cvntab	*r;
 
@@ -121,9 +116,8 @@ getynpar(s)
  **	get coded parameter
  **/
 
-const struct cvntab *getcodpar(s, tab)
-	const char		*s;
-	const struct cvntab	tab[];
+const struct cvntab *
+getcodpar(const char *s, const struct cvntab tab[])
 {
 	char				input[100];
 	const struct cvntab		*r;
@@ -133,13 +127,14 @@ const struct cvntab *getcodpar(s, tab)
 	int				f;
 
 	flag = 0;
-	while (1)
-	{
+	while (1) {
 		flag |= (f = testnl());
 		if (flag)
 			printf("%s: ", s);
-		if (f)
-			cgetc(0);		/* throw out the newline */
+		if (f) {
+			/* throw out the newline */
+			getchar();
+		}
 		scanf("%*[ \t;]");
 		if ((c = scanf("%99[^ \t;\n]", input)) < 0)
 			exit(1);
@@ -148,12 +143,10 @@ const struct cvntab *getcodpar(s, tab)
 		flag = 1;
 
 		/* if command list, print four per line */
-		if (input[0] == '?' && input[1] == 0)
-		{
+		if (input[0] == '?' && input[1] == 0) {
 			c = 4;
-			for (r = tab; r->abrev; r++)
-			{
-				strcpy(input, r->abrev);
+			for (r = tab; r->abbrev; r++) {
+				strcpy(input, r->abbrev);
 				strcat(input, r->full);
 				printf("%14.14s", input);
 				if (--c > 0)
@@ -167,14 +160,12 @@ const struct cvntab *getcodpar(s, tab)
 		}
 
 		/* search for in table */
-		for (r = tab; r->abrev; r++)
-		{
+		for (r = tab; r->abbrev; r++) {
 			p = input;
-			for (q = r->abrev; *q; q++)
+			for (q = r->abbrev; *q; q++)
 				if (*p++ != *q)
 					break;
-			if (!*q)
-			{
+			if (!*q) {
 				for (q = r->full; *p && *q; q++, p++)
 					if (*p != *q)
 						break;
@@ -184,12 +175,10 @@ const struct cvntab *getcodpar(s, tab)
 		}
 
 		/* check for not found */
-		if (!r->abrev)
-		{
+		if (!r->abbrev) {
 			printf("invalid input; ? for valid inputs\n");
 			skiptonl(0);
-		}
-		else
+		} else
 			return (r);
 	}
 }
@@ -200,11 +189,7 @@ const struct cvntab *getcodpar(s, tab)
  **/
 
 void
-getstrpar(s, r, l, t)
-	const char	*s;
-	char	*r;
-	int	l;
-	const char	*t;
+getstrpar(const char *s, char *r, int l, const char *t)
 {
 	int	i;
 	char		format[20];
@@ -212,13 +197,12 @@ getstrpar(s, r, l, t)
 
 	if (t == 0)
 		t = " \t\n;";
-	(void)sprintf(format, "%%%d[^%s]", l, t);
-	while (1)
-	{
+	(void)snprintf(format, sizeof(format), "%%%d[^%s]", l, t);
+	while (1) {
 		if ((f = testnl()) && s)
 			printf("%s: ", s);
 		if (f)
-			cgetc(0);
+			getchar();
 		scanf("%*[\t ;]");
 		i = scanf(format, r);
 		if (i < 0)
@@ -234,18 +218,21 @@ getstrpar(s, r, l, t)
  **/
 
 int
-testnl()
+testnl(void)
 {
-	char		c;
+	int c;
 
-	while ((c = cgetc(0)) != '\n')
+	while ((c = getchar()) != '\n') {
+		if (c == EOF) {
+			exit(1);
+		}
 		if ((c >= '0' && c <= '9') || c == '.' || c == '!' ||
-				(c >= 'A' && c <= 'Z') ||
-				(c >= 'a' && c <= 'z') || c == '-')
-		{
+		    (c >= 'A' && c <= 'Z') ||
+		    (c >= 'a' && c <= 'z') || c == '-') {
 			ungetc(c, stdin);
 			return(0);
 		}
+	}
 	ungetc(c, stdin);
 	return (1);
 }
@@ -256,12 +243,14 @@ testnl()
  **/
 
 void
-skiptonl(c)
-int	c;
+skiptonl(int c)
 {
-	while (c != '\n')
-		if (!(c = cgetc(0)))
-			return;
+	while (c != '\n') {
+		c = getchar();
+		if (c == EOF) {
+			exit(1);
+		}
+	}
 	ungetc('\n', stdin);
 	return;
 }
@@ -272,12 +261,14 @@ int	c;
  **/
 
 static int
-testterm()
+testterm(void)
 {
-	char		c;
+	int c;
 
-	if (!(c = cgetc(0)))
-		return (1);
+	c = getchar();
+	if (c == EOF) {
+		exit(1);
+	}
 	if (c == '.')
 		return (0);
 	if (c == '\n' || c == ';')
@@ -295,19 +286,17 @@ testterm()
 */
 
 int
-readdelim(d)
-char	d;
+readdelim(int d)
 {
-	char	c;
+	int c;
 
-	while ((c = cgetc(0)) != '\0')
-	{
+	while ((c = getchar()) != EOF) {
 		if (c == d)
 			return (1);
 		if (c == ' ')
 			continue;
 		ungetc(c, stdin);
-		break;
+		return 0;
 	}
-	return (0);
+	exit(1);
 }

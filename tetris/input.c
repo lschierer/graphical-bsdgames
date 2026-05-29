@@ -1,4 +1,4 @@
-/*	$NetBSD: input.c,v 1.9 2003/08/07 09:37:47 agc Exp $	*/
+/*	$NetBSD: input.c,v 1.11 2009/05/25 04:33:53 dholland Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -72,8 +72,7 @@
  * Return 0 => no input, 1 => can read() from stdin
  */
 int
-rwait(tvp)
-	struct timeval *tvp;
+rwait(struct timeval *tvp)
 {
 	struct pollfd set[1];
 	struct timeval starttv, endtv;
@@ -100,8 +99,10 @@ again:
 		/* NOTREACHED */
 
 	case 0:	/* timed out */
-		tvp->tv_sec = 0;
-		tvp->tv_usec = 0;
+		if (tvp) {
+			tvp->tv_sec = 0;
+			tvp->tv_usec = 0;
+		}
 		return (0);
 	}
 	if (tvp) {
@@ -118,7 +119,7 @@ again:
  * Eat any input that might be available.
  */
 void
-tsleep()
+tsleep(void)
 {
 	struct timeval tv;
 	char c;
@@ -134,7 +135,7 @@ tsleep()
  * getchar with timeout.
  */
 int
-tgetchar()
+tgetchar(void)
 {
 	static struct timeval timeleft;
 	char c;

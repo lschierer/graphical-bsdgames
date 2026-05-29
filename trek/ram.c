@@ -1,4 +1,4 @@
-/*	$NetBSD: ram.c,v 1.5 2003/08/07 09:37:53 agc Exp $	*/
+/*	$NetBSD: ram.c,v 1.8 2009/05/24 22:55:03 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)ram.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: ram.c,v 1.5 2003/08/07 09:37:53 agc Exp $");
+__RCSID("$NetBSD: ram.c,v 1.8 2009/05/24 22:55:03 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -54,16 +54,14 @@ __RCSID("$NetBSD: ram.c,v 1.5 2003/08/07 09:37:53 agc Exp $");
 */
 
 void
-ram(ix, iy)
-int	ix, iy;
+ram(int ix, int iy)
 {
 	int		i;
 	char		c;
 
 	printf("\07RED ALERT\07: collision imminent\n");
 	c = Sect[ix][iy];
-	switch (c)
-	{
+	switch (c) {
 
 	  case KLINGON:
 		printf("%s rams Klingon at %d,%d\n", Ship.shipname, ix, iy);
@@ -74,7 +72,8 @@ int	ix, iy;
 	  case INHABIT:
 		printf("Yeoman Rand: Captain, isn't it getting hot in here?\n");
 		sleep(2);
-		printf("Spock: Hull temperature approaching 550 Degrees Kelvin.\n");
+		printf("Spock: Hull temperature approaching 550 Degrees "
+		       "Kelvin.\n");
 		lose(L_STAR);
 
 	  case BASE:
@@ -95,8 +94,7 @@ int	ix, iy;
 	printf("McCoy: Take it easy Jim; we had %d casualties.\n", i);
 
 	/* damage devices with an 80% probability */
-	for (i = 0; i < NDEV; i++)
-	{
+	for (i = 0; i < NDEV; i++) {
 		if (ranf(100) < 20)
 			continue;
 		damage(i, (2.5 * (franf() + franf()) + 1.0) * Param.damfac[i]);

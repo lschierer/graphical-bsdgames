@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.ioctl.c,v 1.7 2003/04/02 18:36:37 jsm Exp $	*/
+/*	$NetBSD: hack.ioctl.c,v 1.10 2011/08/06 20:42:43 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,7 +63,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.ioctl.c,v 1.7 2003/04/02 18:36:37 jsm Exp $");
+__RCSID("$NetBSD: hack.ioctl.c,v 1.10 2011/08/06 20:42:43 dholland Exp $");
 #endif				/* not lint */
 
 /*
@@ -74,16 +74,16 @@ __RCSID("$NetBSD: hack.ioctl.c,v 1.7 2003/04/02 18:36:37 jsm Exp $");
 #include <termios.h>
 #include "hack.h"
 #include "extern.h"
-struct termios  termios;
+static struct termios termios;
 
 void
-getioctls()
+getioctls(void)
 {
 	(void) tcgetattr(fileno(stdin), &termios);
 }
 
 void
-setioctls()
+setioctls(void)
 {
 	(void) tcsetattr(fileno(stdin), TCSADRAIN, &termios);
 }
@@ -91,11 +91,11 @@ setioctls()
 #ifdef SUSPEND			/* implies BSD */
 #include	<signal.h>
 int
-dosuspend()
+dosuspend(void)
 {
 #ifdef SIGTSTP
 	if (signal(SIGTSTP, SIG_IGN) == SIG_DFL) {
-		settty((char *) 0);
+		settty(NULL);
 		(void) signal(SIGTSTP, SIG_DFL);
 		(void) kill(0, SIGTSTP);
 		gettty();

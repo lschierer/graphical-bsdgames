@@ -1,4 +1,4 @@
-/*	$NetBSD: move.c,v 1.15 2004/11/05 21:30:32 dsl Exp $	*/
+/*	$NetBSD: move.c,v 1.19 2019/02/03 03:19:25 mrg Exp $	*/
 
 /*
  * Copyright (c) 1983, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)move.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: move.c,v 1.15 2004/11/05 21:30:32 dsl Exp $");
+__RCSID("$NetBSD: move.c,v 1.19 2019/02/03 03:19:25 mrg Exp $");
 #endif
 #endif /* not lint */
 
@@ -56,8 +56,13 @@ __RCSID("$NetBSD: move.c,v 1.15 2004/11/05 21:30:32 dsl Exp $");
 #undef	CTRL
 #define	CTRL(c)		(c - 'A' + 1)
 
+static void check_go(void);
+static int playcard(PLAY *);
+static void getmove(void);
+static int haspicked(const PLAY *);
+
 void
-domove()
+domove(void)
 {
 	PLAY	*pp;
 	int	i, j;
@@ -167,8 +172,8 @@ acc:
  *	Check and see if either side can go.  If they cannot,
  * the game is over
  */
-void
-check_go()
+static void
+check_go(void)
 {
 	CARD	card;
 	PLAY	*pp, *op;
@@ -198,9 +203,8 @@ check_go()
 	Finished = TRUE;
 }
 
-int
-playcard(pp)
-	PLAY	*pp;
+static int
+playcard(PLAY *pp)
 {
 	int	v;
 	CARD	card;
@@ -228,12 +232,15 @@ mustpick:
 	  case C_200:
 		if (pp->nummiles[C_200] == 2)
 			return error("only two 200's per hand");
+		/* FALLTHROUGH */
 	  case C_100:	case C_75:
 		if (pp->speed == C_LIMIT)
 			return error("limit of 50");
+		/* FALLTHROUGH */
 	  case C_50:
 		if (pp->mileage + Value[card] > End)
 			return error("puts you over %d", End);
+		/* FALLTHROUGH */
 	  case C_25:
 		if (!pp->can_go)
 			return error("cannot move now");
@@ -348,8 +355,8 @@ protected:
 	return TRUE;
 }
 
-void
-getmove()
+static void
+getmove(void)
 {
 	char	c;
 #ifdef EXTRAP
@@ -465,7 +472,7 @@ over:
 				leaveok(Board, TRUE);
 				if ((outf = fopen(buf, "w")) == NULL)
 					warn("%s", buf);
-				setbuf(outf, (char *)NULL);
+				setbuf(outf, NULL);
 			}
 			Debug = !Debug;
 			break;
@@ -482,9 +489,8 @@ ret:
 /*
  * return whether or not the player has picked
  */
-int
-haspicked(pp)
-	const PLAY	*pp;
+static int
+haspicked(const PLAY *pp)
 {
 	int	card;
 
@@ -503,8 +509,7 @@ haspicked(pp)
 }
 
 void
-account(card)
-	CARD	card; 
+account(CARD card)
 {
 	CARD	oppos;
 
@@ -529,8 +534,7 @@ account(card)
 }
 
 void
-prompt(promptno)
-	int	promptno;
+prompt(int promptno)
 {
 	static const char	*const names[] = {
 				">>:Move:",
@@ -561,8 +565,7 @@ prompt(promptno)
 }
 
 void
-sort(hand)
-	CARD	*hand;
+sort(CARD *hand)
 {
 	CARD	*cp, *tp;
 	CARD	temp;

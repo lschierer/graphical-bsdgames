@@ -1,4 +1,4 @@
-.\"	$NetBSD: trekmanual.nr,v 1.3 2001/06/12 15:17:12 wiz Exp $
+.\"	$NetBSD: trekmanual.nr,v 1.5 2022/04/16 18:15:20 andvar Exp $
 .br
 .po 10
 .if n \!.
@@ -654,7 +654,7 @@ except that "..." means
 that you don't yet know what is there,
 and ".1." means that you know that a starbase
 exists, but you don't know anything else.
-"$$$" mans the quadrant
+"$$$" means the quadrant
 that you are currently in.
 .qq
 trajectory -- prints the course and distance
@@ -675,7 +675,7 @@ and starsystems.
 .pp
 More than one request may be stated
 on a line
-by seperating them
+by separating them
 with semicolons.
 .bl "Dock at Starbase"
 Mnemonic: dock

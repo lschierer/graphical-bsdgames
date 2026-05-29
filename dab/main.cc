@@ -1,4 +1,4 @@
-/*	$NetBSD: main.cc,v 1.2 2003/12/28 17:53:48 thorpej Exp $	*/
+/*	$NetBSD: main.cc,v 1.7 2021/12/05 09:22:45 rillig Exp $	*/
 
 /*-
  * Copyright (c) 2003 The NetBSD Foundation, Inc.
@@ -15,13 +15,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -37,12 +30,13 @@
  */
 
 /*
- * main.C: Main dots program
+ * Main dots program
  */
-#include "defs.h"
-RCSID("$NetBSD: main.cc,v 1.2 2003/12/28 17:53:48 thorpej Exp $")
 
-#include <iostream>
+#include "defs.h"
+RCSID("$NetBSD: main.cc,v 1.7 2021/12/05 09:22:45 rillig Exp $")
+
+#include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,6 +46,8 @@ RCSID("$NetBSD: main.cc,v 1.2 2003/12/28 17:53:48 thorpej Exp $")
 #include "human.h"
 #include "ttyscrn.h"
 
+GAMESCREEN *sc;
+
 // Print the command line usage
 static void usage(char* pname)
 {
@@ -60,8 +56,8 @@ static void usage(char* pname)
 	p++;
     else
 	p = pname;
-    std::cerr << "Usage: " << p
-	<< " [-w] [-p <c|h><c|h>] [-n <ngames>] [<ydim> [<xdim>]]" << std::endl;
+    (void)::fprintf(stderr,
+	"Usage: %s [-w] [-p <c|h><c|h>] [-n <ngames>] [<ydim> [<xdim>]]\n", p);
 }
 
 // Play a single game
@@ -173,7 +169,7 @@ int main(int argc, char** argv)
 	}
     }
 
-    GAMESCREEN *sc = TTYSCRN::create(acs, ny, nx);
+    sc = TTYSCRN::create(acs, &ny, &nx);
     if (sc == NULL)
 	::errx(1, "Dimensions too large for current screen.");
 

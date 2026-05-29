@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.mkshop.c,v 1.8 2003/04/02 18:36:38 jsm Exp $	*/
+/*	$NetBSD: hack.mkshop.c,v 1.11 2011/08/07 06:03:45 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,7 +63,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.mkshop.c,v 1.8 2003/04/02 18:36:38 jsm Exp $");
+__RCSID("$NetBSD: hack.mkshop.c,v 1.11 2011/08/07 06:03:45 dholland Exp $");
 #endif				/* not lint */
 
 #include <stdlib.h>
@@ -72,11 +72,22 @@ __RCSID("$NetBSD: hack.mkshop.c,v 1.8 2003/04/02 18:36:38 jsm Exp $");
 #include "extern.h"
 #include "def.mkroom.h"
 #include "def.eshk.h"
+
 #define	ESHK	((struct eshk *)(&(shk->mextra[0])))
-const schar shprobs[] = {3, 3, 5, 5, 10, 10, 14, 50}; /* their probabilities */
+
+/* their probabilities */
+static const schar shprobs[] = {3, 3, 5, 5, 10, 10, 14, 50};
+
+static const struct permonst *morguemon(void);
+static int nexttodoor(int, int);
+static int has_dnstairs(struct mkroom *);
+static int has_upstairs(struct mkroom *);
+static int isbig(struct mkroom *);
+static int dist2(int, int, int, int);
+static int sq(int);
 
 void
-mkshop()
+mkshop(void)
 {
 	struct mkroom  *sroom;
 	int             sh, sx, sy, i = -1;
@@ -177,7 +188,7 @@ gottype:
 		return;
 	shk->isshk = shk->mpeaceful = 1;
 	shk->msleep = 0;
-	shk->mtrapseen = ~0;	/* we know all the traps already */
+	shk->mtrapseen = ~0U;	/* we know all the traps already */
 	ESHK->shoproom = roomno;
 	ESHK->shoplevel = dlevel;
 	ESHK->shd = doors[sh];
@@ -209,8 +220,7 @@ gottype:
 }
 
 void
-mkzoo(type)
-	int             type;
+mkzoo(int type)
 {
 	struct mkroom  *sroom;
 	struct monst   *mon;
@@ -274,8 +284,8 @@ mkzoo(type)
 		}
 }
 
-const struct permonst *
-morguemon()
+static const struct permonst *
+morguemon(void)
 {
 	int             i = rn2(100), hd = rn2(dlevel);
 
@@ -287,7 +297,7 @@ morguemon()
 }
 
 void
-mkswamp()
+mkswamp(void)
 {				/* Michiel Huisjes & Fred de Wilde */
 	struct mkroom  *sroom;
 	int             sx, sy, i, eelct = 0;
@@ -314,9 +324,8 @@ mkswamp()
 	}
 }
 
-int
-nexttodoor(sx, sy)
-	int sx, sy;
+static int
+nexttodoor(int sx, int sy)
 {
 	int		dx, dy;
 	struct rm      *lev;
@@ -328,40 +337,35 @@ nexttodoor(sx, sy)
 	return (0);
 }
 
-int
-has_dnstairs(sroom)
-	struct mkroom  *sroom;
+static int
+has_dnstairs(struct mkroom *sroom)
 {
 	return (sroom->lx <= xdnstair && xdnstair <= sroom->hx &&
 		sroom->ly <= ydnstair && ydnstair <= sroom->hy);
 }
 
-int
-has_upstairs(sroom)
-	struct mkroom  *sroom;
+static int
+has_upstairs(struct mkroom *sroom)
 {
 	return (sroom->lx <= xupstair && xupstair <= sroom->hx &&
 		sroom->ly <= yupstair && yupstair <= sroom->hy);
 }
 
-int
-isbig(sroom)
-	struct mkroom  *sroom;
+static int
+isbig(struct mkroom *sroom)
 {
 	int             area = (sroom->hx - sroom->lx) * (sroom->hy - sroom->ly);
 	return (area > 20);
 }
 
-int
-dist2(x0, y0, x1, y1)
-	int x0, y0, x1, y1;
+static int
+dist2(int x0, int y0, int x1, int y1)
 {
 	return ((x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1));
 }
 
-int
-sq(a)
-	int             a;
+static int
+sq(int a)
 {
 	return (a * a);
 }

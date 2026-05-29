@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.c,v 1.6 2003/04/02 18:36:35 jsm Exp $	*/
+/*	$NetBSD: hack.c,v 1.12 2021/05/02 12:50:44 rillig Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,18 +63,21 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.c,v 1.6 2003/04/02 18:36:35 jsm Exp $");
+__RCSID("$NetBSD: hack.c,v 1.12 2021/05/02 12:50:44 rillig Exp $");
 #endif				/* not lint */
 
 #include "hack.h"
 #include "extern.h"
+
+static void movobj(struct obj *, int, int);
+static int inv_cnt(void);
 
 /*
  * called on movement: 1. when throwing ball+chain far away 2. when
  * teleporting 3. when walking out of a lit room
  */
 void
-unsee()
+unsee(void)
 {
 	int x, y;
 	struct rm *lev;
@@ -110,10 +113,11 @@ unsee()
  * hack.do.c:  seeoff(1) - go up or down the stairs in hack.trap.c:seeoff(1)
  * - fall through trapdoor
  */
+/* mode: */
+	/* 1 to redo @, 0 to leave them *//* 1 means
+	 * misc movement, 0 means blindness */
 void
-seeoff(mode)
-	int mode;		/* 1 to redo @, 0 to leave them *//* 1 means
-				 * misc movement, 0 means blindness */
+seeoff(int mode)
 {
 	int x, y;
 	struct rm *lev;
@@ -140,7 +144,7 @@ seeoff(mode)
 }
 
 void
-domove()
+domove(void)
 {
 	xchar           oldx, oldy;
 	struct monst *mtmp = NULL;
@@ -380,10 +384,8 @@ nodrag:	;
 		read_engr_at(u.ux, u.uy);
 }
 
-void
-movobj(obj, ox, oy)
-	struct obj *obj;
-	int    ox, oy;
+static void
+movobj(struct obj *obj, int ox, int oy)
 {
 	/* Some dirty programming to get display right */
 	freeobj(obj);
@@ -395,7 +397,7 @@ movobj(obj, ox, oy)
 }
 
 int
-dopickup()
+dopickup(void)
 {
 	if (!g_at(u.ux, u.uy) && !o_at(u.ux, u.uy)) {
 		pline("There is nothing here to pick up.");
@@ -457,7 +459,7 @@ pickup(int all)
 
 				pline("Pick up %s ? [ynaq]", doname(obj));
 				while (!strchr("ynaq ", (c = readchar())))
-					bell();
+					sound_bell();
 				if (c == 'q')
 					return;
 				if (c == 'n')
@@ -527,7 +529,7 @@ pickup(int all)
 			}
 	lift_some:
 			if (inv_cnt() >= 52) {
-				pline("Your knapsack cannot accomodate anymore items.");
+				pline("Your knapsack cannot accommodate anymore items.");
 				break;
 			}
 			if (wt > -5)
@@ -559,7 +561,7 @@ pickup(int all)
 /* turn around a corner if that is the only way we can proceed */
 /* do not turn left or right twice */
 void
-lookaround()
+lookaround(void)
 {
 	int    x, y, i, x0 = 0, y0 = 0, m0 = 0, i0 = 9;
 	int    corrct = 0, noturn = 0;
@@ -598,7 +600,7 @@ lookaround()
 					break;
 				if (flags.run != 1)
 					goto stop;
-				/* fall into next case */
+				/* FALLTHROUGH */
 			case CORR_SYM:
 		corr:
 				if (flags.run == 1 || flags.run == 3) {
@@ -670,7 +672,7 @@ lookaround()
 /* something like lookaround, but we are not running */
 /* react only to monsters that might hit us */
 int
-monster_nearby()
+monster_nearby(void)
 {
 	int    x, y;
 	struct monst *mtmp;
@@ -690,8 +692,7 @@ monster_nearby()
 
 #ifdef QUEST
 int
-cansee(x, y)
-	xchar           x, y;
+cansee(xchar x, xchar y)
 {
 	int    dx, dy, adx, ady, sdx, sdy, dmax, d;
 	if (Blind)
@@ -735,8 +736,7 @@ cansee(x, y)
 }
 
 int
-rroom(x, y)
-	int    x, y;
+rroom(int x, int y)
 {
 	return (IS_ROOM(levl[u.ux + x][u.uy + y].typ));
 }
@@ -744,8 +744,7 @@ rroom(x, y)
 #else
 
 int
-cansee(x, y)
-	xchar           x, y;
+cansee(xchar x, xchar y)
 {
 	if (Blind || u.uswallow)
 		return (0);
@@ -759,15 +758,14 @@ cansee(x, y)
 #endif	/* QUEST */
 
 int
-sgn(a)
-	int    a;
+sgn(int a)
 {
 	return ((a > 0) ? 1 : (a == 0) ? 0 : -1);
 }
 
 #ifdef QUEST
 void
-setsee()
+setsee(void)
 {
 	int	x, y;
 
@@ -785,7 +783,7 @@ setsee()
 #else
 
 void
-setsee()
+setsee(void)
 {
 	int x, y;
 
@@ -828,8 +826,7 @@ setsee()
 #endif	/* QUEST */
 
 void
-nomul(nval)
-	int nval;
+nomul(int nval)
 {
 	if (multi < 0)
 		return;
@@ -838,7 +835,7 @@ nomul(nval)
 }
 
 int
-abon()
+abon(void)
 {
 	if (u.ustr == 3)
 		return (-3);
@@ -857,7 +854,7 @@ abon()
 }
 
 int
-dbon()
+dbon(void)
 {
 	if (u.ustr < 6)
 		return (-1);
@@ -877,9 +874,10 @@ dbon()
 		return (6);
 }
 
+/* may kill you; cause may be poison or */
+/* monster like 'A' */
 void
-losestr(num)			/* may kill you; cause may be poison or */
-	int num;		/* monster like 'A' */
+losestr(int num)
 {
 	u.ustr -= num;
 	while (u.ustr < 3) {
@@ -891,9 +889,7 @@ losestr(num)			/* may kill you; cause may be poison or */
 }
 
 void
-losehp(n, knam)
-	int n;
-	const char  *knam;
+losehp(int n, const char *knam)
 {
 	u.uhp -= n;
 	if (u.uhp > u.uhpmax)
@@ -906,9 +902,7 @@ losehp(n, knam)
 }
 
 void
-losehp_m(n, mtmp)
-	int n;
-	struct monst *mtmp;
+losehp_m(int n, struct monst *mtmp)
 {
 	u.uhp -= n;
 	flags.botl = 1;
@@ -917,7 +911,7 @@ losehp_m(n, mtmp)
 }
 
 void
-losexp()
+losexp(void)
 {				/* hit by V or W */
 	int num;
 
@@ -933,7 +927,7 @@ losexp()
 }
 
 int
-inv_weight()
+inv_weight(void)
 {
 	struct obj *otmp = invent;
 	int    wt = (u.ugold + 500) / 1000;
@@ -956,8 +950,8 @@ inv_weight()
 	return (wt - carrcap);
 }
 
-int
-inv_cnt()
+static int
+inv_cnt(void)
 {
 	struct obj *otmp = invent;
 	int    ct = 0;
@@ -969,7 +963,7 @@ inv_cnt()
 }
 
 long
-newuexp()
+newuexp(void)
 {
 	return (10 * (1L << (u.ulevel - 1)));
 }

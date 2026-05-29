@@ -1,4 +1,4 @@
-/*	$NetBSD: klmove.c,v 1.5 2003/08/07 09:37:52 agc Exp $	*/
+/*	$NetBSD: klmove.c,v 1.9 2009/05/24 22:55:03 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)klmove.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: klmove.c,v 1.5 2003/08/07 09:37:52 agc Exp $");
+__RCSID("$NetBSD: klmove.c,v 1.9 2009/05/24 22:55:03 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -65,8 +65,7 @@ __RCSID("$NetBSD: klmove.c,v 1.5 2003/08/07 09:37:52 agc Exp $");
 */
 
 void
-klmove(fl)
-int	fl;
+klmove(int fl)
 {
 	int			n;
 	struct kling	*k;
@@ -79,12 +78,11 @@ int	fl;
 	double			bigger;
 	int			i;
 
-#	ifdef xTRACE
+#ifdef xTRACE
 	if (Trace)
 		printf("klmove: fl = %d, Etc.nkling = %d\n", fl, Etc.nkling);
-#	endif
-	for (n = 0; n < Etc.nkling; n++)
-	{
+#endif
+	for (n = 0; n < Etc.nkling; n++) {
 		k = &Etc.klingon[n];
 		i = 100;
 		if (fl)
@@ -104,8 +102,7 @@ int	fl;
 			bigger = 1.0;
 		dx = dx / bigger + 0.5;
 		dy = dy / bigger + 0.5;
-		if (motion < 0)
-		{
+		if (motion < 0) {
 			motion = -motion;
 			dx = -dx;
 			dy = -dy;
@@ -114,12 +111,11 @@ int	fl;
 		/* try to move the klingon */
 		nextx = k->x;
 		nexty = k->y;
-		for (; motion > 0; motion--)
-		{
+		for (; motion > 0; motion--) {
 			lookx = nextx + dx;
 			looky = nexty + dy;
-			if (lookx < 0 || lookx >= NSECTS || looky < 0 || looky >= NSECTS)
-			{
+			if (lookx < 0 || lookx >= NSECTS ||
+			    looky < 0 || looky >= NSECTS) {
 				/* new quadrant */
 				qx = Ship.quadx;
 				qy = Ship.quady;
@@ -133,19 +129,23 @@ int	fl;
 				else
 					if (looky >= NSECTS)
 						qy += 1;
-				if (qx < 0 || qx >= NQUADS || qy < 0 || qy >= NQUADS ||
-						Quad[qx][qy].stars < 0 || Quad[qx][qy].klings > MAXKLQUAD - 1)
+				if (qx < 0 || qx >= NQUADS ||
+				    qy < 0 || qy >= NQUADS ||
+				    Quad[qx][qy].stars < 0 ||
+				    Quad[qx][qy].klings > MAXKLQUAD - 1)
 					break;
-				if (!damaged(SRSCAN))
-				{
-					printf("Klingon at %d,%d escapes to quadrant %d,%d\n",
+				if (!damaged(SRSCAN)) {
+					printf("Klingon at %d,%d escapes to "
+					       "quadrant %d,%d\n",
 						k->x, k->y, qx, qy);
 					motion = Quad[qx][qy].scanned;
 					if (motion >= 0 && motion < 1000)
 						Quad[qx][qy].scanned += 100;
-					motion = Quad[Ship.quadx][Ship.quady].scanned;
+					motion = Quad[Ship.quadx][Ship.quady]
+						.scanned;
 					if (motion >= 0 && motion < 1000)
-						Quad[Ship.quadx][Ship.quady].scanned -= 100;
+						Quad[Ship.quadx][Ship.quady]
+							.scanned -= 100;
 				}
 				Sect[k->x][k->y] = EMPTY;
 				Quad[qx][qy].klings += 1;
@@ -155,17 +155,15 @@ int	fl;
 				k = 0;
 				break;
 			}
-			if (Sect[lookx][looky] != EMPTY)
-			{
+			if (Sect[lookx][looky] != EMPTY) {
 				lookx = nextx + fudgex;
 				if (lookx < 0 || lookx >= NSECTS)
 					lookx = nextx + dx;
-				if (Sect[lookx][looky] != EMPTY)
-				{
+				if (Sect[lookx][looky] != EMPTY) {
 					fudgex = -fudgex;
 					looky = nexty + fudgey;
-					if (looky < 0 || looky >= NSECTS || Sect[lookx][looky] != EMPTY)
-					{
+					if (looky < 0 || looky >= NSECTS ||
+					    Sect[lookx][looky] != EMPTY) {
 						fudgey = -fudgey;
 						break;
 					}
@@ -174,8 +172,7 @@ int	fl;
 			nextx = lookx;
 			nexty = looky;
 		}
-		if (k && (k->x != nextx || k->y != nexty))
-		{
+		if (k && (k->x != nextx || k->y != nexty)) {
 			if (!damaged(SRSCAN))
 				printf("Klingon at %d,%d moves to %d,%d\n",
 					k->x, k->y, nextx, nexty);

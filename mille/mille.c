@@ -1,4 +1,4 @@
-/*	$NetBSD: mille.c,v 1.13 2003/08/07 09:37:25 agc Exp $	*/
+/*	$NetBSD: mille.c,v 1.20 2011/08/31 16:24:56 plunky Exp $	*/
 
 /*
  * Copyright (c) 1982, 1993
@@ -31,38 +31,37 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1982, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1982, 1993\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)mille.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: mille.c,v 1.13 2003/08/07 09:37:25 agc Exp $");
+__RCSID("$NetBSD: mille.c,v 1.20 2011/08/31 16:24:56 plunky Exp $");
 #endif
 #endif /* not lint */
 
-# include	"mille.h"
-# include	<signal.h>
+#include <time.h>
+#include "mille.h"
+#include <signal.h>
 
 /*
  * @(#)mille.c	1.3 (Berkeley) 5/10/83
  */
 
 int
-main(ac, av)
-	int	ac;
-	char	*av[];
+main(int ac, char *av[])
 {
 	bool	restore;
 
 	/* Revoke setgid privileges */
-	setregid(getgid(), getgid());
+	setgid(getgid());
 
 	if (strcmp(av[0], "a.out") == 0) {
 		outf = fopen("q", "w");
-		setbuf(outf, (char *)NULL);
+		setbuf(outf, NULL);
 		Debug = TRUE;
 	}
 	restore = FALSE;
@@ -78,7 +77,8 @@ main(ac, av)
 		/* NOTREACHED */
 	}
 	Play = PLAYER;
-	initscr();
+	if (!initscr())
+		errx(0, "couldn't initialize screen");
 	delwin(stdscr);
 	stdscr = Board = newwin(BOARD_Y, BOARD_X, 0, 0);
 	Score = newwin(SCORE_Y, SCORE_X, 0, 40);
@@ -91,11 +91,11 @@ main(ac, av)
 	leaveok(Score, TRUE);
 	leaveok(Miles, TRUE);
 	clearok(curscr, TRUE);
-# ifndef PROF
-	srandom(getpid());
-# else
+#ifndef PROF
+	srandom((long) time(NULL));
+#else
 	srandom(0);
-# endif
+#endif
 	cbreak();
 	noecho();
 	signal(SIGINT, rub);
@@ -138,8 +138,7 @@ main(ac, av)
  * quit.
  */
 void
-rub(dummy)
-	int dummy __attribute__((__unused__));
+rub(int dummy __unused)
 {
 	(void)signal(SIGINT, SIG_IGN);
 	if (getyn(REALLYPROMPT))
@@ -151,8 +150,7 @@ rub(dummy)
  *	Time to go beddy-by
  */
 void
-die(code)
-	int code;
+die(int code)
 {
 
 	(void)signal(SIGINT, SIG_IGN);

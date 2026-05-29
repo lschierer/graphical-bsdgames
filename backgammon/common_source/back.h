@@ -1,4 +1,4 @@
-/*	$NetBSD: back.h,v 1.14 2004/01/27 20:30:28 jsm Exp $	*/
+/*	$NetBSD: back.h,v 1.24 2024/08/22 20:46:40 rillig Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -43,10 +43,25 @@
 #include <termcap.h>
 #include <unistd.h>
 
-#define rnum(r)	(random()%r)
+#define rnum(r)	((int)(random()%r))
 #define D0	dice[0]
 #define D1	dice[1]
-#define swap	{D0 ^= D1; D1 ^= D0; D0 ^= D1; d0 = 1-d0;}
+#define mswap(m) { \
+	(m)->D0 ^= (m)->D1;  \
+	(m)->D1 ^= (m)->D0;  \
+	(m)->D0 ^= (m)->D1;  \
+	(m)->d0 = 1-(m)->d0; \
+}
+
+struct move {
+	int	dice[2];	/* value of dice */
+	int	mvlim;		/* 'move limit':  max. number of moves */
+	int	p[5];		/* starting position of moves */
+	int	g[5];		/* ending position of moves (goals) */
+	int	h[4];		/* flag for each move if a man was hit */
+	int	d0;		/* flag if dice have been reversed from
+				   original position */
+};
 
 /*
  *
@@ -56,7 +71,7 @@
  *	Numeric values which are one color or the other use
  *	-1 for white, 1 for red.
  *	Hence, white will be negative values, red positive one.
- *	This makes a lot of sense since white is going in decending
+ *	This makes a lot of sense since white is going in descending
  *	order around the board, and red is ascending.
  *
  */
@@ -83,20 +98,12 @@ extern	int	rfl;		/* saved value of rflag */
 extern	int	iroll;		/* special flag for inputting rolls */
 extern	int	board[26];	/* board:  negative values are white,
 				   positive are red */
-extern	int	dice[2];	/* value of dice */
-extern	int	mvlim;		/* 'move limit':  max. number of moves */
-extern	int	mvl;		/* working copy of mvlim */
-extern	int	p[5];		/* starting position of moves */
-extern	int	g[5];		/* ending position of moves (goals) */
-extern	int	h[4];		/* flag for each move if a man was hit */
 extern	int	cturn;		/* whose turn it currently is:
 					-1 = white
 					 1 = red
 					 0 = just quitted
 					-2 = white just lost
 					 2 = red just lost */
-extern	int	d0;		/* flag if dice have been reversed from
-				   original position */
 extern	int	table[6][6];	/* odds table for possible rolls */
 extern	int	rscore;		/* red's score */
 extern	int	wscore;		/* white's score */
@@ -119,10 +126,12 @@ extern	char	cin[100];	/* input line of current move
 extern	const char	*const color[];
 				/* colors as strings */
 extern	const char	*const *colorptr;	/* color of current player */
-extern	const char	*const *Colorptr;	/* color of current player, capitalized */
+extern	const char	*const *Colorptr;	/* ditto, capitalized */
 extern	int	colen;		/* length of color of current player */
 
-extern	struct termios	old, noech, bg_raw;/* original tty status */
+extern int buffnum;
+
+extern	struct termios	old, noech, raw;/* original tty status */
 
 extern	int	curr;		/* row position of cursor */
 extern	int	curc;		/* column position of cursor */
@@ -130,56 +139,48 @@ extern	int	begscr;		/* 'beginning' of screen
 				   (not including board) */
 
 int	addbuf(int);
-void	backone(int);
-void	bsect(int, int, int, int);
+void	backone(struct move *, int);
 void	buflush(void);
 int	canhit(int, int);
-int	checkd(int);
-int	checkmove(int);
+int	checkmove(struct move *, int);
 void	clear(void);
 void	clend(void);
 void	cline(void);
 int	count(void);
 void	curmove(int, int);
-int	dotable(char, int);
-void	errexit(const char *) __attribute__((__noreturn__));
+void	errexit(const char *) __dead;
 void	fancyc(int);
 void	fboard(void);
-void	fixcol(int, int, int, int, int);
-void	fixpos(int, int, int, int, int);
 void	fixtty(struct termios *);
-void	getarg(char ***);
+void	getarg(struct move *, char ***);
 int	getcaps(const char *);
-void	getmove(void);
-void	getout(int) __attribute__((__noreturn__));
+void	getmove(struct move *);
+void	getout(int) __dead;
 void	gwrite(void);
 void	init(void);
-int	last(void);
 int	main(int, char *[]);
-int	makmove(int);
-int	movallow(void);
-void	movback(int);
-void	moverr(int);
-int	movokay(int);
-void	newline(void);
+int	makmove(struct move *, int);
+int	movallow(struct move *);
+void	movback(struct move *, int);
+void	moverr(struct move *, int);
+int	movokay(struct move *, int);
 void	newpos(void);
 void	nexturn(void);
-void	norec(const char *) __attribute__((__noreturn__));
 void	odds(int, int, int);
-void	proll(void);
-int	quit(void);
+void	proll(struct move *);
+int	quit(struct move *);
 int	readc(void);
-void	recover(const char *);
+void	recover(struct move *, const char *);
 void	refresh(void);
-void	roll(void);
-int	rsetbrd(void);
-void	save(int);
-int	text(const char *const *);
+void	roll(struct move *);
+void	save(struct move *, int);
+int	wrtext(const char *const *);
 void	wrboard(void);
-void	wrbsub(void);
 void	wrhit(int);
 void	wrint(int);
-void	writec(char);
+void	writec(int);
 void	writel(const char *);
 void	wrscore(void);
-int	yorn(char);
+int	yorn(int);
+
+void move_init(struct move *);

@@ -1,4 +1,4 @@
-/*	$NetBSD: box.cc,v 1.1 2003/12/27 01:16:55 christos Exp $	*/
+/*	$NetBSD: box.cc,v 1.4 2021/12/05 09:22:45 rillig Exp $	*/
 
 /*-
  * Copyright (c) 2003 The NetBSD Foundation, Inc.
@@ -15,13 +15,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -37,10 +30,11 @@
  */
 
 /*
- * box.C: Box computations
+ * Box computations
  */
+
 #include "defs.h"
-RCSID("$NetBSD: box.cc,v 1.1 2003/12/27 01:16:55 christos Exp $")
+RCSID("$NetBSD: box.cc,v 1.4 2021/12/05 09:22:45 rillig Exp $")
 
 #include "box.h"
 #include "board.h"
@@ -103,7 +97,7 @@ void BOX::paint(void)
     for (e = BOX::first; e < BOX::last; e++) {
 	addcorner(_centery + corners[e].y, _centerx + corners[e].x);
 	_b.getScrn()->moveto(_centery + edges[e].y, _centerx + edges[e].x);
-	_b.getScrn()->addedge(edge((EDGE) e));
+	_b.getScrn()->addedge(edge(static_cast<EDGE>(e)));
     }
     _b.getScrn()->redraw();
 }
@@ -144,7 +138,7 @@ int BOX::count(void) const
     int cnt = 0;
 
     for (int e = BOX::first; e < BOX::last; e++)
-	cnt += isset((EDGE) e);
+	cnt += isset(static_cast<EDGE>(e));
     return cnt;
 }
 
@@ -152,6 +146,6 @@ int BOX::count(void) const
 void BOX::reset(void)
 {
     for (int e = BOX::first; e < BOX::last; e++)
-	clr((EDGE) e);
+	clr(static_cast<EDGE>(e));
     name() = ' ';
 } 

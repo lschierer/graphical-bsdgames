@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.read.c,v 1.8 2003/04/02 18:36:39 jsm Exp $	*/
+/*	$NetBSD: hack.read.c,v 1.11 2011/08/06 20:29:37 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,15 +63,18 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.read.c,v 1.8 2003/04/02 18:36:39 jsm Exp $");
+__RCSID("$NetBSD: hack.read.c,v 1.11 2011/08/06 20:29:37 dholland Exp $");
 #endif				/* not lint */
 
 #include <stdlib.h>
 #include "hack.h"
 #include "extern.h"
 
+static int identify(struct obj *);
+static int monstersym(int);
+
 int
-doread()
+doread(void)
 {
 	struct obj     *scroll;
 	boolean         confused = (Confusion != 0);
@@ -200,7 +203,7 @@ doread()
 				Punished = 0;
 				freeobj(uchain);
 				unpobj(uchain);
-				free((char *) uchain);
+				free(uchain);
 				uball->spe = 0;
 				uball->owornmask &= ~W_BALL;
 				uchain = uball = (struct obj *) 0;
@@ -527,9 +530,8 @@ doread()
 	return (1);
 }
 
-int
-identify(otmp)			/* also called by newmail() */
-	struct obj     *otmp;
+static int
+identify(struct obj *otmp)		/* also called by newmail() */
 {
 	objects[otmp->otyp].oc_name_known = 1;
 	otmp->known = otmp->dknown = 1;
@@ -538,8 +540,7 @@ identify(otmp)			/* also called by newmail() */
 }
 
 void
-litroom(on)
-	boolean         on;
+litroom(boolean on)
 {
 #ifndef QUEST
 	int num, zx, zy;
@@ -626,9 +627,8 @@ do_it:
 }
 
 /* Test whether we may genocide all monsters with symbol  ch  */
-int
-monstersym(ch)			/* arnold@ucsfcgl */
-	char            ch;
+static int
+monstersym(int ch)		/* arnold@ucsfcgl */
 {
 	const struct permonst *mp;
 

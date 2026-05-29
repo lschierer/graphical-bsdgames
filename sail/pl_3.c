@@ -1,4 +1,4 @@
-/*	$NetBSD: pl_3.c,v 1.17 2003/08/07 09:37:43 agc Exp $	*/
+/*	$NetBSD: pl_3.c,v 1.20 2009/03/15 03:33:56 dholland Exp $	*/
 
 /*
  * Copyright (c) 1983, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)pl_3.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: pl_3.c,v 1.17 2003/08/07 09:37:43 agc Exp $");
+__RCSID("$NetBSD: pl_3.c,v 1.20 2009/03/15 03:33:56 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -85,7 +85,8 @@ acceptcombat(void)
 			guns = mc->gunL;
 			car = mc->carL;
 		}
-		if ((!guns && !car) || load == L_EMPTY || (ready & R_LOADED) == 0)
+		if ((!guns && !car) || load == L_EMPTY ||
+		    (ready & R_LOADED) == 0)
 			goto cant;
 		if (mf->struck || !crew[2])
 			goto cant;
@@ -211,9 +212,6 @@ acceptcombat(void)
 	cant:
 		Msg("Unable to fire %s broadside", r ? "right" : "left");
 	}
-	blockalarm();
-	draw_stat();
-	unblockalarm();
 }
 
 void
@@ -232,8 +230,8 @@ grapungrap(void)
 		case 'g':
 			if (dieroll() < 3
 			    || ms->nationality == capship(sp)->nationality) {
-				Write(W_GRAP, ms, sp->file->index, 0, 0, 0);
-				Write(W_GRAP, sp, player, 0, 0, 0);
+				send_grap(ms, sp->file->index);
+				send_grap(sp, player);
 				Msg("Attempt succeeds!");
 				makesignal(ms, "grappled with $$", sp);
 			} else

@@ -1,4 +1,4 @@
-/*	$NetBSD: strfile.c,v 1.22 2003/08/07 09:37:14 agc Exp $	*/
+/*	$NetBSD: strfile.c,v 1.44 2022/08/07 11:06:18 andvar Exp $	*/
 
 /*-
  * Copyright (c) 1989, 1993
@@ -32,54 +32,43 @@
  * SUCH DAMAGE.
  */
 
-#if 1
+#if HAVE_NBTOOL_CONFIG_H
+#include "nbtool_config.h"
+#endif
+
+#ifdef __NetBSD__
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1989, 1993\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)strfile.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: strfile.c,v 1.22 2003/08/07 09:37:14 agc Exp $");
+__RCSID("$NetBSD: strfile.c,v 1.44 2022/08/07 11:06:18 andvar Exp $");
 #endif
 #endif /* not lint */
 #endif /* __NetBSD__ */
 
-# include	<sys/types.h>
-# include	<sys/param.h>
-# include	<ctype.h>
-# include	<stdio.h>
-# include	<stdlib.h>
-# include	<string.h>
-# include	<time.h>
-# include	<unistd.h>
+#include <sys/types.h>
+#include <sys/param.h>
+#include <ctype.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include <inttypes.h>
+#include <err.h>
 
-# ifndef u_int32_t
-# define u_int32_t	unsigned int
-# endif
-# include	"strfile.h"
+#include "strfile.h"
 
-# ifndef MAXPATHLEN
-# define	MAXPATHLEN	1024
-# endif	/* MAXPATHLEN */
-
-static u_int32_t
-h2nl(u_int32_t h)
-{
-        unsigned char c[4];
-        u_int32_t rv;
-
-        c[0] = (h >> 24) & 0xff;
-        c[1] = (h >> 16) & 0xff;
-        c[2] = (h >>  8) & 0xff;
-        c[3] = (h >>  0) & 0xff;
-        memcpy(&rv, c, sizeof rv);
-
-        return (rv);
-}
+#ifndef MAXPATHLEN
+#define	MAXPATHLEN	1024
+#endif	/* MAXPATHLEN */
 
 /*
  *	This program takes a file composed of strings separated by
@@ -95,7 +84,7 @@ h2nl(u_int32_t h)
  *	s - Silent.  Give no summary of data processed at the end of
  *	    the run.
  *	o - order the strings in alphabetic order
- *	i - if ordering, ignore case 
+ *	i - if ordering, ignore case
  *	r - randomize the order of the strings
  *	x - set rotated bit
  *
@@ -103,9 +92,6 @@ h2nl(u_int32_t h)
  *
  *	Added ordering options.
  */
-
-# define	TRUE	1
-# define	FALSE	0
 
 # define	STORING_PTRS	(Oflag || Rflag)
 # define	CHUNKSIZE	512
@@ -116,7 +102,7 @@ h2nl(u_int32_t h)
 			else if (((sz) + 1) % CHUNKSIZE == 0) \
 				ptr = realloc(ptr, ((sz) + CHUNKSIZE) * sizeof *ptr); \
 			if (ptr == NULL) \
-				die("out of space"); \
+				err(1, "out of space"); \
 		} while (0)
 
 typedef struct {
@@ -124,41 +110,34 @@ typedef struct {
 	off_t	pos;
 } STR;
 
-char	*Infile		= NULL,		/* input file name */
-	Outfile[MAXPATHLEN] = "",	/* output file name */
-	Delimch		= '%';		/* delimiting character */
+static char *Infile = NULL;		/* input file name */
+static char Outfile[MAXPATHLEN] = "";	/* output file name */
+static char Delimch = '%';		/* delimiting character */
 
-int	Sflag		= FALSE;	/* silent run flag */
-int	Oflag		= FALSE;	/* ordering flag */
-int	Iflag		= FALSE;	/* ignore case flag */
-int	Rflag		= FALSE;	/* randomize order flag */
-int	Xflag		= FALSE;	/* set rotated bit */
-long	Num_pts		= 0;		/* number of pointers/strings */
+static int Sflag	= 0;		/* silent run flag */
+static int Oflag	= 0;		/* ordering flag */
+static int Iflag	= 0;		/* ignore case flag */
+static int Rflag	= 0;		/* randomize order flag */
+static int Xflag	= 0;		/* set rotated bit */
+static long Num_pts	= 0;		/* number of pointers/strings */
 
-off_t	*Seekpts;
+static off_t *Seekpts;
 
-FILE	*Sort_1, *Sort_2;		/* pointers for sorting */
+static FILE *Sort_1, *Sort_2;		/* pointers for sorting */
 
-STRFILE	Tbl;				/* statistics table */
+static STRFILE Tbl;			/* statistics table */
 
-STR	*Firstch;			/* first chars of each string */
+static STR *Firstch;			/* first chars of each string */
 
-#ifdef __GNUC__
-#define NORETURN	__attribute__((__noreturn__))
-#else
-#define NORETURN
-#endif
 
-void	add_offset(FILE *, off_t);
-int	cmp_str(const void *, const void *);
-void	die(const char *) NORETURN;
-void	dieperror(const char *, char *) NORETURN;
-void	do_order(void);
-void	fwrite_be_offt(off_t, FILE *);
-void	getargs(int, char *[]);
-int	main(int, char *[]);
-void	randomize(void);
-void	usage(void) NORETURN;
+static uint32_t h2nl(uint32_t h);
+static void getargs(int argc, char **argv);
+static void usage(const char *, ...) __dead __printflike(1, 2);
+static void add_offset(FILE *fp, off_t off);
+static void do_order(void);
+static int cmp_str(const void *vp1, const void *vp2);
+static void randomize(void);
+static void fwrite_be_offt(off_t off, FILE *f);
 
 
 /*
@@ -171,29 +150,28 @@ void	usage(void) NORETURN;
  *	and then seek back to the beginning to write in the table.
  */
 int
-main(ac, av)
-	int	ac;
-	char	*av[];
+main(int ac, char **av)
 {
 	char		*sp, dc;
 	FILE		*inf, *outf;
-	off_t		last_off, length, pos, *p;
-	int		first, cnt;
+	off_t		last_off, length, pos;
+	int		first;
 	char		*nsp;
 	STR		*fp;
 	static char	string[257];
+	long		i;
 
 	/* sanity test */
-	if (sizeof(u_int32_t) != 4)
-		die("sizeof(unsigned int) != 4");
+	if (sizeof(uint32_t) != 4)
+		errx(1, "sizeof(uint32_t) != 4");
 
 	getargs(ac, av);		/* evalute arguments */
 	dc = Delimch;
 	if ((inf = fopen(Infile, "r")) == NULL)
-		dieperror("open `%s'", Infile);
+		err(1, "open `%s'", Infile);
 
 	if ((outf = fopen(Outfile, "w")) == NULL)
-		dieperror("open `%s'", Outfile);
+		err(1, "open `%s'", Outfile);
 	if (!STORING_PTRS)
 		(void) fseek(outf, sizeof Tbl, SEEK_SET);
 
@@ -224,16 +202,16 @@ main(ac, av)
 			first = Oflag;
 		}
 		else if (first) {
-			for (nsp = sp; !isalnum(*nsp); nsp++)
+			for (nsp = sp; !isalnum((unsigned char)*nsp); nsp++)
 				continue;
 			ALLOC(Firstch, Num_pts);
 			fp = &Firstch[Num_pts - 1];
-			if (Iflag && isupper(*nsp))
-				fp->first = tolower(*nsp);
+			if (Iflag && isupper((unsigned char)*nsp))
+				fp->first = tolower((unsigned char)*nsp);
 			else
 				fp->first = *nsp;
 			fp->pos = Seekpts[Num_pts - 1];
-			first = FALSE;
+			first = 0;
 		}
 	} while (sp != NULL);
 
@@ -271,12 +249,12 @@ main(ac, av)
 	Tbl.str_flags = h2nl(Tbl.str_flags);
 	(void) fwrite((char *) &Tbl, sizeof Tbl, 1, outf);
 	if (STORING_PTRS) {
-		for (p = Seekpts, cnt = Num_pts; cnt--; ++p)
-			fwrite_be_offt(*p, outf);
+		for (i = 0; i < Num_pts; i++)
+			fwrite_be_offt(Seekpts[i], outf);
 	}
 	fflush(outf);
 	if (ferror(outf))
-		dieperror("fwrite %s", Outfile);
+		err(1, "fwrite %s", Outfile);
 	(void) fclose(outf);
 	exit(0);
 }
@@ -284,14 +262,13 @@ main(ac, av)
 /*
  *	This routine evaluates arguments from the command line
  */
-void
-getargs(argc, argv)
-	int	argc;
-	char	**argv;
+static void
+getargs(int argc, char **argv)
 {
 	int	ch;
 	extern	int optind;
 	extern	char *optarg;
+	size_t	len;
 
 	while ((ch = getopt(argc, argv, "c:iorsx")) != -1)
 		switch(ch) {
@@ -319,50 +296,42 @@ getargs(argc, argv)
 			break;
 		case '?':
 		default:
-			usage();
+			usage(NULL);
 		}
 	argv += optind;
 
 	if (*argv) {
 		Infile = *argv;
-		if (*++argv)
-			(void) strcpy(Outfile, *argv);
+		if (*++argv) {
+			len = strlcpy(Outfile, *argv, sizeof(Outfile));
+			if (len >= sizeof(Outfile)) {
+				usage("Too long output filename");
+			}
+		}
 	}
 	if (!Infile) {
-		puts("No input file name");
-		usage();
+		usage("No input file name");
 	}
 	if (*Outfile == '\0') {
-		(void) strcpy(Outfile, Infile);
-		(void) strcat(Outfile, ".dat");
+		len = snprintf(Outfile, sizeof(Outfile), "%s.dat", Infile);
+		if (len >= sizeof(Outfile)) {
+			usage("Too long input filename");
+		}
 	}
 }
 
-void
-usage()
+static void
+usage(const char *fmt, ...)
 {
+	if (fmt) {
+		va_list ap;
+		va_start(ap, fmt);
+		vwarnx(fmt, ap);
+		va_end(ap);
+	}
 	(void) fprintf(stderr,
-	    "strfile [-iorsx] [-c char] sourcefile [datafile]\n");
-	exit(1);
-}
-
-void
-die(str)
-	const char *str;
-{
-	fprintf(stderr, "strfile: %s\n", str);
-	exit(1);
-}
-
-void
-dieperror(fmt, file)
-	const char *fmt;
-	char *file;
-{
-	fprintf(stderr, "strfile: ");
-	fprintf(stderr, fmt, file);
-	fprintf(stderr, ": ");
-	perror(NULL);
+	    "Usage: %s [-iorsx] [-c char] sourcefile [datafile]\n",
+	    getprogname());
 	exit(1);
 }
 
@@ -370,10 +339,8 @@ dieperror(fmt, file)
  * add_offset:
  *	Add an offset to the list, or write it out, as appropriate.
  */
-void
-add_offset(fp, off)
-	FILE	*fp;
-	off_t	off;
+static void
+add_offset(FILE *fp, off_t off)
 {
 
 	if (!STORING_PTRS) {
@@ -389,8 +356,8 @@ add_offset(fp, off)
  * do_order:
  *	Order the strings alphabetically (possibly ignoring case).
  */
-void
-do_order()
+static void
+do_order(void)
 {
 	int	i;
 	off_t	*lp;
@@ -409,9 +376,8 @@ do_order()
 	Tbl.str_flags |= STR_ORDERED;
 }
 
-int
-cmp_str(vp1, vp2)
-	const void *vp1, *vp2;
+static int
+cmp_str(const void *vp1, const void *vp2)
 {
 	const STR	*p1, *p2;
 	int	c1, c2;
@@ -431,8 +397,8 @@ cmp_str(vp1, vp2)
 	(void) fseek(Sort_1, p1->pos, SEEK_SET);
 	(void) fseek(Sort_2, p2->pos, SEEK_SET);
 
-	n1 = FALSE;
-	n2 = FALSE;
+	n1 = 0;
+	n2 = 0;
 	while (!isalnum(c1 = getc(Sort_1)) && c1 != '\0')
 		SET_N(n1, c1);
 	while (!isalnum(c2 = getc(Sort_2)) && c2 != '\0')
@@ -465,14 +431,14 @@ cmp_str(vp1, vp2)
  *	not to randomize across delimiter boundaries.  All
  *	randomization is done within each block.
  */
-void
-randomize()
+static void
+randomize(void)
 {
 	int	cnt, i;
 	off_t	tmp;
 	off_t	*sp;
 
-	srandom((int)(time((time_t *) NULL) + getpid()));
+	srandom((int)(time(NULL) + getpid()));
 
 	Tbl.str_flags |= STR_RANDOM;
 	cnt = Tbl.str_numstr;
@@ -491,13 +457,11 @@ randomize()
 
 /*
  * fwrite_be_offt:
- *	Write out the off paramater as a 64 bit big endian number
+ *	Write out the off parameter as a 64 bit big endian number
  */
 
-void
-fwrite_be_offt(off, f)
-	off_t	 off;
-	FILE	*f;
+static void
+fwrite_be_offt(off_t off, FILE *f)
 {
 	int		i;
 	unsigned char	c[8];
@@ -507,4 +471,19 @@ fwrite_be_offt(off, f)
 		off >>= 8;
 	}
 	fwrite(c, sizeof(c), 1, f);
+}
+
+static uint32_t
+h2nl(uint32_t h)
+{
+        unsigned char c[4];
+        uint32_t rv;
+
+        c[0] = (h >> 24) & 0xff;
+        c[1] = (h >> 16) & 0xff;
+        c[2] = (h >>  8) & 0xff;
+        c[3] = (h >>  0) & 0xff;
+        memcpy(&rv, c, sizeof rv);
+
+        return (rv);
 }

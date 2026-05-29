@@ -1,4 +1,4 @@
-/*	$NetBSD: screen.h,v 1.8 2004/01/27 20:30:30 jsm Exp $	*/
+/*	$NetBSD: screen.h,v 1.9 2009/08/12 08:51:21 dholland Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993

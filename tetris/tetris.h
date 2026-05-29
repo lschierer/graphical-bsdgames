@@ -1,4 +1,4 @@
-/*	$NetBSD: tetris.h,v 1.10 2004/01/27 20:30:30 jsm Exp $	*/
+/*	$NetBSD: tetris.h,v 1.16 2020/07/21 02:42:05 nia Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -73,6 +73,7 @@ extern cell	board[B_SIZE];	/* 1 => occupied, 0 => empty */
 #define	MINCOLS	40
 
 extern int	Rows, Cols;	/* current screen size */
+extern int	Offset;		/* vert. offset to center board */
 
 /*
  * Translations from board coordinates to display coordinates.
@@ -123,14 +124,14 @@ extern int	Rows, Cols;	/* current screen size */
  * rotated forms.
  */
 struct shape {
+	int	color;
 	int	rot;	/* index of rotated version of this shape */
 	int	off[3];	/* offsets to other blots if center is at (0,0) */
 };
 
 extern const struct shape shapes[];
-#define	randshape() (&shapes[random() % 7])
+#define	randshape() (&shapes[arc4random_uniform(7)])
 
-extern const struct shape *curshape;
 extern const struct shape *nextshape;
 
 /*
@@ -168,7 +169,8 @@ extern gid_t	gid, egid;
 
 extern char	key_msg[100];
 extern int	showpreview;
+extern int	nocolor;
 
 int	fits_in(const struct shape *, int);
 void	place(const struct shape *, int, int);
-void	stop(const char *) __attribute__((__noreturn__));
+void	stop(const char *) __dead;

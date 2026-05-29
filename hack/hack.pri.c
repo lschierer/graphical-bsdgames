@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.pri.c,v 1.8 2003/04/02 18:36:39 jsm Exp $	*/
+/*	$NetBSD: hack.pri.c,v 1.13 2010/02/03 15:34:38 roy Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,16 +63,19 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.pri.c,v 1.8 2003/04/02 18:36:39 jsm Exp $");
+__RCSID("$NetBSD: hack.pri.c,v 1.13 2010/02/03 15:34:38 roy Exp $");
 #endif				/* not lint */
 
 #include "hack.h"
 #include "extern.h"
-xchar           scrlx, scrhx, scrly, scrhy;	/* corners of new area on
+
+static xchar scrlx, scrhx, scrly, scrhy;	/* corners of new area on
 						 * screen */
 
+static void cornbot(int);
+
 void
-swallowed()
+swallowed(void)
 {
 	char            ulook[] = "|@|";
 	ulook[1] = u.usym;
@@ -94,7 +97,7 @@ swallowed()
 
 
 /* VARARGS1 */
-boolean         panicking;
+static boolean panicking;
 
 void
 panic(const char *fmt, ...)
@@ -120,8 +123,7 @@ panic(const char *fmt, ...)
 }
 
 void
-atl(x, y, ch)
-int x, y, ch;
+atl(int x, int y, int ch)
 {
 	struct rm      *crm = &levl[x][y];
 
@@ -137,8 +139,7 @@ int x, y, ch;
 }
 
 void
-on_scr(x, y)
-int x, y;
+on_scr(int x, int y)
 {
 	if (x < scrlx)
 		scrlx = x;
@@ -156,8 +157,7 @@ int x, y;
  */
 
 void
-tmp_at(x, y)
-	schar           x, y;
+tmp_at(schar x, schar y)
 {
 	static schar    prevx, prevy;
 	static char     let;
@@ -188,8 +188,7 @@ tmp_at(x, y)
 
 /* like the previous, but the symbols are first erased on completion */
 void
-Tmp_at(x, y)
-	schar           x, y;
+Tmp_at(schar x, schar y)
 {
 	static char     let;
 	static xchar    cnt;
@@ -229,16 +228,14 @@ Tmp_at(x, y)
 }
 
 void
-setclipped()
+setclipped(void)
 {
 	error("Hack needs a screen of size at least %d by %d.\n",
 	      ROWNO + 2, COLNO);
 }
 
 void
-at(x, y, ch)
-	xchar           x, y;
-	char            ch;
+at(xchar x, xchar y, int ch)
 {
 #ifndef lint
 	/* if xchar is unsigned, lint will complain about  if(x < 0)  */
@@ -258,21 +255,21 @@ at(x, y, ch)
 }
 
 void
-prme()
+prme(void)
 {
 	if (!Invisible)
 		at(u.ux, u.uy, u.usym);
 }
 
 int
-doredraw()
+doredraw(void)
 {
 	docrt();
 	return (0);
 }
 
 void
-docrt()
+docrt(void)
 {
 	int x, y;
 	struct rm      *room;
@@ -319,8 +316,7 @@ docrt()
 }
 
 void
-docorner(xmin, ymax)
-	int xmin, ymax;
+docorner(int xmin, int ymax)
 {
 	int x, y;
 	struct rm      *room;
@@ -361,13 +357,13 @@ docorner(xmin, ymax)
 }
 
 void
-curs_on_u()
+curs_on_u(void)
 {
 	curs(u.ux, u.uy + 2);
 }
 
 void
-pru()
+pru(void)
 {
 	if (u.udispl && (Invisible || u.udisx != u.ux || u.udisy != u.uy))
 		/* if(! levl[u.udisx][u.udisy].new) */
@@ -432,8 +428,7 @@ prl(int x, int y)
 }
 
 char
-news0(x, y)
-	xchar           x, y;
+news0(xchar x, xchar y)
 {
 	struct obj     *otmp;
 	struct trap    *ttmp;
@@ -493,8 +488,7 @@ news0(x, y)
 }
 
 void
-newsym(x, y)
-	int x, y;
+newsym(int x, int y)
 {
 	atl(x, y, news0(x, y));
 }
@@ -502,8 +496,7 @@ newsym(x, y)
 /* used with wand of digging (or pick-axe): fill scrsym and force display */
 /* also when a POOL evaporates */
 void
-mnewsym(x, y)
-	int x, y;
+mnewsym(int x, int y)
 {
 	struct rm      *room;
 	char            newscrsym;
@@ -519,8 +512,7 @@ mnewsym(x, y)
 }
 
 void
-nosee(x, y)
-	int x, y;
+nosee(int x, int y)
 {
 	struct rm      *room;
 
@@ -536,8 +528,7 @@ nosee(x, y)
 
 #ifndef QUEST
 void
-prl1(x, y)
-	int x, y;
+prl1(int x, int y)
 {
 	if (u.dx) {
 		if (u.dy) {
@@ -559,8 +550,7 @@ prl1(x, y)
 }
 
 void
-nose1(x, y)
-	int x, y;
+nose1(int x, int y)
 {
 	if (u.dx) {
 		if (u.dy) {
@@ -583,8 +573,7 @@ nose1(x, y)
 #endif	/* QUEST */
 
 int
-vism_at(x, y)
-	int x, y;
+vism_at(int x, int y)
 {
 	struct monst   *mtmp;
 
@@ -597,8 +586,7 @@ vism_at(x, y)
 
 #ifdef NEWSCR
 void
-pobj(obj)
-	struct obj     *obj;
+pobj(struct obj *obj)
 {
 	int             show = (!obj->oinvis || See_invisible) &&
 	cansee(obj->ox, obj->oy);
@@ -619,8 +607,7 @@ pobj(obj)
 #endif	/* NEWSCR */
 
 void
-unpobj(obj)
-	struct obj     *obj;
+unpobj(struct obj *obj)
 {
 	/*
 	 * if(obj->odispl){ if(!vism_at(obj->odx, obj->ody)) newsym(obj->odx,
@@ -631,7 +618,7 @@ unpobj(obj)
 }
 
 void
-seeobjs()
+seeobjs(void)
 {
 	struct obj     *obj, *obj2;
 	for (obj = fobj; obj; obj = obj2) {
@@ -649,7 +636,7 @@ seeobjs()
 }
 
 void
-seemons()
+seemons(void)
 {
 	struct monst   *mtmp;
 	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
@@ -665,8 +652,7 @@ seemons()
 }
 
 void
-pmon(mon)
-	struct monst   *mon;
+pmon(struct monst *mon)
 {
 	int             show = (Blind && Telepat) || canseemon(mon);
 	if (mon->mdispl) {
@@ -685,8 +671,7 @@ pmon(mon)
 }
 
 void
-unpmon(mon)
-	struct monst   *mon;
+unpmon(struct monst *mon)
 {
 	if (mon->mdispl) {
 		newsym(mon->mdx, mon->mdy);
@@ -695,7 +680,7 @@ unpmon(mon)
 }
 
 void
-nscr()
+nscr(void)
 {
 	int x, y;
 	struct rm      *room;
@@ -715,49 +700,62 @@ nscr()
 }
 
 /* 100 suffices for bot(); no relation with COLNO */
-char            oldbot[100], newbot[100];
+static char oldbot[100], newbot[100];
 void
-cornbot(lth)
-	int             lth;
+cornbot(int lth)
 {
-	if (lth < (int)sizeof(oldbot)) {
+	if ((unsigned)lth < sizeof(oldbot)) {
 		oldbot[lth] = 0;
 		flags.botl = 1;
 	}
 }
 
 void
-bot()
+bot(void)
 {
 	char           *ob = oldbot, *nb = newbot;
 	int             i;
+	size_t pos;
+
 	if (flags.botlx)
 		*ob = 0;
 	flags.botl = flags.botlx = 0;
 #ifdef GOLD_ON_BOTL
-	(void) sprintf(newbot,
+	(void) snprintf(newbot, sizeof(newbot),
 		       "Level %-2d  Gold %-5lu  Hp %3d(%d)  Ac %-2d  Str ",
 		       dlevel, u.ugold, u.uhp, u.uhpmax, u.uac);
 #else
-	(void) sprintf(newbot,
+	(void) snprintf(newbot, sizeof(newbot),
 		       "Level %-2d   Hp %3d(%d)   Ac %-2d   Str ",
 		       dlevel, u.uhp, u.uhpmax, u.uac);
 #endif	/* GOLD_ON_BOTL */
 	if (u.ustr > 18) {
 		if (u.ustr > 117)
-			(void) strcat(newbot, "18/**");
-		else
-			(void) sprintf(eos(newbot), "18/%02d", u.ustr - 18);
-	} else
-		(void) sprintf(eos(newbot), "%-2d   ", u.ustr);
+			(void) strlcat(newbot, "18/**", sizeof(newbot));
+		else {
+			pos = strlen(newbot);
+			(void) snprintf(newbot+pos, sizeof(newbot)-pos,
+					"18/%02d", u.ustr - 18);
+		}
+	} else {
+		pos = strlen(newbot);
+		(void) snprintf(newbot+pos, sizeof(newbot)-pos,
+				"%-2d   ", u.ustr);
+	}
+	pos = strlen(newbot);
 #ifdef EXP_ON_BOTL
-	(void) sprintf(eos(newbot), "  Exp %2d/%-5lu ", u.ulevel, u.uexp);
+	(void) snprintf(newbot+pos, sizeof(newbot)-pos,
+			"  Exp %2d/%-5lu ", u.ulevel, u.uexp);
 #else
-	(void) sprintf(eos(newbot), "   Exp %2u  ", u.ulevel);
+	(void) snprintf(newbot+pos, sizeof(newbot)-pos,
+			"   Exp %2u  ", u.ulevel);
 #endif	/* EXP_ON_BOTL */
-	(void) strcat(newbot, hu_stat[u.uhs]);
-	if (flags.time)
-		(void) sprintf(eos(newbot), "  %ld", moves);
+	(void) strlcat(newbot, hu_stat[u.uhs], sizeof(newbot));
+	if (flags.time) {
+		pos = strlen(newbot);
+		(void) snprintf(newbot+pos, sizeof(newbot)-pos,
+				"  %ld", moves);
+	}
 	if (strlen(newbot) >= COLNO) {
 		char           *bp0, *bp1;
 		bp0 = bp1 = newbot;
@@ -782,8 +780,7 @@ bot()
 
 #ifdef WAN_PROBING
 void
-mstatusline(mtmp)
-	struct monst   *mtmp;
+mstatusline(struct monst *mtmp)
 {
 	pline("Status of %s: ", monnam(mtmp));
 	pline("Level %-2d  Gold %-5lu  Hp %3d(%d)  Ac %-2d  Dam %d",
@@ -793,13 +790,13 @@ mstatusline(mtmp)
 #endif	/* WAN_PROBING */
 
 void
-cls()
+cls(void)
 {
 	if (flags.toplin == 1)
 		more();
 	flags.toplin = 0;
 
-	clear_screen();
+	clearscreen();
 
 	flags.botlx = 1;
 }

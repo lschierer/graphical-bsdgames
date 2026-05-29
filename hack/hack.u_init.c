@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.u_init.c,v 1.8 2004/11/05 21:30:32 dsl Exp $	*/
+/*	$NetBSD: hack.u_init.c,v 1.13 2011/08/06 19:32:58 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,7 +63,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.u_init.c,v 1.8 2004/11/05 21:30:32 dsl Exp $");
+__RCSID("$NetBSD: hack.u_init.c,v 1.13 2011/08/06 19:32:58 dholland Exp $");
 #endif				/* not lint */
 
 #include <ctype.h>
@@ -77,15 +77,16 @@ __RCSID("$NetBSD: hack.u_init.c,v 1.8 2004/11/05 21:30:32 dsl Exp $");
 #define	UNDEF_TYP	0
 #define	UNDEF_SPE	'\177'
 
-struct you      zerou;
-char            pl_character[PL_CSIZ];
-const char *(roles[]) = {	/* must all have distinct first letter */
+char pl_character[PL_CSIZ];
+
+static const struct you zerou;
+static const char *(roles[]) = {      /* must all have distinct first letter */
 	/* roles[4] may be changed to -woman */
 	"Tourist", "Speleologist", "Fighter", "Knight",
 	"Cave-man", "Wizard"
 };
 #define	NR_OF_ROLES	SIZE(roles)
-char            rolesyms[NR_OF_ROLES + 1];	/* filled by u_init() */
+static char rolesyms[NR_OF_ROLES + 1];	/* filled by u_init() */
 
 struct trobj {
 	uchar           trotyp;
@@ -96,13 +97,13 @@ struct trobj {
 };
 
 #ifdef WIZARD
-struct trobj    Extra_objs[] = {
+static struct trobj Extra_objs[] = {
 	{0, 0, 0, 0, 0},
 	{0, 0, 0, 0, 0}
 };
 #endif	/* WIZARD */
 
-struct trobj    Cave_man[] = {
+static struct trobj Cave_man[] = {
 	{MACE, 1, WEAPON_SYM, 1, 1},
 	{BOW, 1, WEAPON_SYM, 1, 1},
 	{ARROW, 0, WEAPON_SYM, 25, 1},	/* quan is variable */
@@ -110,13 +111,13 @@ struct trobj    Cave_man[] = {
 	{0, 0, 0, 0, 0}
 };
 
-struct trobj    Fighter[] = {
+static struct trobj Fighter[] = {
 	{TWO_HANDED_SWORD, 0, WEAPON_SYM, 1, 1},
 	{RING_MAIL, 0, ARMOR_SYM, 1, 1},
 	{0, 0, 0, 0, 0}
 };
 
-struct trobj    Knight[] = {
+static struct trobj Knight[] = {
 	{LONG_SWORD, 0, WEAPON_SYM, 1, 1},
 	{SPEAR, 2, WEAPON_SYM, 1, 1},
 	{RING_MAIL, 1, ARMOR_SYM, 1, 1},
@@ -126,7 +127,7 @@ struct trobj    Knight[] = {
 	{0, 0, 0, 0, 0}
 };
 
-struct trobj    Speleologist[] = {
+static struct trobj Speleologist[] = {
 	{STUDDED_LEATHER_ARMOR, 0, ARMOR_SYM, 1, 1},
 	{UNDEF_TYP, 0, POTION_SYM, 2, 0},
 	{FOOD_RATION, 0, FOOD_SYM, 3, 1},
@@ -135,12 +136,12 @@ struct trobj    Speleologist[] = {
 	{0, 0, 0, 0, 0}
 };
 
-struct trobj    Tinopener[] = {
+static struct trobj Tinopener[] = {
 	{CAN_OPENER, 0, TOOL_SYM, 1, 1},
 	{0, 0, 0, 0, 0}
 };
 
-struct trobj    Tourist[] = {
+static struct trobj Tourist[] = {
 	{UNDEF_TYP, 0, FOOD_SYM, 10, 1},
 	{POT_EXTRA_HEALING, 0, POTION_SYM, 2, 0},
 	{EXPENSIVE_CAMERA, 0, TOOL_SYM, 1, 1},
@@ -148,7 +149,7 @@ struct trobj    Tourist[] = {
 	{0, 0, 0, 0, 0}
 };
 
-struct trobj    Wizard[] = {
+static struct trobj Wizard[] = {
 	{ELVEN_CLOAK, 0, ARMOR_SYM, 1, 1},
 	{UNDEF_TYP, UNDEF_SPE, WAND_SYM, 2, 0},
 	{UNDEF_TYP, UNDEF_SPE, RING_SYM, 2, 0},
@@ -157,8 +158,12 @@ struct trobj    Wizard[] = {
 	{0, 0, 0, 0, 0}
 };
 
+static void ini_inv(struct trobj *);
+static void wiz_inv(void);
+static int role_index(int);
+
 void
-u_init()
+u_init(void)
 {
 	int    i;
 	char            exper = 'y', pc;
@@ -179,7 +184,7 @@ u_init()
 	printf("\nAre you an experienced player? [ny] ");
 
 	while (!strchr("ynYN \n\004", (exper = readchar())))
-		bell();
+		sound_bell();
 	if (exper == '\004')	/* Give him an opportunity to get out */
 		end_of_input();
 	printf("%c\n", exper);	/* echo */
@@ -213,7 +218,7 @@ u_init()
 		if (pc == '\004')	/* Give him the opportunity to get
 					 * out */
 			end_of_input();
-		bell();
+		sound_bell();
 	}
 	if (pc == '\n')
 		pc = 0;
@@ -311,9 +316,9 @@ got_suffix:
 	}
 	find_ac();
 	if (!rn2(20)) {
-		int    d = rn2(7) - 2;	/* biased variation */
-		u.ustr += d;
-		u.ustrmax += d;
+		int    dr = rn2(7) - 2;	/* biased variation */
+		u.ustr += dr;
+		u.ustrmax += dr;
 	}
 #ifdef WIZARD
 	if (wizard)
@@ -326,8 +331,7 @@ got_suffix:
 }
 
 void
-ini_inv(trop)
-	struct trobj *trop;
+ini_inv(struct trobj *trop)
 {
 	struct obj *obj;
 	while (trop->trolet) {
@@ -373,23 +377,15 @@ ini_inv(trop)
 		if (obj->olet == WEAPON_SYM)
 			if (!uwep)
 				setuwep(obj);
-#ifndef PYRAMID_BUG
 		if (--trop->trquan)
 			continue;	/* make a similar object */
-#else
-		if (trop->trquan) {	/* check if zero first */
-			--trop->trquan;
-			if (trop->trquan)
-				continue;	/* make a similar object */
-		}
-#endif	/* PYRAMID_BUG */
 		trop++;
 	}
 }
 
 #ifdef WIZARD
 void
-wiz_inv()
+wiz_inv(void)
 {
 	struct trobj *trop = &Extra_objs[0];
 	char  *ep = getenv("INVENT");
@@ -420,7 +416,7 @@ wiz_inv()
 #endif	/* WIZARD */
 
 void
-plnamesuffix()
+plnamesuffix(void)
 {
 	char  *p;
 	if ((p = strrchr(plname, '-')) != NULL) {
@@ -435,8 +431,7 @@ plnamesuffix()
 }
 
 int
-role_index(pc)
-	char            pc;
+role_index(int pc)
 {				/* must be called only from u_init() */
 	/* so that rolesyms[] is defined */
 	char  *cp;

@@ -1,4 +1,4 @@
-/*	$NetBSD: systemname.c,v 1.6 2003/08/07 09:37:54 agc Exp $	*/
+/*	$NetBSD: systemname.c,v 1.9 2009/05/25 00:05:56 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,11 +34,12 @@
 #if 0
 static char sccsid[] = "@(#)systemname.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: systemname.c,v 1.6 2003/08/07 09:37:54 agc Exp $");
+__RCSID("$NetBSD: systemname.c,v 1.9 2009/05/25 00:05:56 dholland Exp $");
 #endif
 #endif /* not lint */
 
-# include	"trek.h"
+#include <stddef.h>
+#include "trek.h"
 
 /*
 **  RETRIEVE THE STARSYSTEM NAME
@@ -51,8 +52,8 @@ __RCSID("$NetBSD: systemname.c,v 1.6 2003/08/07 09:37:54 agc Exp $");
 **	starsystems, etc.
 */
 
-const char *systemname(q1)
-	const struct quad	*q1;
+const char *
+systemname(const struct quad *q1)
 {
 	const struct quad	*q;
 	int		i;
@@ -65,6 +66,6 @@ const char *systemname(q1)
 
 	i &= Q_SYSTEM;
 	if (i == 0)
-		return (0);
+		return NULL;
 	return (Systemname[i]);
 }

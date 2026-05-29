@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.main.c,v 1.9 2004/01/27 20:30:29 jsm Exp $	*/
+/*	$NetBSD: hack.main.c,v 1.17 2011/08/06 20:42:43 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,7 +63,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.main.c,v 1.9 2004/01/27 20:30:29 jsm Exp $");
+__RCSID("$NetBSD: hack.main.c,v 1.17 2011/08/06 20:42:43 dholland Exp $");
 #endif				/* not lint */
 
 #include <signal.h>
@@ -90,15 +90,14 @@ const char     *catmore;	/* default pager */
 #endif
 char            SAVEF[PL_NSIZ + 11] = "save/";	/* save/99999player */
 char           *hname;		/* name of the game (argv[0] of call) */
-char            obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
+
+static char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
 
 int main(int, char *[]);
 static void chdirx(const char *, boolean);
 
 int
-main(argc, argv)
-	int             argc;
-	char           *argv[];
+main(int argc, char *argv[])
 {
 	int             fd;
 #ifdef CHDIR
@@ -185,7 +184,7 @@ main(argc, argv)
 	cls();
 	u.uhp = 1;		/* prevent RIP on early quits */
 	u.ux = FAR;		/* prevent nscr() */
-	(void) signal(SIGHUP, hangup);
+	(void) signal(SIGHUP, hang_up);
 
 	/*
 	 * Find the creation date of this game,
@@ -302,13 +301,14 @@ main(argc, argv)
 				}
 				*gp = 0;
 			} else
-				(void) strcpy(genocided, sfoo);
+				(void) strlcpy(genocided, sfoo,
+						sizeof(genocided));
 			(void) strcpy(fut_geno, genocided);
 		}
 	}
 #endif
 	setftty();
-	(void) sprintf(SAVEF, "save/%d%s", getuid(), plname);
+	(void) snprintf(SAVEF, sizeof(SAVEF), "save/%d%s", getuid(), plname);
 	regularize(SAVEF + 5);	/* avoid . or / in name */
 	if ((fd = open(SAVEF, O_RDONLY)) >= 0 &&
 	    (uptodate(fd) || unlink(SAVEF) == 666)) {
@@ -418,8 +418,10 @@ not_recovered:
 		}
 		if (multi < 0) {
 			if (!++multi) {
-				pline(nomovemsg ? nomovemsg :
-				      "You can move again.");
+				if (nomovemsg)
+					pline("%s", nomovemsg);
+				else
+					pline("You can move again.");
 				nomovemsg = 0;
 				if (afternmv)
 					(*afternmv) ();
@@ -469,7 +471,7 @@ not_recovered:
 #ifdef MAIL
 			ckmailstatus();
 #endif
-			rhack((char *) 0);
+			rhack(NULL);
 		}
 		if (multi && multi % 7 == 0)
 			(void) fflush(stdout);
@@ -477,16 +479,15 @@ not_recovered:
 }
 
 void
-glo(foo)
-	int foo;
+glo(int foo)
 {
 	/* construct the string  xlock.n  */
-	char           *tf;
+	size_t pos;
 
-	tf = lock;
-	while (*tf && *tf != '.')
-		tf++;
-	(void) sprintf(tf, ".%d", foo);
+	pos = 0;
+	while (lock[pos] && lock[pos] != '.')
+		pos++;
+	(void) snprintf(lock + pos, sizeof(lock) - pos, ".%d", foo);
 }
 
 /*
@@ -495,7 +496,7 @@ glo(foo)
  * It may still contain a suffix denoting pl_character.
  */
 void
-askname()
+askname(void)
 {
 	int             c, ct;
 	printf("\nWho are you? ");
@@ -513,7 +514,7 @@ askname()
 		if (c != '-')
 			if (c < 'A' || (c > 'Z' && c < 'a') || c > 'z')
 				c = '_';
-		if ((size_t)ct < sizeof(plname) - 1)
+		if (ct < (int)sizeof(plname) - 1)
 			plname[ct++] = c;
 	}
 	plname[ct] = 0;
@@ -535,9 +536,7 @@ impossible(const char *s, ...)
 
 #ifdef CHDIR
 static void
-chdirx(dir, wr)
-	const char     *dir;
-	boolean         wr;
+chdirx(const char *dir, boolean wr)
 {
 
 #ifdef SECURE
@@ -547,7 +546,7 @@ chdirx(dir, wr)
 #endif
 		) {
 		(void) setuid(getuid());	/* Ron Wessels */
-		(void) setregid(getgid(), getgid());
+		(void) setgid(getgid());
 	}
 #endif
 
@@ -578,7 +577,7 @@ chdirx(dir, wr)
 #endif
 
 void
-stop_occupation()
+stop_occupation(void)
 {
 	if (occupation) {
 		pline("You stop %s.", occtxt);

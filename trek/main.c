@@ -1,4 +1,4 @@
-/*	$NetBSD: main.c,v 1.12 2004/01/27 20:30:31 jsm Exp $	*/
+/*	$NetBSD: main.c,v 1.23 2011/08/29 20:30:37 joerg Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -31,21 +31,20 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1980, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1980, 1993\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)main.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: main.c,v 1.12 2004/01/27 20:30:31 jsm Exp $");
+__RCSID("$NetBSD: main.c,v 1.23 2011/08/29 20:30:37 joerg Exp $");
 #endif
 #endif /* not lint */
 
 #include <stdio.h>
 #include <setjmp.h>
-#include <termios.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <err.h>
@@ -54,9 +53,6 @@ __RCSID("$NetBSD: main.c,v 1.12 2004/01/27 20:30:31 jsm Exp $");
 #include "trek.h"
 #include "getpar.h"
 
-# define	PRIO		00	/* default priority */
-
-uid_t	Mother	= 51 + (51 << 8);
 
 /*
 **	 ####  #####    #    ####          #####  ####   #####  #   #
@@ -157,47 +153,27 @@ uid_t	Mother	= 51 + (51 << 8);
 
 jmp_buf env;
 
-int main(int, char **);
+__dead static void
+usage(const char *av0)
+{
+	errx(1, "Usage: %s [-fs]", av0);
+}
 
 int
-main(argc, argv)
-int	argc;
-char	**argv;
+main(int argc, char **argv)
 {
-	time_t		curtime;
-	long			vect;
-	char		opencode;
-	int			prio;
-	int		ac;
-	char		**av;
-	struct	termios		argp;
+	int ch;
 
 	/* Revoke setgid privileges */
-	setregid(getgid(), getgid());
+	setgid(getgid());
 
-	av = argv;
-	ac = argc;
-	av++;
-	time(&curtime);
-	vect = (long) curtime;
-	srand(vect);
-	opencode = 'w';
-	prio = PRIO;
+	/* Default to fast mode */
+	Etc.fast = 1;
 
-	if (tcgetattr(1, &argp) == 0)
-	{
-		if (cfgetispeed(&argp) < B1200)
-			Etc.fast++;
-	}
+	srandom((long) time(NULL));
 
-	while (ac > 1 && av[0][0] == '-')
-	{
-		switch (av[0][1])
-		{
-		  case 'a':	/* append to log file */
-			opencode = 'a';
-			break;
-
+	while ((ch = getopt(argc, argv, "fst")) != -1) {
+		switch (ch) {
 		  case 'f':	/* set fast mode */
 			Etc.fast++;
 			break;
@@ -206,44 +182,28 @@ char	**argv;
 			Etc.fast = 0;
 			break;
 
-#		ifdef xTRACE
+#ifdef xTRACE
 		  case 't':	/* trace */
-			if (getuid() != Mother)
-				goto badflag;
 			Trace++;
 			break;
-#		endif
-
-		  case 'p':	/* set priority */
-			if (getuid() != Mother)
-				goto badflag;
-			prio = atoi(av[0] + 2);
-			break;
+#endif
 
 		  default:
-		  badflag:
-			printf("Invalid option: %s\n", av[0]);
-
+			usage(argv[0]);
 		}
-		ac--;
-		av++;
 	}
-	if (ac > 2)
-		errx(1, "arg count");
-		/*
-	if (ac > 1)
-		f_log = fopen(av[0], opencode);
-		*/
+	if (optind < argc)
+		usage(argv[0]);
 
-	printf("\n   * * *   S T A R   T R E K   * * *\n\nPress return to continue.\n");
+	printf("\n   * * *   S T A R   T R E K   * * *\n\n"
+	       "Press return to continue.\n");
 
-	if (setjmp(env))
-	{
+	if (setjmp(env)) {
 		if ( !getynpar("Another game") )
 			exit(0);
 	}
-	do
-	{
+
+	do {
 		setup();
 		play();
 	} while (getynpar("Another game"));

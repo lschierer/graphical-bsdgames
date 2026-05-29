@@ -1,4 +1,4 @@
-/*	$NetBSD: pig.c,v 1.11 2004/11/05 21:30:32 dsl Exp $	*/
+/*	$NetBSD: pig.c,v 1.15 2012/06/19 05:46:09 dholland Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -31,15 +31,15 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1992, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1992, 1993\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)pig.c	8.2 (Berkeley) 5/4/95";
 #else
-__RCSID("$NetBSD: pig.c,v 1.11 2004/11/05 21:30:32 dsl Exp $");
+__RCSID("$NetBSD: pig.c,v 1.15 2012/06/19 05:46:09 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -53,20 +53,15 @@ __RCSID("$NetBSD: pig.c,v 1.11 2004/11/05 21:30:32 dsl Exp $");
 #include <unistd.h>
 
 int main(int, char *[]);
-void pigout(char *, int);
-void usage(void) __attribute__((__noreturn__));
+static void pigout(char *, int);
+static void usage(void) __dead;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	int len;
 	int ch;
 	char buf[1024];
-
-	/* Revoke setgid privileges */
-	setregid(getgid(), getgid());
 
 	while ((ch = getopt(argc, argv, "")) != -1)
 		switch(ch) {
@@ -93,10 +88,8 @@ main(argc, argv)
 	exit(0);
 }
 
-void
-pigout(buf, len)
-	char *buf;
-	int len;
+static void
+pigout(char *buf, int len)
 {
 	int ch, start, i;
 	int olen, allupper, firstupper;
@@ -134,8 +127,8 @@ pigout(buf, len)
 	(void)printf("%.*s%s", olen, buf + start, allupper ? "AY" : "ay");
 }
 
-void
-usage()
+static void
+usage(void)
 {
 	(void)fprintf(stderr, "usage: pig\n");
 	exit(1);

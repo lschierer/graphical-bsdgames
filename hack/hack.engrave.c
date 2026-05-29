@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.engrave.c,v 1.6 2003/04/02 18:36:36 jsm Exp $	*/
+/*	$NetBSD: hack.engrave.c,v 1.14 2011/08/07 06:03:45 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,7 +63,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.engrave.c,v 1.6 2003/04/02 18:36:36 jsm Exp $");
+__RCSID("$NetBSD: hack.engrave.c,v 1.14 2011/08/07 06:03:45 dholland Exp $");
 #endif				/* not lint */
 
 #include <stdlib.h>
@@ -82,11 +82,14 @@ struct engr {
 #define	DUST	1
 #define	ENGRAVE	2
 #define	BURN	3
-}              *head_engr;
+};
 
-struct engr    *
-engr_at(x, y)
-	xchar           x, y;
+static struct engr *head_engr;
+
+static void del_engr(struct engr *);
+
+static struct engr *
+engr_at(xchar x, xchar y)
 {
 	struct engr    *ep = head_engr;
 	while (ep) {
@@ -98,13 +101,12 @@ engr_at(x, y)
 }
 
 int
-sengr_at(s, x, y)
-	const char     *s;
-	xchar           x, y;
+sengr_at(const char *s, xchar x, xchar y)
 {
 	struct engr    *ep = engr_at(x, y);
 	char           *t;
-	int             n;
+	size_t n;
+
 	if (ep && ep->engr_time <= moves) {
 		t = ep->engr_txt;
 		/*
@@ -121,20 +123,20 @@ sengr_at(s, x, y)
 }
 
 void
-u_wipe_engr(cnt)
-	int             cnt;
+u_wipe_engr(int cnt)
 {
 	if (!u.uswallow && !Levitation)
 		wipe_engr_at(u.ux, u.uy, cnt);
 }
 
 void
-wipe_engr_at(x, y, cnt)
-	xchar           x, y, cnt;
+wipe_engr_at(xchar x, xchar y, xchar cnt)
 {
 	struct engr    *ep = engr_at(x, y);
-	int             lth, pos;
+	int             pos;
 	char            ch;
+	size_t lth;
+
 	if (ep) {
 		if ((ep->engr_type != DUST) || Levitation) {
 			cnt = rn2(1 + 50 / (cnt + 1)) ? 0 : 1;
@@ -158,8 +160,7 @@ wipe_engr_at(x, y, cnt)
 }
 
 void
-read_engr_at(x, y)
-	int             x, y;
+read_engr_at(int x, int y)
 {
 	struct engr    *ep = engr_at(x, y);
 	if (ep && ep->engr_txt[0]) {
@@ -181,16 +182,14 @@ read_engr_at(x, y)
 }
 
 void
-make_engr_at(x, y, s)
-	int             x, y;
-	const char     *s;
+make_engr_at(int x, int y, const char *s)
 {
 	struct engr    *ep;
 
 	if ((ep = engr_at(x, y)) != NULL)
 		del_engr(ep);
-	ep = (struct engr *)
-		alloc((unsigned) (sizeof(struct engr) + strlen(s) + 1));
+	ep = alloc(sizeof(*ep) + strlen(s) + 1);
+
 	ep->nxt_engr = head_engr;
 	head_engr = ep;
 	ep->engr_x = x;
@@ -203,7 +202,7 @@ make_engr_at(x, y, s)
 }
 
 int
-doengrave()
+doengrave(void)
 {
 	int             len;
 	char           *sp;
@@ -234,7 +233,7 @@ doengrave()
 			if (uwep && uwep->cursed) {
 				/* Andreas Bormann */
 				pline("Since your weapon is welded to your hand,");
-				pline("you use the %s.", aobjnam(uwep, (char *) 0));
+				pline("you use the %s.", aobjnam(uwep, NULL));
 				otmp = uwep;
 			} else {
 				if (!otmp)
@@ -320,7 +319,7 @@ doengrave()
 	}
 	if (oep)
 		len += strlen(oep->engr_txt) + spct;
-	ep = (struct engr *) alloc((unsigned) (sizeof(struct engr) + len + 1));
+	ep = alloc(sizeof(*ep) + len + 1);
 	ep->nxt_engr = head_engr;
 	head_engr = ep;
 	ep->engr_x = u.ux;
@@ -345,8 +344,7 @@ doengrave()
 }
 
 void
-save_engravings(fd)
-	int             fd;
+save_engravings(int fd)
 {
 	struct engr    *ep = head_engr;
 	while (ep) {
@@ -354,36 +352,34 @@ save_engravings(fd)
 			ep = ep->nxt_engr;
 			continue;
 		}
-		bwrite(fd, (char *) &(ep->engr_lth), sizeof(ep->engr_lth));
-		bwrite(fd, (char *) ep, sizeof(struct engr) + ep->engr_lth);
+		bwrite(fd, &(ep->engr_lth), sizeof(ep->engr_lth));
+		bwrite(fd, ep, sizeof(struct engr) + ep->engr_lth);
 		ep = ep->nxt_engr;
 	}
-	bwrite(fd, (char *) nul, sizeof(unsigned));
+	bwrite(fd, nul, sizeof(unsigned));
 	head_engr = 0;
 }
 
 void
-rest_engravings(fd)
-	int             fd;
+rest_engravings(int fd)
 {
 	struct engr    *ep;
 	unsigned        lth;
 	head_engr = 0;
 	while (1) {
-		mread(fd, (char *) &lth, sizeof(unsigned));
+		mread(fd, &lth, sizeof(unsigned));
 		if (lth == 0)
 			return;
-		ep = (struct engr *) alloc(sizeof(struct engr) + lth);
-		mread(fd, (char *) ep, sizeof(struct engr) + lth);
+		ep = alloc(sizeof(*ep) + lth);
+		mread(fd, ep, sizeof(*ep) + lth);
 		ep->nxt_engr = head_engr;
 		ep->engr_txt = (char *) (ep + 1);	/* Andreas Bormann */
 		head_engr = ep;
 	}
 }
 
-void
-del_engr(ep)
-	struct engr    *ep;
+static void
+del_engr(struct engr *ep)
 {
 	struct engr    *ept;
 	if (ep == head_engr)
@@ -399,5 +395,5 @@ del_engr(ep)
 		return;
 fnd:		;
 	}
-	free((char *) ep);
+	free(ep);
 }

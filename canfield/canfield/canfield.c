@@ -1,4 +1,4 @@
-/*	$NetBSD: canfield.c,v 1.20 2004/11/05 21:30:31 dsl Exp $	*/
+/*	$NetBSD: canfield.c,v 1.31 2021/05/02 12:50:44 rillig Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -31,15 +31,15 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1980, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1980, 1993\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)canfield.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: canfield.c,v 1.20 2004/11/05 21:30:31 dsl Exp $");
+__RCSID("$NetBSD: canfield.c,v 1.31 2021/05/02 12:50:44 rillig Exp $");
 #endif
 #endif /* not lint */
 
@@ -66,6 +66,7 @@ __RCSID("$NetBSD: canfield.c,v 1.20 2004/11/05 21:30:31 dsl Exp $");
 #include <time.h>
 #include <unistd.h>
 
+#include "betinfo.h"
 #include "pathnames.h"
 
 #define	decksize	52
@@ -149,25 +150,25 @@ struct cardtype {
 
 #define	NIL	((struct cardtype *) -1)
 
-struct cardtype *deck[decksize];
-struct cardtype cards[decksize];
-struct cardtype *bottom[4], *found[4], *tableau[4];
-struct cardtype *talon, *hand, *stock, *basecard;
-int length[4];
-int cardsoff, base, cinhand, taloncnt, stockcnt, timesthru;
-char suitmap[4] = {spades, clubs, hearts, diamonds};
-char colormap[4] = {black, black, red, red};
-char pilemap[4] = {atabcol, btabcol, ctabcol, dtabcol};
-char srcpile, destpile;
-int mtforigin, tempbase;
-int coldcol, cnewcol, coldrow, cnewrow;
-bool errmsg, done;
-bool mtfdone, Cflag = FALSE;
+static struct cardtype *deck[decksize];
+static struct cardtype cards[decksize];
+static struct cardtype *bottom[4], *found[4], *tableau[4];
+static struct cardtype *talon, *hand, *stock, *basecard;
+static int length[4];
+static int cardsoff, base, cinhand, taloncnt, stockcnt, timesthru;
+static char suitmap[4] = {spades, clubs, hearts, diamonds};
+static char colormap[4] = {black, black, red, red};
+static char pilemap[4] = {atabcol, btabcol, ctabcol, dtabcol};
+static char srcpile, destpile;
+static int mtforigin, tempbase;
+static int coldcol, cnewcol, coldrow, cnewrow;
+static bool errmsg, done;
+static bool mtfdone, Cflag = FALSE;
 #define INSTRUCTIONBOX	1
 #define BETTINGBOX	2
 #define NOBOX		3
-int status = INSTRUCTIONBOX;
-int uid;
+static int status = INSTRUCTIONBOX;
+static uid_t uid;
 
 /*
  * Basic betting costs
@@ -181,70 +182,59 @@ int uid;
 #define maxtimecharge		 3
 #define valuepercardup	 	 5
 /*
- * Variables associated with betting 
+ * Variables associated with betting
  */
-struct betinfo {
-	long	hand;		/* cost of dealing hand */
-	long	inspection;	/* cost of inspecting hand */
-	long	game;		/* cost of buying game */
-	long	runs;		/* cost of running through hands */
-	long	information;	/* cost of information */
-	long	thinktime;	/* cost of thinking time */
-	long	wins;		/* total winnings */
-	long	worth;		/* net worth after costs */
-};
-struct betinfo this, game, total;
-bool startedgame = FALSE, infullgame = FALSE;
-time_t acctstart;
-int dbfd = -1;
+static struct betinfo this, game, total;
+static bool startedgame = FALSE, infullgame = FALSE;
+static time_t acctstart;
+static int dbfd = -1;
 
-void	askquit(int);
-void	cleanup(int) __attribute__((__noreturn__));
-void	cleanupboard(void);
-void	clearabovemovebox(void);
-void	clearbelowmovebox(void);
-void	clearmsg(void);
-void	clearstat(void);
-void	destinerror(void);
-bool	diffcolor(const struct cardtype *, const struct cardtype *);
-void	dumberror(void);
-bool	finish(void);
-void	fndbase(struct cardtype **, int, int);
-void	getcmd(int, int, const char *);
-void	initall(void);
-void	initdeck(struct cardtype *[]);
-void	initgame(void);
-void	instruct(void);
-int	main(void);
-void	makeboard(void);
-void	movebox(void);
-void	movecard(void);
-void	movetofound(struct cardtype **, int);
-void	movetotalon(void);
-bool	notempty(const struct cardtype *);
-void	printbottombettingbox(void);
-void	printbottominstructions(void);
-void	printcard(int, int, const struct cardtype *);
-void	printrank(int, int, const struct cardtype *, bool);
-void	printtopbettingbox(void);
-void	printtopinstructions(void);
-bool	rankhigher(const struct cardtype *, int);
-bool	ranklower(const struct cardtype *, const struct cardtype *);
-void	removecard(int, int);
-int	samesuit(const struct cardtype *, int);
-void	showcards(void);
-void	showstat(void);
-void	shuffle(struct cardtype *[]);
-void	simpletableau(struct cardtype **, int);
-void	startgame(void);
-void	suspend(void);
-bool	tabok(const struct cardtype *, int);
-void	tabprint(int, int);
-void	tabtotab(int, int);
-void	transit(struct cardtype **, struct cardtype **);
-void	updatebettinginfo(void);
-void	usedstock(void);
-void	usedtalon(void);
+static void	askquit(int);
+static void	cleanup(int) __dead;
+static void	cleanupboard(void);
+static void	clearabovemovebox(void);
+static void	clearbelowmovebox(void);
+static void	clearmsg(void);
+static void	clearstat(void);
+static void	destinerror(void);
+static bool	diffcolor(const struct cardtype *, const struct cardtype *);
+static void	dumberror(void);
+static bool	finish(void);
+static void	fndbase(struct cardtype **, int, int);
+static void	getcmd(int, int, const char *);
+static void	initall(void);
+static void	initdeck(struct cardtype *[]);
+static void	initgame(void);
+static void	instruct(void);
+static void	makeboard(void);
+static void	movebox(void);
+static void	movecard(void);
+static void	movetofound(struct cardtype **, int);
+static void	movetotalon(void);
+static bool	notempty(const struct cardtype *);
+static void	printbottombettingbox(void);
+static void	printbottominstructions(void);
+static void	printcard(int, int, const struct cardtype *);
+static void	printrank(int, int, const struct cardtype *, bool);
+static void	printtopbettingbox(void);
+static void	printtopinstructions(void);
+static bool	rankhigher(const struct cardtype *, int);
+static bool	ranklower(const struct cardtype *, const struct cardtype *);
+static void	removecard(int, int);
+static int	samesuit(const struct cardtype *, int);
+static void	showcards(void);
+static void	showstat(void);
+static void	shuffle(struct cardtype *[]);
+static void	simpletableau(struct cardtype **, int);
+static void	startgame(void);
+static void	suspend(void);
+static bool	tabok(const struct cardtype *, int);
+static void	tabprint(int, int);
+static void	tabtotab(int, int);
+static void	transit(struct cardtype **, struct cardtype **);
+static void	updatebettinginfo(void);
+static void	usedstock(void);
+static void	usedtalon(void);
 
 /*
  * The following procedures print the board onto the screen using the
@@ -253,8 +243,8 @@ void	usedtalon(void);
  *
  * procedure to set the move command box
  */
-void
-movebox()
+static void
+movebox(void)
 {
 	switch (status) {
 	case BETTINGBOX:
@@ -288,8 +278,8 @@ movebox()
 /*
  * print directions above move box
  */
-void
-printtopinstructions()
+static void
+printtopinstructions(void)
 {
 	    move(tboxrow, boxcol);
 	    printw("*----------------------------------*");
@@ -322,8 +312,8 @@ printtopinstructions()
 /*
  * Print the betting box.
  */
-void
-printtopbettingbox()
+static void
+printtopbettingbox(void)
 {
 
 	    move(tboxrow, boxcol);
@@ -357,8 +347,8 @@ printtopbettingbox()
 /*
  * clear info above move box
  */
-void
-clearabovemovebox()
+static void
+clearabovemovebox(void)
 {
 	int i;
 
@@ -373,8 +363,8 @@ clearabovemovebox()
 /*
  * print instructions below move box
  */
-void
-printbottominstructions()
+static void
+printbottominstructions(void)
 {
 	    move(bboxrow, boxcol);
 	    printw("|Replace # with the number of the  |");
@@ -387,8 +377,8 @@ printbottominstructions()
 /*
  * print betting information below move box
  */
-void
-printbottombettingbox()
+static void
+printbottombettingbox(void)
 {
 	    move(bboxrow, boxcol);
 	    printw("|x = toggle information box        |");
@@ -401,8 +391,8 @@ printbottombettingbox()
 /*
  * clear info below move box
  */
-void
-clearbelowmovebox()
+static void
+clearbelowmovebox(void)
 {
 	int i;
 
@@ -417,8 +407,8 @@ clearbelowmovebox()
 /*
  * procedure to put the board on the screen using addressable cursor
  */
-void
-makeboard()
+static void
+makeboard(void)
 {
 	clear();
 	refresh();
@@ -456,8 +446,8 @@ makeboard()
 /*
  * clean up the board for another game
  */
-void
-cleanupboard()
+static void
+cleanupboard(void)
 {
 	int cnt, row, col;
 	struct cardtype *ptr;
@@ -513,9 +503,8 @@ cleanupboard()
 /*
  * procedure to create a deck of cards
  */
-void
-initdeck(deck)
-	struct cardtype *deck[];
+static void
+initdeck(struct cardtype *ideck[])
 {
 	int i;
 	int scnt;
@@ -526,7 +515,7 @@ initdeck(deck)
 	for (scnt=0; scnt<4; scnt++) {
 		s = suitmap[scnt];
 		for (r=Ace; r<=King; r++) {
-			deck[i] = &cards[i];
+			ideck[i] = &cards[i];
 			cards[i].rank = r;
 			cards[i].suit = s;
 			cards[i].color = colormap[scnt];
@@ -539,23 +528,22 @@ initdeck(deck)
 /*
  * procedure to shuffle the deck
  */
-void
-shuffle(deck)
-	struct cardtype *deck[];
+static void
+shuffle(struct cardtype *ideck[])
 {
 	int i,j;
 	struct cardtype *temp;
 
 	for (i=0; i<decksize; i++) {
-		deck[i]->visible = FALSE;
-		deck[i]->paid = FALSE;
+		ideck[i]->visible = FALSE;
+		ideck[i]->paid = FALSE;
 	}
 	for (i = decksize-1; i>=0; i--) {
 		j = random() % decksize;
 		if (i != j) {
-			temp = deck[i];
-			deck[i] = deck[j];
-			deck[j] = temp;
+			temp = ideck[i];
+			ideck[i] = ideck[j];
+			ideck[j] = temp;
 		}
 	}
 }
@@ -563,9 +551,8 @@ shuffle(deck)
 /*
  * procedure to remove the card from the board
  */
-void
-removecard(a, b)
-	int a, b;
+static void
+removecard(int a, int b)
 {
 	move(b, a);
 	printw("   ");
@@ -574,11 +561,8 @@ removecard(a, b)
 /*
  * procedure to print the cards on the board
  */
-void
-printrank(a, b, cp, inverse)
-	int a, b;
-	const struct cardtype *cp;
-	bool inverse;
+static void
+printrank(int a, int b, const struct cardtype *cp, bool inverse)
 {
 	move(b, a);
 	if (cp->rank != 10)
@@ -609,10 +593,8 @@ printrank(a, b, cp, inverse)
 /*
  * procedure to print out a card
  */
-void
-printcard(a, b, cp)
-	int a,b;
-	const struct cardtype *cp;
+static void
+printcard(int a, int b, const struct cardtype *cp)
 {
 	if (cp == NIL)
 		removecard(a, b);
@@ -632,16 +614,15 @@ printcard(a, b, cp)
 }
 
 /*
- * procedure to move the top card from one location to the top 
+ * procedure to move the top card from one location to the top
  * of another location. The pointers always point to the top
  * of the piles.
  */
-void
-transit(source, dest)
-	struct cardtype **source, **dest;
+static void
+transit(struct cardtype **source, struct cardtype **dest)
 {
 	struct cardtype *temp;
-	
+
 	temp = *source;
 	*source = (*source)->next;
 	temp->next = *dest;
@@ -653,10 +634,8 @@ transit(source, dest)
  * Note that it is only called on a foundation pile at the beginning of
  * the game, so the pile will have exactly one card in it.
  */
-void
-fndbase(cp, column, row)
-	struct cardtype **cp;
-	int column, row;
+static void
+fndbase(struct cardtype **cp, int column, int row)
 {
 	bool nomore;
 
@@ -691,7 +670,7 @@ fndbase(cp, column, row)
 					game.wins += valuepercardup;
 					total.wins += valuepercardup;
 				}
-			} else 
+			} else
 				nomore = TRUE;
 	} while (nomore == FALSE);
 }
@@ -699,8 +678,8 @@ fndbase(cp, column, row)
 /*
  * procedure to initialize the things necessary for the game
  */
-void
-initgame()
+static void
+initgame(void)
 {
 	int i;
 
@@ -745,8 +724,8 @@ initgame()
 /*
  * procedure to print the beginning cards and to start each game
  */
-void
-startgame()
+static void
+startgame(void)
 {
 	int j;
 
@@ -786,8 +765,8 @@ startgame()
 /*
  * procedure to clear the message printed from an error
  */
-void
-clearmsg()
+static void
+clearmsg(void)
 {
 	int i;
 
@@ -803,8 +782,8 @@ clearmsg()
 /*
  * procedure to print an error message if the move is not listed
  */
-void
-dumberror()
+static void
+dumberror(void)
 {
 	errmsg = TRUE;
 	move(msgrow, msgcol);
@@ -814,8 +793,8 @@ dumberror()
 /*
  * procedure to print an error message if the move is not possible
  */
-void
-destinerror()
+static void
+destinerror(void)
 {
 	errmsg = TRUE;
 	move(msgrow, msgcol);
@@ -825,78 +804,73 @@ destinerror()
 /*
  * function to see if the source has cards in it
  */
-bool
-notempty(cp)
-	const struct cardtype *cp;
+static bool
+notempty(const struct cardtype *cp)
 {
 	if (cp == NIL) {
 		errmsg = TRUE;
 		move(msgrow, msgcol);
 		printw("Error: no cards to move");
 		return (FALSE);
-	} else 
+	} else
 		return (TRUE);
 }
 
 /*
  * function to see if the rank of one card is less than another
  */
-bool
-ranklower(cp1, cp2)
-	const struct cardtype *cp1, *cp2;
+static bool
+ranklower(const struct cardtype *cp1, const struct cardtype *cp2)
 {
-	if (cp2->rank == Ace) 
+	if (cp2->rank == Ace)
 		if (cp1->rank == King)
 			return (TRUE);
-		else 
+		else
 			return (FALSE);
 	else if (cp1->rank + 1 == cp2->rank)
 		return (TRUE);
-	else 
+	else
 		return (FALSE);
 }
 
 /*
  * function to check the cardcolor for moving to a tableau
  */
-bool
-diffcolor(cp1, cp2)
-	const struct cardtype *cp1, *cp2;
+static bool
+diffcolor(const struct cardtype *cp1, const struct cardtype *cp2)
 {
 	if (cp1->color == cp2->color)
 		return (FALSE);
-	else 
+	else
 		return (TRUE);
 }
 
 /*
  * function to see if the card can move to the tableau
  */
-bool
-tabok(cp, des)
-	const struct cardtype *cp;
-	int des;
+static bool
+tabok(const struct cardtype *cp, int des)
 {
 	if ((cp == stock) && (tableau[des] == NIL))
 		return (TRUE);
 	else if (tableau[des] == NIL)
-		if (stock == NIL && 
-		    cp != bottom[0] && cp != bottom[1] && 
+		if (stock == NIL &&
+		    cp != bottom[0] && cp != bottom[1] &&
 		    cp != bottom[2] && cp != bottom[3])
 			return (TRUE);
-		else 
+		else
 			return (FALSE);
 	else if (ranklower(cp, tableau[des]) && diffcolor(cp, tableau[des]))
 		return (TRUE);
-	else 
+	else
 		return (FALSE);
 }
 
 /*
  * procedure to turn the cards onto the talon from the deck
  */
-void
-movetotalon()
+static void
+movetotalon(void)
 {
 	int i, fin;
 
@@ -981,8 +955,8 @@ movetotalon()
  * procedure to print card counting info on screen
  */
 
-void
-showstat()
+static void
+showstat(void)
 {
 	int row, col;
 	struct cardtype *ptr;
@@ -1024,8 +998,8 @@ showstat()
 /*
  * procedure to clear card counting info from screen
  */
-void
-clearstat()
+static void
+clearstat(void)
 {
 	int row;
 
@@ -1044,8 +1018,8 @@ clearstat()
 /*
  * procedure to update card counting base
  */
-void
-usedtalon()
+static void
+usedtalon(void)
 {
 	removecard(coldcol, coldrow);
 	DECRHAND(coldrow, coldcol);
@@ -1069,8 +1043,8 @@ usedtalon()
 /*
  * procedure to update stock card counting base
  */
-void
-usedstock()
+static void
+usedstock(void)
 {
 	stockcnt--;
 	if (Cflag) {
@@ -1082,8 +1056,8 @@ usedstock()
 /*
  * let 'em know how they lost!
  */
-void
-showcards()
+static void
+showcards(void)
 {
 	struct cardtype *ptr;
 	int row;
@@ -1130,8 +1104,8 @@ showcards()
 /*
  * procedure to update the betting values
  */
-void
-updatebettinginfo()
+static void
+updatebettinginfo(void)
 {
 	long thiscosts, gamecosts, totalcosts;
 	double thisreturn, gamereturn, totalreturn;
@@ -1189,10 +1163,8 @@ updatebettinginfo()
 /*
  * procedure to move a card from the stock or talon to the tableau
  */
-void
-simpletableau(cp, des)
-	struct cardtype **cp;
-	int des;
+static void
+simpletableau(struct cardtype **cp, int des)
 {
 	int origin;
 
@@ -1215,7 +1187,7 @@ simpletableau(cp, des)
 				usedtalon();
 				printcard(taloncol, talonrow, talon);
 			}
-		} else 
+		} else
 			destinerror();
 	}
 }
@@ -1223,9 +1195,8 @@ simpletableau(cp, des)
 /*
  * print the tableau
  */
-void
-tabprint(sour, des)
-	int sour, des;
+static void
+tabprint(int sour, int des)
 {
 	int dlength, slength, i;
 	struct cardtype *tempcard;
@@ -1236,7 +1207,7 @@ tabprint(sour, des)
 	slength = length[sour];
 	if (slength == tabrow)
 		printcard(pilemap[des], dlength, tableau[sour]);
-	else 
+	else
 		while (slength != tabrow - 1) {
 			tempcard = tableau[sour];
 			for (i=1; i<=slength-tabrow; i++)
@@ -1250,9 +1221,8 @@ tabprint(sour, des)
 /*
  * procedure to move from the tableau to the tableau
  */
-void
-tabtotab(sour, des)
-	int sour, des;
+static void
+tabtotab(int sour, int des)
 {
 	struct cardtype *temp;
 
@@ -1266,10 +1236,11 @@ tabtotab(sour, des)
 			temp->next = tableau[des];
 			tableau[des] = tableau[sour];
 			tableau[sour] = NIL;
-			length[des] = length[des] + (length[sour] - (tabrow - 1));
+			length[des] = length[des] +
+			    (length[sour] - (tabrow - 1));
 			length[sour] = tabrow - 1;
 			timesthru = 0;
-		} else 
+		} else
 			destinerror();
 	}
 }
@@ -1277,43 +1248,37 @@ tabtotab(sour, des)
 /*
  * functions to see if the card can go onto the foundation
  */
-bool
-rankhigher(cp, let)
-	const struct cardtype *cp;
-	int let;
+static bool
+rankhigher(const struct cardtype *cp, int let)
 {
 	if (found[let]->rank == King)
 		if (cp->rank == Ace)
 			return(TRUE);
-		else 
+		else
 			return(FALSE);
 	else if (cp->rank - 1 == found[let]->rank)
 		return(TRUE);
-	else 
+	else
 		return(FALSE);
 }
 
 /*
  * function to determine if two cards are the same suit
  */
-int
-samesuit(cp, let)
-	const struct cardtype *cp;
-	int let;
+static int
+samesuit(const struct cardtype *cp, int let)
 {
 	if (cp->suit == found[let]->suit)
 		return (TRUE);
-	else 
+	else
 		return (FALSE);
 }
 
 /*
  * procedure to move a card to the correct foundation pile
  */
-void
-movetofound(cp, source)
-	struct cardtype **cp;
-	int source;
+static void
+movetofound(struct cardtype **cp, int source)
 {
 	tempbase = 0;
 	mtfdone = FALSE;
@@ -1334,12 +1299,15 @@ movetofound(cp, source)
 					timesthru = 0;
 					if (mtforigin == stk) {
 						usedstock();
-						printcard(stockcol, stockrow, stock);
+						printcard(stockcol, stockrow,
+						    stock);
 					} else if (mtforigin == tal) {
 						usedtalon();
-						printcard(taloncol, talonrow, talon);
+						printcard(taloncol, talonrow,
+						    talon);
 					} else {
-						removecard(pilemap[source], length[source]);
+						removecard(pilemap[source],
+						    length[source]);
 						length[source]--;
 					}
 					cardsoff++;
@@ -1351,7 +1319,7 @@ movetofound(cp, source)
 					mtfdone = TRUE;
 				} else
 					tempbase++;
-			else 
+			else
 				tempbase++;
 		} while ((tempbase != 4) && !mtfdone);
 		if (!mtfdone)
@@ -1362,10 +1330,8 @@ movetofound(cp, source)
 /*
  * procedure to get a command
  */
-void
-getcmd(row, col, cp)
-	int row, col;
-	const char *cp;
+static void
+getcmd(int row, int col, const char *cp)
 {
 	char cmd[2] = { '\0', '\0'}, ch;
 	int i;
@@ -1413,8 +1379,8 @@ getcmd(row, col, cp)
 /*
  * Suspend the game (shell escape if no process control on system)
  */
-void
-suspend()
+static void
+suspend(void)
 {
 #ifndef SIGTSTP
 	char *sh;
@@ -1435,8 +1401,8 @@ suspend()
 /*
  * procedure to evaluate and make the specific moves
  */
-void
-movecard()
+static void
+movecard(void)
 {
 	int source, dest;
 	char osrcpile, odestpile;
@@ -1585,8 +1551,8 @@ movecard()
 	} while (!done);
 }
 
-const char *const basicinstructions[] = {
-	"Here are brief instuctions to the game of Canfield:\n\n",
+static const char *const basicinstructions[] = {
+	"Here are brief instructions to the game of Canfield:\n\n",
 	"     If you have never played solitaire before, it is recom-\n",
 	"mended  that  you  consult  a solitaire instruction book. In\n",
 	"Canfield, tableau cards may be built on each other  downward\n",
@@ -1607,7 +1573,7 @@ const char *const basicinstructions[] = {
 	"push any key when you are finished: ",
 	0 };
 
-const char *const bettinginstructions[] = {
+static const char *const bettinginstructions[] = {
 	"     The rules for betting are  somewhat  less  strict  than\n",
 	"those  used in the official version of the game. The initial\n",
 	"deal costs $13. You may quit at this point  or  inspect  the\n",
@@ -1632,8 +1598,8 @@ const char *const bettinginstructions[] = {
 /*
  * procedure to printout instructions
  */
-void
-instruct()
+static void
+instruct(void)
 {
 	const char *const *cp;
 
@@ -1647,7 +1613,7 @@ instruct()
 		return;
 	clear();
 	for (cp = basicinstructions; *cp != 0; cp++)
-		printw(*cp);
+		printw("%s", *cp);
 	refresh();
 	getch();
 	clear();
@@ -1660,7 +1626,7 @@ instruct()
 		return;
 	clear();
 	for (cp = bettinginstructions; *cp != 0; cp++)
-		printw(*cp);
+		printw("%s", *cp);
 	refresh();
 	getch();
 }
@@ -1668,28 +1634,25 @@ instruct()
 /*
  * procedure to initialize the game
  */
-void
-initall()
+static void
+initall(void)
 {
-	int i;
+	ssize_t i;
 
-	srandom(getpid());
+	srandom(time(NULL));
 	time(&acctstart);
 	initdeck(deck);
 	uid = getuid();
-	if (uid < 0)
-		uid = 0;
 	dbfd = open(_PATH_SCORE, O_RDWR);
 
 	/* Revoke setgid privileges */
-	setregid(getgid(), getgid());
+	setgid(getgid());
 
 	if (dbfd < 0)
 		return;
 	if (dbfd < 3)
 		exit(1);
-	i = lseek(dbfd, uid * sizeof(struct betinfo), SEEK_SET);
-	if (i < 0) {
+	if (lseek(dbfd, uid * sizeof(struct betinfo), SEEK_SET) < 0) {
 		close(dbfd);
 		dbfd = -1;
 		return;
@@ -1705,8 +1668,8 @@ initall()
 /*
  * procedure to end the game
  */
-bool
-finish()
+static bool
+finish(void)
 {
 	int row, col;
 
@@ -1743,9 +1706,8 @@ finish()
 /*
  * procedure to clean up and exit
  */
-void
-cleanup(dummy)
-	int dummy __attribute__((__unused__));
+static void
+cleanup(int dummy __unused)
 {
 
 	total.thinktime += 1;
@@ -1767,9 +1729,8 @@ cleanup(dummy)
 /*
  * Field an interrupt.
  */
-void
-askquit(dummy)
-	int dummy __attribute__((__unused__));
+static void
+askquit(int dummy __unused)
 {
 	move(msgrow, msgcol);
 	printw("Really wish to quit?    ");
@@ -1786,7 +1747,7 @@ askquit(dummy)
  * Can you tell that this used to be a Pascal program?
  */
 int
-main()
+main(void)
 {
 #ifdef MAXLOAD
 	double vec[3];
@@ -1800,7 +1761,10 @@ main()
 	signal(SIGINT, askquit);
 	signal(SIGHUP, cleanup);
 	signal(SIGTERM, cleanup);
-	initscr();
+	if (!initscr()) {
+		fprintf(stderr, "couldn't initialize screen\n");
+		exit (0);
+	}
 	raw();
 	noecho();
 	initall();

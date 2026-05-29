@@ -1,4 +1,4 @@
-/*	$NetBSD: rent.c,v 1.6 2003/08/07 09:37:29 agc Exp $	*/
+/*	$NetBSD: rent.c,v 1.9 2012/06/19 05:35:32 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,18 +34,17 @@
 #if 0
 static char sccsid[] = "@(#)rent.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: rent.c,v 1.6 2003/08/07 09:37:29 agc Exp $");
+__RCSID("$NetBSD: rent.c,v 1.9 2012/06/19 05:35:32 dholland Exp $");
 #endif
 #endif /* not lint */
 
-#include "monop.ext"
+#include "monop.h"
 
 /*
  *	This routine has the player pay rent
  */
 void
-rent(sqp)
-	SQUARE *sqp;
+rent(SQUARE *sqp)
 {
 	int rnt = 0;
 	PROP *pp;
@@ -64,8 +63,9 @@ rent(sqp)
 			if (pp->houses == 0)
 				printf("rent is %d\n", rnt=pp->rent[0] * 2);
 			else if (pp->houses < 5)
-				printf("with %d houses, rent is %d\n",
-				    pp->houses, rnt=pp->rent[pp->houses]);
+				printf("with %d house%s, rent is %d\n",
+				    pp->houses, pp->houses == 1 ? "" : "s",
+				    rnt=pp->rent[pp->houses]);
 			else
 				printf("with a hotel, rent is %d\n",
 				    rnt=pp->rent[pp->houses]);

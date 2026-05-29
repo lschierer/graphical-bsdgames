@@ -1,4 +1,4 @@
-/*	$NetBSD: arithmetic.c,v 1.21 2004/11/05 21:30:31 dsl Exp $	*/
+/*	$NetBSD: arithmetic.c,v 1.27 2012/06/19 05:46:08 dholland Exp $	*/
 
 /*
  * Copyright (c) 1989, 1993
@@ -34,15 +34,15 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1989, 1993\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)arithmetic.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: arithmetic.c,v 1.21 2004/11/05 21:30:31 dsl Exp $");
+__RCSID("$NetBSD: arithmetic.c,v 1.27 2012/06/19 05:46:08 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -84,22 +84,21 @@ __RCSID("$NetBSD: arithmetic.c,v 1.21 2004/11/05 21:30:31 dsl Exp $");
 #include <time.h>
 #include <unistd.h>
 
-int	getrandom(int, int, int);
-void	intr(int) __attribute__((__noreturn__));
-int	main(int, char *[]);
-int	opnum(int);
-void	penalise(int, int, int);
-int	problem(void);
-void	showstats(int);
-void	usage(void) __attribute__((__noreturn__));
+static int	getrandom(int, int, int);
+static void	intr(int) __dead;
+static int	opnum(int);
+static void	penalise(int, int, int);
+static int	problem(void);
+static void	showstats(int);
+static void	usage(void) __dead;
 
-const char keylist[] = "+-x/";
-const char defaultkeys[] = "+-";
-const char *keys = defaultkeys;
-int nkeys = sizeof(defaultkeys) - 1;
-int rangemax = 10;
-int nright, nwrong;
-time_t qtime;
+static const char keylist[] = "+-x/";
+static const char defaultkeys[] = "+-";
+static const char *keys = defaultkeys;
+static int nkeys = sizeof(defaultkeys) - 1;
+static int rangemax = 10;
+static int nright, nwrong;
+static time_t qtime;
 #define	NQUESTS	20
 
 /*
@@ -110,14 +109,12 @@ time_t qtime;
  * so far are printed.
  */
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int ch, cnt;
 
 	/* Revoke setgid privileges */
-	setregid(getgid(), getgid());
+	setgid(getgid());
 
 	while ((ch = getopt(argc, argv, "r:o:")) != -1)
 		switch(ch) {
@@ -142,7 +139,7 @@ main(argc, argv)
 		usage();
 
 	/* Seed the random-number generator. */
-	srandom((int)time((time_t *)NULL));
+	srandom((int)time(NULL));
 
 	(void)signal(SIGINT, intr);
 
@@ -157,18 +154,16 @@ main(argc, argv)
 }
 
 /* Handle interrupt character.  Print score and exit. */
-void
-intr(dummy)
-	int dummy __attribute__((__unused__));
+static void
+intr(int dummy __unused)
 {
 	showstats(1);
 	exit(0);
 }
 
 /* Print score.  Original `arithmetic' had a delay after printing it. */
-void
-showstats(bool_sigint)
-	int bool_sigint;
+static void
+showstats(int bool_sigint)
 {
 	if (nright + nwrong > 0) {
 		(void)printf("\n\nRights %d; Wrongs %d; Score %d%%",
@@ -192,8 +187,8 @@ showstats(bool_sigint)
  * answer causes the numbers in the problem to be penalised, so that they are
  * more likely to appear in subsequent problems.
  */
-int
-problem()
+static int
+problem(void)
 {
 	char *p;
 	time_t start, finish;
@@ -292,8 +287,8 @@ retry:
  * penalties themselves.
  */
 
-int penalty[sizeof(keylist) - 1][2];
-struct penalty {
+static int penalty[sizeof(keylist) - 1][2];
+static struct penalty {
 	int value, penalty;	/* Penalised value and its penalty. */
 	struct penalty *next;
 } *penlist[sizeof(keylist) - 1][2];
@@ -305,14 +300,13 @@ struct penalty {
  * operand number `operand' (0 or 1).  If we run out of memory, we just
  * forget about the penalty (how likely is this, anyway?).
  */
-void
-penalise(value, op, operand)
-	int value, op, operand;
+static void
+penalise(int value, int op, int operand)
 {
 	struct penalty *p;
 
 	op = opnum(op);
-	if ((p = (struct penalty *)malloc((u_int)sizeof(*p))) == NULL)
+	if ((p = malloc(sizeof(*p))) == NULL)
 		return;
 	p->next = penlist[op][operand];
 	penlist[op][operand] = p;
@@ -326,9 +320,8 @@ penalise(value, op, operand)
  * as a value, or represents a position in the penalty list.  If the latter,
  * we find the corresponding value and return that, decreasing its penalty.
  */
-int
-getrandom(maxval, op, operand)
-	int maxval, op, operand;
+static int
+getrandom(int maxval, int op, int operand)
 {
 	int value;
 	struct penalty **pp, *p;
@@ -371,9 +364,8 @@ getrandom(maxval, op, operand)
 }
 
 /* Return an index for the character op, which is one of [+-x/]. */
-int
-opnum(op)
-	int op;
+static int
+opnum(int op)
 {
 	char *p;
 
@@ -384,8 +376,8 @@ opnum(op)
 }
 
 /* Print usage message and quit. */
-void
-usage()
+static void
+usage(void)
 {
 	(void)fprintf(stderr, "Usage: %s [-o +-x/] [-r range]\n",
 		getprogname());

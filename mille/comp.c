@@ -1,4 +1,4 @@
-/*	$NetBSD: comp.c,v 1.9 2003/08/07 09:37:24 agc Exp $	*/
+/*	$NetBSD: comp.c,v 1.14 2019/02/04 03:29:41 mrg Exp $	*/
 
 /*
  * Copyright (c) 1982, 1993
@@ -34,26 +34,27 @@
 #if 0
 static char sccsid[] = "@(#)comp.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: comp.c,v 1.9 2003/08/07 09:37:24 agc Exp $");
+__RCSID("$NetBSD: comp.c,v 1.14 2019/02/04 03:29:41 mrg Exp $");
 #endif
 #endif /* not lint */
 
-# include	"mille.h"
+#include "mille.h"
 
 /*
  * @(#)comp.c	1.1 (Berkeley) 4/1/82
  */
 
-# define	V_VALUABLE	40
+#define V_VALUABLE	40
 
 void
-calcmove()
+calcmove(void)
 {
 	CARD		card;
 	int		*value;
 	PLAY		*pp, *op;
-	bool		foundend, cango, canstop, foundlow;
-	unsgn int	i, count200, badcount, nummin, nummax, diff;
+	bool		foundend, canstop, foundlow;
+	int		cango;
+	unsigned int	i, count200, badcount, nummin, nummax, diff;
 	int		curmin, curmax;
 	CARD		safe, oppos;
 	int		valbuf[HAND_SZ], count[NUM_CARDS];
@@ -217,6 +218,7 @@ okay:
 					*value = 0;
 					break;
 				}
+				/* FALLTHROUGH */
 			  case C_75:	case C_100:
 				*value = (Value[card] >> 3);
 				if (pp->speed == C_LIMIT)
@@ -342,9 +344,7 @@ normbad:
 						*value /= ++badcount;
 					if (op->mileage == 0)
 						*value += 5;
-					if ((card == C_LIMIT &&
-					     op->speed == C_LIMIT) ||
-					    !op->can_go)
+					if (op->speed == C_LIMIT || !op->can_go)
 						*value -= 5;
 					if (cango && pp->safety[S_RIGHT_WAY] !=
 						     S_UNKNOWN)
@@ -403,8 +403,7 @@ play_it:
  * Return true if the given player could conceivably win with his next card.
  */
 int
-onecard(pp)
-	const PLAY	*pp;
+onecard(const PLAY *pp)
 {
 	CARD	bat, spd, card;
 
@@ -426,6 +425,7 @@ onecard(pp)
 				card = (End - pp->mileage == 75 ? C_75 : C_100);
 			if (spd == C_LIMIT)
 				return Numseen[S_RIGHT_WAY] == 0;
+			/* FALLTHROUGH */
 		  case 50:
 		  case 25:
 			if (card == -1)
@@ -436,9 +436,7 @@ onecard(pp)
 }
 
 int
-canplay(pp, op, card)
-	const PLAY	*pp, *op;
-	CARD	card;
+canplay(const PLAY *pp, const PLAY *op, CARD card)
 {
 	switch (card) {
 	  case C_200:

@@ -1,4 +1,4 @@
-/*	$NetBSD: compkl.c,v 1.6 2004/01/27 20:30:30 jsm Exp $	*/
+/*	$NetBSD: compkl.c,v 1.8 2009/05/24 21:44:56 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)compkl.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: compkl.c,v 1.6 2004/01/27 20:30:30 jsm Exp $");
+__RCSID("$NetBSD: compkl.c,v 1.8 2009/05/24 21:44:56 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -50,13 +50,14 @@ __RCSID("$NetBSD: compkl.c,v 1.6 2004/01/27 20:30:30 jsm Exp $");
 **
 **	This routine is used every time the Enterprise or the Klingons
 **	move.
+**
+**  f -- set if new quadrant
 */
 
 static void sortkl(void);
 
 void
-compkldist(f)
-int	f;		/* set if new quadrant */
+compkldist(int f)
 {
 	int		i, dx, dy;
 	double		d;
@@ -64,8 +65,7 @@ int	f;		/* set if new quadrant */
 
 	if (Etc.nkling == 0)
 		return;
-	for (i = 0; i < Etc.nkling; i++)
-	{
+	for (i = 0; i < Etc.nkling; i++) {
 		/* compute distance to the Klingon */
 		dx = Ship.sectx - Etc.klingon[i].x;
 		dy = Ship.secty - Etc.klingon[i].y;
@@ -73,13 +73,10 @@ int	f;		/* set if new quadrant */
 		d = sqrt(d);
 
 		/* compute average of new and old distances to Klingon */
-		if (!f)
-		{
+		if (!f) {
 			temp = Etc.klingon[i].dist;
 			Etc.klingon[i].avgdist = 0.5 * (temp + d);
-		}
-		else
-		{
+		} else {
 			/* new quadrant: average is current */
 			Etc.klingon[i].avgdist = d;
 		}
@@ -98,23 +95,22 @@ int	f;		/* set if new quadrant */
 */
 
 static void
-sortkl()
+sortkl(void)
 {
 	struct kling		t;
 	int		f, i, m;
 
 	m = Etc.nkling - 1;
 	f = 1;
-	while (f)
-	{
+	while (f) {
 		f = 0;
-		for (i = 0; i < m; i++)
-			if (Etc.klingon[i].dist > Etc.klingon[i+1].dist)
-			{
+		for (i = 0; i < m; i++) {
+			if (Etc.klingon[i].dist > Etc.klingon[i+1].dist) {
 				t =  Etc.klingon[i];
 				Etc.klingon[i] = Etc.klingon[i+1];
 				Etc.klingon[i+1] = t;
 				f = 1;
 			}
+		}
 	}
 }

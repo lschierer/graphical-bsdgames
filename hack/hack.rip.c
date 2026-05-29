@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.rip.c,v 1.7 2003/04/02 18:36:39 jsm Exp $	*/
+/*	$NetBSD: hack.rip.c,v 1.12 2009/08/12 07:28:41 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,7 +63,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.rip.c,v 1.7 2003/04/02 18:36:39 jsm Exp $");
+__RCSID("$NetBSD: hack.rip.c,v 1.12 2009/08/12 07:28:41 dholland Exp $");
 #endif				/* not lint */
 
 #include "hack.h"
@@ -83,8 +83,10 @@ static const char    *ripbot = "\
                  *|     *  *  *      | *\n\
         _________)/\\\\_//(\\/(/\\)/\\//\\/|_)_______";
 
+static void center(int, char *);
+
 void
-outrip()
+outrip(void)
 {
 	char            buf[BUFSZ];
 
@@ -94,14 +96,14 @@ outrip()
 	(void) strcpy(buf, plname);
 	buf[16] = 0;
 	center(6, buf);
-	(void) sprintf(buf, "%ld AU", u.ugold);
+	(void) snprintf(buf, sizeof(buf), "%ld AU", u.ugold);
 	center(7, buf);
-	(void) sprintf(buf, "killed by%s",
+	(void) snprintf(buf, sizeof(buf), "killed by%s",
 		       !strncmp(killer, "the ", 4) ? "" :
 		       !strcmp(killer, "starvation") ? "" :
 		       strchr(vowels, *killer) ? " an" : " a");
 	center(8, buf);
-	(void) strcpy(buf, killer);
+	(void) strlcpy(buf, killer, sizeof(buf));
 	{
 		int             i1;
 		if ((i1 = strlen(buf)) > 16) {
@@ -118,16 +120,14 @@ outrip()
 		center(9, buf);
 		center(10, buf + i1);
 	}
-	(void) sprintf(buf, "%4d", getyear());
+	(void) snprintf(buf, sizeof(buf), "%4d", getyear());
 	center(11, buf);
 	puts(ripbot);
 	getret();
 }
 
-void
-center(line, text)
-	int             line __attribute__((__unused__));
-	char           *text;
+static void
+center(int line __unused, char *text)
 {
 	int             n = strlen(text) / 2;
 	printf(ripmid, 8 + n, text, 8 - n, "");

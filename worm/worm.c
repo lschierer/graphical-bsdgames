@@ -1,4 +1,4 @@
-/*	$NetBSD: worm.c,v 1.25 2004/01/27 20:30:31 jsm Exp $	*/
+/*	$NetBSD: worm.c,v 1.32 2024/12/11 03:47:27 maya Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -31,15 +31,15 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1980, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1980, 1993\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)worm.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: worm.c,v 1.25 2004/01/27 20:30:31 jsm Exp $");
+__RCSID("$NetBSD: worm.c,v 1.32 2024/12/11 03:47:27 maya Exp $");
 #endif
 #endif /* not lint */
 
@@ -56,57 +56,69 @@ __RCSID("$NetBSD: worm.c,v 1.25 2004/01/27 20:30:31 jsm Exp $");
 #include <termios.h>
 #include <unistd.h>
 
-#define newlink() (struct body *) malloc(sizeof (struct body));
 #define HEAD '@'
 #define BODY 'o'
 #define LENGTH 7
 #define RUNLEN 8
 #define CNTRL(p) (p-'A'+1)
 
-WINDOW *tv;
-WINDOW *stw;
 struct body {
 	int x;
 	int y;
 	struct body *prev;
 	struct body *next;
-} *head, *tail, goody;
-int growing = 0;
-int running = 0;
-int slow = 0;
-int score = 0;
-int start_len = LENGTH;
-int visible_len;
-int lastch;
-char outbuf[BUFSIZ];
+};
 
-void	crash(void) __attribute__((__noreturn__));
-void	display(const struct body *, char);
+static WINDOW *tv;
+static WINDOW *stw;
+static struct body *head, *tail, goody;
+static int growing = 0;
+static int running = 0;
+static int slow = 0;
+static int score = 0;
+static int start_len = LENGTH;
+static int visible_len;
+static int lastch;
+static char outbuf[BUFSIZ];
+
 int	main(int, char **);
-void	leave(int) __attribute__((__noreturn__));
-void	life(void);
-void	newpos(struct body *);
-void	process(int);
-void	prize(void);
-int	rnd(int);
-void	setup(void);
-void	wake(int);
+static void crash(void) __dead;
+static void display(const struct body *, char);
+static void leave(int) __dead;
+static void life(void);
+static void newpos(struct body *);
+static void process(int);
+static void prize(void);
+static int rnd(int);
+static void setup(void);
+static void wake(int);
+
+static struct body *
+newlink(void)
+{
+	struct body *b;
+
+	b = malloc(sizeof(*b));
+	if (b == NULL) {
+		err(EXIT_FAILURE, "malloc failed");
+	}
+	return b;
+}
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 
 	/* Revoke setgid privileges */
-	setregid(getgid(), getgid());
+	setgid(getgid());
 
 	setbuf(stdout, outbuf);
 	srand(getpid());
 	signal(SIGALRM, wake);
 	signal(SIGINT, leave);
 	signal(SIGQUIT, leave);
-	initscr();
+	if (!initscr())
+		errx(0, "couldn't initialize screen");
 	cbreak();
 	noecho();
 #ifdef KEY_LEFT
@@ -154,24 +166,20 @@ main(argc, argv)
 	}
 }
 
-void
-life()
+static void
+life(void)
 {
 	struct body *bp, *np;
 	int i, j = 1;
 
 	np = NULL;
 	head = newlink();
-	if (head == NULL)
-		err(1, NULL);
 	head->x = start_len % (COLS-5) + 2;
 	head->y = LINES / 2;
 	head->next = NULL;
 	display(head, HEAD);
 	for (i = 0, bp = head; i < start_len; i++, bp = np) {
 		np = newlink();
-		if (np == NULL)
-			err(1, NULL);
 		np->next = bp;
 		bp->prev = np;
 		if (((bp->x <= 2) && (j == 1)) || ((bp->x >= COLS-4) && (j == -1))) {
@@ -189,18 +197,15 @@ life()
 	visible_len = start_len + 1;
 }
 
-void
-display(pos, chr)
-	const struct body *pos;
-	char chr;
+static void
+display(const struct body *pos, char chr)
 {
 	wmove(tv, pos->y, pos->x);
 	waddch(tv, chr);
 }
 
-void
-leave(dummy)
-	int dummy;
+static void
+leave(int dummy)
 {
 	endwin();
 
@@ -211,25 +216,22 @@ leave(dummy)
 	exit(0);
 }
 
-void
-wake(dummy)
-	int dummy __attribute__((__unused__));
+static void
+wake(int dummy)
 {
 	signal(SIGALRM, wake);
 	fflush(stdout);
 	process(lastch);
 }
 
-int
-rnd(range)
-	int range;
+static int
+rnd(int range)
 {
 	return abs((rand()>>5)+(rand()>>5)) % range;
 }
 
-void
-newpos(bp)
-	struct body * bp;
+static void
+newpos(struct body *bp)
 {
 	if (visible_len == (LINES-3) * (COLS-3) - 1) {
 		endwin();
@@ -245,8 +247,8 @@ newpos(bp)
 	} while(winch(tv) != ' ');
 }
 
-void
-prize()
+static void
+prize(void)
 {
 	int value;
 
@@ -256,9 +258,8 @@ prize()
 	wrefresh(tv);
 }
 
-void
-process(ch)
-	int ch;
+static void
+process(int ch)
 {
 	int x,y;
 	struct body *nh;
@@ -332,8 +333,6 @@ process(ch)
 	}
 	else if(ch != ' ') crash();
 	nh = newlink();
-	if (nh == NULL)
-		err(1, NULL);
 	nh->next = NULL;
 	nh->prev = head;
 	head->next = nh;
@@ -351,14 +350,14 @@ process(ch)
 		alarm(1);
 }
 
-void
-crash()
+static void
+crash(void)
 {
 	leave(0);
 }
 
-void
-setup()
+static void
+setup(void)
 {
 	clear();
 	refresh();

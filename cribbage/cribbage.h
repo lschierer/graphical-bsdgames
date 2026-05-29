@@ -1,4 +1,4 @@
-/*	$NetBSD: cribbage.h,v 1.12 2004/02/08 22:23:50 jsm Exp $	*/
+/*	$NetBSD: cribbage.h,v 1.18 2023/01/06 19:02:02 ryoon Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -53,60 +53,36 @@ extern  BOOLEAN		iwon;			/* if comp won last */
 extern  BOOLEAN		explain;		/* player mistakes explained */
 extern  BOOLEAN		rflag;			/* if all cuts random */
 extern  BOOLEAN		quiet;			/* if suppress random mess */
-extern	BOOLEAN		playing;		/* currently playing game */
+extern  BOOLEAN		yes;			/* default 'y' to "Another game?" */
 
 extern  char		explan[];		/* string for explanation */
 
-void	 addmsg(const char *, ...)
-    __attribute__((__format__(__printf__, 1, 2)));
+void	 addmsg(const char *, ...) __printflike(1, 2);
 int	 adjust(const CARD [], CARD);
 int	 anymove(const CARD [], int, int);
-int	 anysumto(const CARD [], int, int, int);
 void	 bye(void);
 int	 cchose(const CARD [], int, int);
 void	 cdiscard(BOOLEAN);
 int	 chkscr(int *, int);
 int	 comphand(const CARD [], const char *);
 void	 cremove(CARD, CARD [], int);
-int	 cut(BOOLEAN, int);
-int	 deal(int);
-void	 discard(BOOLEAN);
 void	 do_wait(void);
 void	 endmsg(void);
-int	 eq(CARD, CARD);
-int	 fifteens(const CARD [], int);
-void	 game(void);
-void	 gamescore(void);
-char	*getline(void);
+char	*get_line(void);
 int	 getuchar(void);
-int	 incard(CARD *);
 int	 infrom(const CARD [], int, const char *);
 void	 instructions(void);
 int	 is_one(CARD, const CARD [], int);
-void	 makeboard(void);
 void	 makedeck(CARD []);
 void	 makeknown(const CARD [], int);
-void	 msg(const char *, ...)
-    __attribute__((__format__(__printf__, 1, 2)));
+void	 msg(const char *, ...) __printflike(1, 2);
 int	 msgcard(CARD, BOOLEAN);
-int	 msgcrd(CARD, BOOLEAN, const char *, BOOLEAN);
 int	 number(int, int, const char *);
-int	 numofval(const CARD [], int, int);
-int	 pairuns(const CARD [], int);
-int	 peg(BOOLEAN);
-int	 pegscore(CARD, const CARD [], int, int);
-int	 playhand(BOOLEAN);
+int	 pegscore(CARD, const CARD [], unsigned, int);
 int	 plyrhand(const CARD [], const char *);
 void	 prcard(WINDOW *, int, int, CARD, BOOLEAN);
-void	 prcrib(BOOLEAN, BOOLEAN);
-void	 prhand(const CARD [], int, WINDOW *, BOOLEAN);
-void	 printcard(WINDOW *, int, CARD, BOOLEAN);
-void	 prpeg(int, int, BOOLEAN);
-void	 prtable(int);
-int	 readchar(void);
-void	 receive_intr(int) __attribute__((__noreturn__));
-int	 score(BOOLEAN);
+void	 prhand(const CARD [], unsigned, WINDOW *, BOOLEAN);
+void	 receive_intr(int) __dead;
 int	 scorehand(const CARD [], CARD, int, BOOLEAN, BOOLEAN);
 void	 shuffle(CARD []);
 void	 sorthand(CARD [], int);
-void	 wait_for(int);

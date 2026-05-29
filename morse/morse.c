@@ -1,4 +1,4 @@
-/*	$NetBSD: morse.c,v 1.13 2004/02/13 23:16:11 jsm Exp $	*/
+/*	$NetBSD: morse.c,v 1.23 2024/10/12 19:26:24 rillig Exp $	*/
 
 /*
  * Copyright (c) 1988, 1993
@@ -30,18 +30,10 @@
  */
 
 #include <sys/cdefs.h>
-#ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1988, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)morse.c	8.1 (Berkeley) 5/31/93";
-#else
-__RCSID("$NetBSD: morse.c,v 1.13 2004/02/13 23:16:11 jsm Exp $");
-#endif
-#endif /* not lint */
+__COPYRIGHT("@(#) Copyright (c) 1988, 1993\
+ The Regents of the University of California.  All rights reserved.");
+/*	@(#)morse.c	8.1 (Berkeley) 5/31/93	*/
+__RCSID("$NetBSD: morse.c,v 1.23 2024/10/12 19:26:24 rillig Exp $");
 
 #include <ctype.h>
 #include <stdio.h>
@@ -49,8 +41,7 @@ __RCSID("$NetBSD: morse.c,v 1.13 2004/02/13 23:16:11 jsm Exp $");
 #include <string.h>
 #include <unistd.h>
 
-static const char
-	*const digit[] = {
+static const char digit[][6] = {
 	"-----",
 	".----",
 	"..---",
@@ -61,8 +52,9 @@ static const char
 	"--...",
 	"---..",
 	"----.",
-},
-	*const alph[] = {
+};
+
+static const char alph[][5] = {
 	".-",
 	"-...",
 	"-.-.",
@@ -91,9 +83,9 @@ static const char
 	"--..",
 };
 
-const struct punc {
+static const struct {
 	char c;
-	const char *morse;
+	const char morse[7];
 } other[] = {
 	{ '.', ".-.-.-" },
 	{ ',', "--..--" },
@@ -107,37 +99,35 @@ const struct punc {
 	{ '"', ".-..-." },
 	{ '=', "-...-" },
 	{ '+', ".-.-." },
-	{ '\0', NULL }
+	{ '_', "..--.-" },
+	{ '@', ".--.-." },
+	{ '\0', "" }
 };
 
-int	main(int, char *[]);
-void	morse(int);
-void	decode(const char *);
-void	show(const char *);
+static void morse(int);
+static void decode(const char *);
+static void show(const char *);
 
 static int sflag;
 static int dflag;
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int ch;
 	char *p;
 
 	/* Revoke setgid privileges */
-	setregid(getgid(), getgid());
+	setgid(getgid());
 
 	while ((ch = getopt(argc, argv, "ds")) != -1)
-		switch((char)ch) {
+		switch ((char)ch) {
 		case 'd':
 			dflag = 1;
 			break;
 		case 's':
 			sflag = 1;
 			break;
-		case '?':
 		default:
 			fprintf(stderr, "usage: morse [-ds] [string ...]\n");
 			exit(1);
@@ -152,10 +142,10 @@ main(argc, argv)
 			} while (*++argv);
 		} else {
 			char foo[10];	/* All morse chars shorter than this */
-			int isblank, i;
+			int is_blank, i;
 
 			i = 0;
-			isblank = 0;
+			is_blank = 0;
 			while ((ch = getchar()) != EOF) {
 				if (ch == '-' || ch == '.') {
 					foo[i++] = ch;
@@ -167,20 +157,20 @@ main(argc, argv)
 						while ((ch = getchar()) != EOF &&
 						    (ch == '.' || ch == '-'))
 							;
-						isblank = 1;
+						is_blank = 1;
 					}
 				} else if (i) {
 					foo[i] = '\0';
 					decode(foo);
 					i = 0;
-					isblank = 0;
+					is_blank = 0;
 				} else if (isspace(ch)) {
-					if (isblank) {
+					if (is_blank) {
 						/* print whitespace for each double blank */
 						putchar(' ');
-						isblank = 0;
+						is_blank = 0;
 					} else
-						isblank = 1;
+						is_blank = 1;
 				}
 			}
 		}
@@ -189,74 +179,63 @@ main(argc, argv)
 		if (*argv)
 			do {
 				for (p = *argv; *p; ++p)
-					morse((int)*p);
+					morse((unsigned char)*p);
 				show("");
 			} while (*++argv);
 		else while ((ch = getchar()) != EOF)
 			morse(ch);
 		show("...-.-");	/* SK */
 	}
-	
+
 	return 0;
 }
 
 void
-decode(s)
-	const char *s;
+decode(const char *s)
 {
-	int i;
-	
-	for (i = 0; i < 10; i++)
+	for (size_t i = 0; i < __arraycount(digit); i++)
 		if (strcmp(digit[i], s) == 0) {
 			putchar('0' + i);
 			return;
 		}
-	
-	for (i = 0; i < 26; i++)
+
+	for (size_t i = 0; i < __arraycount(alph); i++)
 		if (strcmp(alph[i], s) == 0) {
 			putchar('A' + i);
 			return;
 		}
-	i = 0;
-	while (other[i].c) {
+
+	for (size_t i = 0; other[i].c; i++)
 		if (strcmp(other[i].morse, s) == 0) {
 			putchar(other[i].c);
 			return;
 		}
-		i++;
-	}
-	if (strcmp("...-.-", s) == 0)
+
+	if (strcmp("...-.-", s) == 0)	/* SK */
 		return;
+
 	putchar('x');	/* line noise */
 }
 
 void
-morse(c)
-	int c;
+morse(int c)
 {
-	int i;
-
 	if (isalpha(c))
 		show(alph[c - (isupper(c) ? 'A' : 'a')]);
 	else if (isdigit(c))
 		show(digit[c - '0']);
 	else if (isspace(c))
 		show("");  /* could show BT for a pause */
-	else {
-		i = 0;
-		while (other[i].c) {
+	else
+		for (int i = 0; other[i].c; i++)
 			if (other[i].c == c) {
 				show(other[i].morse);
 				break;
 			}
-			i++;
-		}
-	}
 }
 
 void
-show(s)
-	const char *s;
+show(const char *s)
 {
 	if (sflag)
 		printf(" %s", s);

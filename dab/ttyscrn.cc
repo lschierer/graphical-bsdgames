@@ -1,4 +1,4 @@
-/*	$NetBSD: ttyscrn.cc,v 1.2 2003/12/27 18:24:51 martin Exp $	*/
+/*	$NetBSD: ttyscrn.cc,v 1.6 2021/12/05 09:22:45 rillig Exp $	*/
 
 /*-
  * Copyright (c) 2003 The NetBSD Foundation, Inc.
@@ -15,13 +15,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -37,11 +30,11 @@
  */
 
 /*
- * ttyscrn.C: Curses screen implementation for dots
+ * Curses screen implementation for dots
  */
 
 #include "defs.h"
-RCSID("$NetBSD: ttyscrn.cc,v 1.2 2003/12/27 18:24:51 martin Exp $")
+RCSID("$NetBSD: ttyscrn.cc,v 1.6 2021/12/05 09:22:45 rillig Exp $")
 
 #include <stdio.h>
 #include <curses.h>
@@ -198,7 +191,7 @@ void TTYSCRN::ties(const PLAYER& p)
     mvwprintw(stdscr, _sy + TTYSCRN::offsties, _sx, "G =:%5zd", p.getTies());
 }
 
-TTYSCRN* TTYSCRN::create(int acs, size_t y, size_t x)
+TTYSCRN* TTYSCRN::create(int acs, size_t *y, size_t *x)
 {
     int tx, ty;
 
@@ -207,11 +200,16 @@ TTYSCRN* TTYSCRN::create(int acs, size_t y, size_t x)
     tx = getmaxx(stdscr);
     ty = getmaxy(stdscr);
 
-    if (tx == ERR || ty == ERR || (size_t)tx < x * 2 + TTYSCRN::offsx + 12
-	|| (size_t)ty < y * 2 + TTYSCRN::offsy) {
+    if (tx == ERR || ty == ERR
+	|| static_cast<size_t>(tx) < *x * 2 + TTYSCRN::offsx + 14
+	|| static_cast<size_t>(ty) < *y * 2 + TTYSCRN::offsy) {
 	endwin();
 	return NULL;
     }
+    if (*x == 0)
+	*x = (tx - 14 - TTYSCRN::offsx) / 2;
+    if (*y == 0)
+	*y = (ty - TTYSCRN::offsy) / 2;
     cbreak();
     noecho();
 

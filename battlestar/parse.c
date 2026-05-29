@@ -1,4 +1,4 @@
-/*	$NetBSD: parse.c,v 1.14 2004/01/27 20:30:29 jsm Exp $	*/
+/*	$NetBSD: parse.c,v 1.18 2021/05/02 12:50:43 rillig Exp $	*/
 
 /*
  * Copyright (c) 1983, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)parse.c	8.2 (Berkeley) 4/28/95";
 #else
-__RCSID("$NetBSD: parse.c,v 1.14 2004/01/27 20:30:29 jsm Exp $");
+__RCSID("$NetBSD: parse.c,v 1.18 2021/05/02 12:50:43 rillig Exp $");
 #endif
 #endif				/* not lint */
 
@@ -51,7 +51,7 @@ static struct wlist *lookup(const char *);
 static struct wlist *hashtab[HASHSIZE];
 
 void
-wordinit()
+wordinit(void)
 {
 	struct wlist *w;
 
@@ -60,8 +60,7 @@ wordinit()
 }
 
 static int
-hash(s)
-	const char   *s;
+hash(const char *s)
 {
 	int     hashval = 0;
 
@@ -74,8 +73,7 @@ hash(s)
 }
 
 static struct wlist *
-lookup(s)
-	const char   *s;
+lookup(const char   *s)
 {
 	struct wlist *wp;
 
@@ -86,8 +84,7 @@ lookup(s)
 }
 
 static void
-install(wp)
-	struct wlist *wp;
+install(struct wlist *wp)
 {
 	int     hashval;
 
@@ -100,7 +97,7 @@ install(wp)
 }
 
 void
-parse()
+parse(void)
 {
 	struct wlist *wp;
 	int     n;
@@ -123,7 +120,7 @@ parse()
 			for (i = n + 1; i < wordcount; i++) {
 				wordtype[i - 1] = wordtype[i];
 				wordvalue[i - 1] = wordvalue[i];
-				strcpy(words[i - 1], words[i]);
+				strlcpy(words[i - 1], words[i], WORDLEN);
 			}
 			wordcount--;
 		}
@@ -143,7 +140,7 @@ parse()
 			for (i = n + 1; i < wordcount; i++) {
 				wordtype[i - 1] = wordtype[i];
 				wordvalue[i - 1] = wordvalue[i];
-				strcpy(words[i - 1], words[i]);
+				strlcpy(words[i - 1], words[i], WORDLEN);
 			}
 			wordcount--;
 		}
@@ -157,27 +154,30 @@ parse()
 	while (flag) {
 		flag = 0;
 		for (n = 1; n < wordcount; n++)
-			if ((wordtype[n - 1] == NOUNS || wordtype[n - 1] == OBJECT) &&
-			    wordvalue[n] == AND && wordvalue[n + 1] == EVERYTHING) {
+			if ((wordtype[n - 1] == NOUNS ||
+			    wordtype[n - 1] == OBJECT) &&
+			    wordvalue[n] == AND &&
+			    wordvalue[n + 1] == EVERYTHING) {
 				char tmpword[WORDLEN];
 				wordvalue[n + 1] = wordvalue[n - 1];
 				wordvalue[n - 1] = EVERYTHING;
 				wordtype[n + 1] = wordtype[n - 1];
 				wordtype[n - 1] = OBJECT;
 				strcpy(tmpword, words[n - 1]);
-				strcpy(words[n - 1], words[n + 1]);
+				strlcpy(words[n - 1], words[n + 1], WORDLEN);
 				strcpy(words[n + 1], tmpword);
 				flag = 1;
 		}
 		/* And trim EVERYTHING AND EVERYTHING. */
 		for (n = 1; n < wordcount; n++)
 			if (wordvalue[n - 1] == EVERYTHING &&
-			    wordvalue[n] == AND && wordvalue[n + 1] == EVERYTHING) {
+			    wordvalue[n] == AND &&
+			    wordvalue[n + 1] == EVERYTHING) {
 				int i;
 				for (i = n + 1; i < wordcount; i++) {
 					wordtype[i - 1] = wordtype[i + 1];
 					wordvalue[i - 1] = wordvalue[i + 1];
-					strcpy(words[i - 1], words[i + 1]);
+					strlcpy(words[i - 1], words[i + 1], WORDLEN);
 				}
 				wordcount--;
 				wordcount--;

@@ -1,4 +1,4 @@
-/*	$NetBSD: help.c,v 1.5 2003/08/07 09:37:05 agc Exp $	*/
+/*	$NetBSD: help.c,v 1.7 2011/08/31 16:24:55 plunky Exp $	*/
 
 /*-
  * Copyright (c) 1993
@@ -37,7 +37,7 @@
 #if 0
 static char sccsid[] = "@(#)help.c	8.1 (Berkeley) 6/11/93";
 #else
-__RCSID("$NetBSD: help.c,v 1.5 2003/08/07 09:37:05 agc Exp $");
+__RCSID("$NetBSD: help.c,v 1.7 2011/08/31 16:24:55 plunky Exp $");
 #endif
 #endif /* not lint */
 
@@ -48,8 +48,9 @@ __RCSID("$NetBSD: help.c,v 1.5 2003/08/07 09:37:05 agc Exp $");
 #include "extern.h"
 
 extern int nlines;
+
 int
-help()
+help(void)
 {
 	int eof, i;
 	FILE *fp;
@@ -69,7 +70,7 @@ help()
 
 	while (!eof) {
 		for (i = 0; i < nlines - 3; i++) {
-			if (fgets(buf, sizeof(buf), fp) == (char *) NULL) {
+			if (fgets(buf, sizeof(buf), fp) == NULL) {
 				eof = 1;
 				break;
 			}
@@ -98,11 +99,7 @@ help()
 		inputch();
 	}
 	delwin(win);
-#ifdef NCURSES_VERSION
-	redrawwin(stdscr);
-#else
 	clearok(stdscr, 1);
 	refresh();
-#endif
 	return(0);
 }

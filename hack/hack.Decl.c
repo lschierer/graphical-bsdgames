@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.Decl.c,v 1.6 2003/04/02 18:36:35 jsm Exp $	*/
+/*	$NetBSD: hack.Decl.c,v 1.8 2009/06/07 21:04:54 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,11 +63,11 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.Decl.c,v 1.6 2003/04/02 18:36:35 jsm Exp $");
+__RCSID("$NetBSD: hack.Decl.c,v 1.8 2009/06/07 21:04:54 dholland Exp $");
 #endif				/* not lint */
 
 #include	"hack.h"
-char            nul[40];	/* contains zeros */
+const char      nul[40];	/* contains zeros */
 char            plname[PL_NSIZ];/* player name */
 char            lock[PL_NSIZ + 4] = "1lock";	/* long enough for login name
 						 * .99 */
@@ -92,7 +92,7 @@ struct monst    youmonst;	/* dummy; used as return value for boomhit */
 
 xchar           dlevel = 1;
 xchar           xupstair, yupstair, xdnstair, ydnstair;
-char           *save_cm = 0;
+const char *save_cm = NULL;
 const char *killer, *nomovemsg;
 
 long            moves = 1;

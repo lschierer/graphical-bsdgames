@@ -1,4 +1,4 @@
-/* $NetBSD: mkindex.c,v 1.9 2003/08/07 09:37:06 agc Exp $ */
+/* $NetBSD: mkindex.c,v 1.12 2021/05/02 12:50:44 rillig Exp $ */
 
 /*-
  * Copyright (c) 1993
@@ -33,14 +33,14 @@
  */
 
 #ifndef lint
-static const char copyright[] __attribute__((__unused__)) = "@(#) Copyright (c) 1993\n\
+static char copyright[] = "@(#) Copyright (c) 1993\n\
 	The Regents of the University of California.  All rights reserved.\n";
 
 #if 0
 static char sccsid[] = "@(#)mkindex.c	8.1 (Berkeley) 6/11/93";
 #else
-static const char rcsid[] __attribute__((__unused__)) =
-    "$NetBSD: mkindex.c,v 1.9 2003/08/07 09:37:06 agc Exp $";
+static char rcsid[] =
+    "$NetBSD: mkindex.c,v 1.12 2021/05/02 12:50:44 rillig Exp $";
 #endif
 #endif /* not lint */
 
@@ -49,8 +49,7 @@ static const char rcsid[] __attribute__((__unused__)) =
 
 #include "bog.h"
 
-int main(void);
-char *nextword(FILE *, char *, int *, int *);
+static char *nextword(FILE *, char *, int *, int *);
 
 int
 main(void)
@@ -95,11 +94,8 @@ main(void)
  * Also set clen to the length of the compressed word (for mkindex) and
  * rlen to the strlen() of the real word
  */
-char *
-nextword(fp, buffer, clen, rlen)
-	FILE *fp;
-	char *buffer;
-	int *clen, *rlen;
+static char *
+nextword(FILE *fp, char *buffer, int *clen, int *rlen)
 {
 	int ch, pcount;
 	char *p, *q;
@@ -116,7 +112,7 @@ nextword(fp, buffer, clen, rlen)
 		return (NULL);
 
 	p = buf + (*clen = pcount);
- 
+
 	while ((ch = getc(fp)) != EOF && ch >= 'a')
 			*p++ = ch;
 		lastch = ch;

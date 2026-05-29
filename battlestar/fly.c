@@ -1,4 +1,4 @@
-/*	$NetBSD: fly.c,v 1.12 2004/01/27 20:30:29 jsm Exp $	*/
+/*	$NetBSD: fly.c,v 1.16 2021/05/02 12:50:43 rillig Exp $	*/
 
 /*
  * Copyright (c) 1983, 1993
@@ -34,13 +34,14 @@
 #if 0
 static char sccsid[] = "@(#)fly.c	8.2 (Berkeley) 4/28/95";
 #else
-__RCSID("$NetBSD: fly.c,v 1.12 2004/01/27 20:30:29 jsm Exp $");
+__RCSID("$NetBSD: fly.c,v 1.16 2021/05/02 12:50:43 rillig Exp $");
 #endif
 #endif				/* not lint */
 
 #include "extern.h"
 #undef UP
 #include <curses.h>
+#include <assert.h>
 
 #define MIDR  (LINES/2 - 1)
 #define MIDC  (COLS/2 - 1)
@@ -61,8 +62,7 @@ static void succumb(int);
 static void target(void);
 
 static void
-succumb(dummy)
-	int     dummy __attribute__((__unused__));
+succumb(int dummy __unused)
 {
 	if (oldsig == SIG_DFL) {
 		endfly();
@@ -75,7 +75,7 @@ succumb(dummy)
 }
 
 int
-visual()
+visual(void)
 {
 	destroyed = 0;
 	if (initscr() == NULL) {
@@ -151,7 +151,8 @@ visual()
 			if (torps) {
 				torps -= 2;
 				blast();
-				if (row == MIDR && column - MIDC < 2 && MIDC - column < 2) {
+				if (row == MIDR && column < MIDC + 2 &&
+				    column > MIDC - 2) {
 					destroyed = 1;
 					alarm(0);
 				}
@@ -182,7 +183,7 @@ visual()
 }
 
 static void
-screen()
+screen(void)
 {
 	int     r, c, n;
 	int     i;
@@ -199,7 +200,7 @@ screen()
 }
 
 static void
-target()
+target(void)
 {
 	int     n;
 
@@ -212,7 +213,7 @@ target()
 }
 
 static void
-notarget()
+notarget(void)
 {
 	int     n;
 
@@ -225,7 +226,7 @@ notarget()
 }
 
 static void
-blast()
+blast(void)
 {
 	int     n;
 
@@ -247,8 +248,7 @@ blast()
 }
 
 static void
-moveenemy(dummy)
-	int     dummy __attribute__((__unused__));
+moveenemy(int dummy __unused)
 {
 	double  d;
 	int     oldr, oldc;
@@ -265,7 +265,8 @@ moveenemy(dummy)
 			fuel = 0;
 			mvaddstr(0, 60, "*** Out of fuel ***");
 		}
-	d = (double) ((row - MIDR) * (row - MIDR) + (column - MIDC) * (column - MIDC));
+	d = (double) ((row - MIDR) * (row - MIDR) + (column - MIDC) *
+	    (column - MIDC));
 	if (d < 16) {
 		row += (rnd(9) - 4) % (4 - abs(row - MIDR));
 		column += (rnd(9) - 4) % (4 - abs(column - MIDC));
@@ -287,13 +288,12 @@ moveenemy(dummy)
 }
 
 static void
-endfly()
+endfly(void)
 {
 	alarm(0);
 	signal(SIGALRM, SIG_DFL);
 	mvcur(0, COLS - 1, LINES - 1, 0);
 	endwin();
-	setvbuf(stdout, NULL, _IOLBF, BUFSIZ); /* Needed for ncurses */
 	signal(SIGTSTP, SIG_DFL);
 	signal(SIGINT, oldsig);
 }

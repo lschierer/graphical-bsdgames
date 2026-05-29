@@ -1,4 +1,4 @@
-/*	$NetBSD: subs.c,v 1.14 2003/08/07 09:36:57 agc Exp $	*/
+/*	$NetBSD: subs.c,v 1.21 2024/04/02 14:24:26 christos Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,35 +34,21 @@
 #if 0
 static char sccsid[] = "@(#)subs.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: subs.c,v 1.14 2003/08/07 09:36:57 agc Exp $");
+__RCSID("$NetBSD: subs.c,v 1.21 2024/04/02 14:24:26 christos Exp $");
 #endif
 #endif /* not lint */
 
 #include "back.h"
 
-int     buffnum = -1;
-char    outbuff[BUFSIZ];
+int     buffnum;
+static char outbuff[BUFSIZ];
 
 static const char plred[] = "Player is red, computer is white.";
 static const char plwhite[] = "Player is white, computer is red.";
 static const char nocomp[] = "(No computer play.)";
 
-const char   *const descr[] = {
-	"Usage:  backgammon [-] [n r w b pr pw pb t3a]\n",
-	"\t-\tgets this list\n\tn\tdon't ask for rules or instructions",
-	"\tr\tplayer is red (implies n)\n\tw\tplayer is white (implies n)",
-	"\tb\ttwo players, red and white (implies n)",
-	"\tpr\tprint the board before red's turn",
-	"\tpw\tprint the board before white's turn",
-	"\tpb\tprint the board before both player's turn",
-	"\tterm\tterminal is a term",
-	"\tsfile\trecover saved game from file",
-	0
-};
-
 void
-errexit(s)
-	const char *s;
+errexit(const char *s)
 {
 	write(2, "\n", 1);
 	perror(s);
@@ -70,8 +56,7 @@ errexit(s)
 }
 
 int
-addbuf(c)
-	int     c;
+addbuf(int c)
 {
 	buffnum++;
 	if (buffnum == BUFSIZ) {
@@ -84,7 +69,7 @@ addbuf(c)
 }
 
 void
-buflush()
+buflush(void)
 {
 	if (buffnum < 0)
 		return;
@@ -95,7 +80,7 @@ buflush()
 }
 
 int
-readc()
+readc(void)
 {
 	char    c;
 
@@ -122,8 +107,7 @@ readc()
 }
 
 void
-writec(c)
-	char    c;
+writec(int c)
 {
 	if (tflag)
 		fancyc(c);
@@ -132,10 +116,10 @@ writec(c)
 }
 
 void
-writel(l)
-	const char   *l;
+writel(const char *l)
 {
 #ifdef DEBUG
+	static FILE  *trace;
 	const char   *s;
 
 	if (trace == NULL)
@@ -157,24 +141,23 @@ writel(l)
 }
 
 void
-proll()
+proll(struct move *mm)
 {
-	if (d0)
-		swap;
+	if (mm->d0)
+		mswap(mm);
 	if (cturn == 1)
 		writel("Red's roll:  ");
 	else
 		writel("White's roll:  ");
-	writec(D0 + '0');
+	writec(mm->D0 + '0');
 	writec('\040');
-	writec(D1 + '0');
+	writec(mm->D1 + '0');
 	if (tflag)
 		cline();
 }
 
 void
-wrint(n)
-	int     n;
+wrint(int n)
 {
 	int     i, j, t;
 
@@ -189,7 +172,7 @@ wrint(n)
 }
 
 void
-gwrite()
+gwrite(void)
 {
 	int     r, c;
 
@@ -232,7 +215,7 @@ gwrite()
 }
 
 int
-quit()
+quit(struct move *mm)
 {
 
 	if (tflag) {
@@ -245,7 +228,7 @@ quit()
 		if (rfl) {
 			writel("Would you like to save this game?");
 			if (yorn(0))
-				save(0);
+				save(mm, 0);
 		}
 		cturn = 0;
 		return (1);
@@ -254,8 +237,7 @@ quit()
 }
 
 int
-yorn(special)
-	char    special;	/* special response */
+yorn(int special)
 {
 	char    c;
 	int     i;
@@ -285,8 +267,7 @@ yorn(special)
 }
 
 void
-wrhit(i)
-	int     i;
+wrhit(int i)
 {
 	writel("Blot hit on ");
 	wrint(i);
@@ -295,7 +276,7 @@ wrhit(i)
 }
 
 void
-nexturn()
+nexturn(void)
 {
 	int     c;
 
@@ -312,8 +293,7 @@ nexturn()
 }
 
 void
-getarg(arg)
-	char ***arg;
+getarg(struct move *mm, char ***arg)
 {
 	char  **s;
 
@@ -389,17 +369,17 @@ getarg(arg)
 				writel("No save file named\n");
 				getout(0);
 			} else
-				recover(s[0]);
+				recover(mm, s[0]);
 			break;
 		}
 		s++;
 	}
 	if (s[0] != 0)
-		recover(s[0]);
+		recover(mm, s[0]);
 }
 
 void
-init()
+init(void)
 {
 	int     i;
 
@@ -418,7 +398,7 @@ init()
 }
 
 void
-wrscore()
+wrscore(void)
 {
 	writel("Score:  ");
 	writel(color[1]);
@@ -431,8 +411,7 @@ wrscore()
 }
 
 void
-fixtty(t)
-	struct termios *t;
+fixtty(struct termios *t)
 {
 	if (tflag)
 		newpos();
@@ -442,8 +421,7 @@ fixtty(t)
 }
 
 void
-getout(dummy)
-	int     dummy __attribute__((__unused__));
+getout(int dummy __unused)
 {
 	/* go to bottom of screen */
 	if (tflag) {
@@ -458,7 +436,7 @@ getout(dummy)
 }
 
 void
-roll()
+roll(struct move *mm)
 {
 	char    c;
 	int     row;
@@ -477,13 +455,13 @@ roll()
 		if (c != '\n') {
 			while (c < '1' || c > '6')
 				c = readc();
-			D0 = c - '0';
+			mm->D0 = c - '0';
 			writec(' ');
 			writec(c);
 			c = readc();
 			while (c < '1' || c > '6')
 				c = readc();
-			D1 = c - '0';
+			mm->D1 = c - '0';
 			writec(' ');
 			writec(c);
 			if (tflag) {
@@ -501,7 +479,7 @@ roll()
 		} else
 			writec('\n');
 	}
-	D0 = rnum(6) + 1;
-	D1 = rnum(6) + 1;
-	d0 = 0;
+	mm->D0 = rnum(6) + 1;
+	mm->D1 = rnum(6) + 1;
+	mm->d0 = 0;
 }

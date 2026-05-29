@@ -1,11 +1,11 @@
-/*	$NetBSD: display.h,v 1.2 2001/01/04 05:06:15 jwise Exp $	*/
+/*	$NetBSD: display.h,v 1.7 2009/03/15 03:33:56 dholland Exp $	*/
 
 /*-
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
- * by 
+ * by
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -15,13 +15,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -36,15 +29,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef SIGTSTP
-#define SCREENTEST()	(initscr() != NULL && signal(SIGTSTP, SIG_DFL) != SIG_ERR && STAT_R < COLS && SCROLL_Y > 0)
-#else
-#define SCREENTEST()	(initscr() != NULL && STAT_R < COLS && SCROLL_Y > 0)
-#endif
+#include <stdbool.h>
 
-extern WINDOW *view_w;
-extern WINDOW *slot_w;
-extern WINDOW *scroll_w;
-extern WINDOW *stat_w;
-extern WINDOW *turn_w;
+void display_set_obp(int which, bool show);
+void display_set_dbp(int which, bool show);
 
+void display_scroll_pageup(void);
+void display_scroll_pagedown(void);
+void display_adjust_view(void);
+
+void display_hide_prompt(void);
+void display_reshow_prompt(void);
+void display_force_full_redraw(void);
+void display_redraw(void);

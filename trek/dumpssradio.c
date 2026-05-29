@@ -1,4 +1,4 @@
-/*	$NetBSD: dumpssradio.c,v 1.5 2003/08/07 09:37:51 agc Exp $	*/
+/*	$NetBSD: dumpssradio.c,v 1.8 2009/05/24 22:55:03 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)dumpssradio.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: dumpssradio.c,v 1.5 2003/08/07 09:37:51 agc Exp $");
+__RCSID("$NetBSD: dumpssradio.c,v 1.8 2009/05/24 22:55:03 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -46,29 +46,27 @@ __RCSID("$NetBSD: dumpssradio.c,v 1.5 2003/08/07 09:37:51 agc Exp $");
  **/
 
 int
-dumpssradio()
+dumpssradio(void)
 {
 	struct event	*e;
 	int		j;
 	int		chkrest;
 
 	chkrest = 0;
-	for (j = 0; j < MAXEVENTS; j++)
-	{
+	for (j = 0; j < MAXEVENTS; j++) {
 		e = &Event[j];
 		/* if it is not hidden, then just ignore it */
 		if ((e->evcode & E_HIDDEN) == 0)
 			continue;
-		if (e->evcode & E_GHOST)
-		{
+		if (e->evcode & E_GHOST) {
 			unschedule(e);
-			printf("Starsystem %s in quadrant %d,%d is no longer distressed\n",
+			printf("Starsystem %s in quadrant %d,%d is no longer "
+			       "distressed\n",
 				systemname(&Quad[e->x][e->y]), e->x, e->y);
 			continue;
 		}
 
-		switch (e->evcode)
-		{
+		switch (e->evcode) {
 
 		  case E_KDESB:
 			printf("Starbase in quadrant %d,%d is under attack\n",
@@ -78,7 +76,8 @@ dumpssradio()
 
 		  case E_ENSLV:
 		  case E_REPRO:
-			printf("Starsystem %s in quadrant %d,%d is distressed\n",
+			printf("Starsystem %s in quadrant %d,%d is "
+			       "distressed\n",
 				systemname(&Quad[e->x][e->y]), e->x, e->y);
 			chkrest++;
 			break;

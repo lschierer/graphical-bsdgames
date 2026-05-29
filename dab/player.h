@@ -1,4 +1,4 @@
-/*	$NetBSD: player.h,v 1.1.1.1 2003/12/26 17:57:03 christos Exp $	*/
+/*	$NetBSD: player.h,v 1.4 2021/12/05 09:22:45 rillig Exp $	*/
 
 /*-
  * Copyright (c) 2003 The NetBSD Foundation, Inc.
@@ -15,13 +15,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -37,8 +30,9 @@
  */
 
 /*
- * player.h: Player base class
+ * Player base class
  */
+
 #ifndef _H_PLAYER
 #define _H_PLAYER
 
@@ -49,6 +43,7 @@ class BOARD;
 class PLAYER {
   public:
     PLAYER(char who);
+    virtual ~PLAYER() {}
     virtual void play(const BOARD& b, size_t& y, size_t& x, int& dir) = 0;
 
     // Helper functions

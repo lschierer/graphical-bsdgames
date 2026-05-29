@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.makemon.c,v 1.6 2003/04/02 18:36:37 jsm Exp $	*/
+/*	$NetBSD: hack.makemon.c,v 1.9 2009/08/12 07:28:40 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,13 +63,13 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.makemon.c,v 1.6 2003/04/02 18:36:37 jsm Exp $");
+__RCSID("$NetBSD: hack.makemon.c,v 1.9 2009/08/12 07:28:40 dholland Exp $");
 #endif				/* not lint */
 
 #include	"hack.h"
 #include	"extern.h"
 
-struct monst zeromonst;
+static const struct monst zeromonst;
 
 /*
  * called with [x,y] = coordinates;
@@ -84,6 +84,7 @@ makemon(const struct permonst *ptr, int x, int y)
 {
 	struct monst   *mtmp;
 	int		tmp, ct;
+	unsigned	i;
 	boolean         anything = (!ptr);
 
 	if (x != 0 || y != 0)
@@ -117,8 +118,8 @@ makemon(const struct permonst *ptr, int x, int y)
 gotmon:
 	mtmp = newmonst(ptr->pxlth);
 	*mtmp = zeromonst;	/* clear all entries in structure */
-	for (ct = 0; ct < (int)ptr->pxlth; ct++)
-		((char *) &(mtmp->mextra[0]))[ct] = 0;
+	for (i = 0; i < ptr->pxlth; i++)
+		((char *) &(mtmp->mextra[0]))[i] = 0;
 	mtmp->nmon = fmon;
 	fmon = mtmp;
 	mtmp->m_id = flags.ident++;
@@ -180,8 +181,7 @@ gotmon:
 }
 
 coord
-enexto(xx, yy)
-	xchar           xx, yy;
+enexto(xchar xx, xchar yy)
 {
 	xchar           x, y;
 	coord           foo[15], *tfoo;
@@ -236,8 +236,7 @@ goodpos(int x, int y)
 }
 
 void
-rloc(mtmp)
-	struct monst   *mtmp;
+rloc(struct monst *mtmp)
 {
 	int		tx, ty;
 	char            ch = mtmp->data->mlet;
@@ -264,9 +263,7 @@ rloc(mtmp)
 }
 
 struct monst   *
-mkmon_at(let, x, y)
-	char            let;
-	int             x, y;
+mkmon_at(int let, int x, int y)
 {
 	int             ct;
 	const struct permonst *ptr;

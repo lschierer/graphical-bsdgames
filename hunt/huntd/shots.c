@@ -1,75 +1,75 @@
-/*	$NetBSD: shots.c,v 1.5 2004/01/27 20:30:29 jsm Exp $	*/
+/*	$NetBSD: shots.c,v 1.16 2021/05/02 12:50:45 rillig Exp $	*/
 /*
  * Copyright (c) 1983-2003, Regents of the University of California.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without 
- * modification, are permitted provided that the following conditions are 
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
  * met:
- * 
- * + Redistributions of source code must retain the above copyright 
+ *
+ * + Redistributions of source code must retain the above copyright
  *   notice, this list of conditions and the following disclaimer.
- * + Redistributions in binary form must reproduce the above copyright 
- *   notice, this list of conditions and the following disclaimer in the 
+ * + Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the distribution.
- * + Neither the name of the University of California, San Francisco nor 
- *   the names of its contributors may be used to endorse or promote 
- *   products derived from this software without specific prior written 
+ * + Neither the name of the University of California, San Francisco nor
+ *   the names of its contributors may be used to endorse or promote
+ *   products derived from this software without specific prior written
  *   permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS 
- * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED 
- * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
- * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY 
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: shots.c,v 1.5 2004/01/27 20:30:29 jsm Exp $");
+__RCSID("$NetBSD: shots.c,v 1.16 2021/05/02 12:50:45 rillig Exp $");
 #endif /* not lint */
 
-# include	<err.h>
-# include	<signal.h>
-# include	<stdlib.h>
-# include	"hunt.h"
+#include <err.h>
+#include <signal.h>
+#include <stdlib.h>
+#include "hunt.h"
 
-# define	PLUS_DELTA(x, max)	if (x < max) x++; else x--
-# define	MINUS_DELTA(x, min)	if (x > min) x--; else x++
+#define PLUS_DELTA(x, max)	if (x < max) x++; else x--
+#define MINUS_DELTA(x, min)	if (x > min) x--; else x++
 
-static	void	chkshot(BULLET *, BULLET *);
-static	void	chkslime(BULLET *, BULLET *);
-static	void	explshot(BULLET *, int, int);
-static	void	find_under(BULLET *, BULLET *);
-static	int	iswall(int, int);
-static	void	mark_boot(BULLET *);
-static	void	mark_player(BULLET *);
+static void chkshot(BULLET *, BULLET *);
+static void chkslime(BULLET *, BULLET *);
+static void explshot(BULLET *, int, int);
+static void find_under(BULLET *, BULLET *);
+static bool iswall(int, int);
+static void mark_boot(BULLET *);
+static void mark_player(BULLET *);
 #ifdef DRONE
-static	void	move_drone(BULLET *);
+static void move_drone(BULLET *);
 #endif
-static	void	move_flyer(PLAYER *);
-static	int	move_normal_shot(BULLET *);
-static	void	move_slime(BULLET *, int, BULLET *);
-static	void	save_bullet(BULLET *);
-static	void	zapshot(BULLET *, BULLET *);
+static void move_flyer(PLAYER *);
+static int move_normal_shot(BULLET *);
+static void move_slime(BULLET *, int, BULLET *);
+static void save_bullet(BULLET *);
+static void zapshot(BULLET *, BULLET *);
 
 /*
  * moveshots:
  *	Move the shots already in the air, taking explosions into account
  */
 void
-moveshots()
+moveshots(void)
 {
-	BULLET	*bp, *next;
-	PLAYER	*pp;
-	int	x, y;
-	BULLET	*blist;
+	BULLET *bp, *next;
+	PLAYER *pp;
+	int x, y;
+	BULLET *blist;
 
 	rollexpl();
 	if (Bullets == NULL)
@@ -91,10 +91,10 @@ moveshots()
 		Maze[y][x] = bp->b_over;
 		for (pp = Player; pp < End_player; pp++)
 			check(pp, y, x);
-# ifdef MONITOR
+#ifdef MONITOR
 		for (pp = Monitor; pp < End_monitor; pp++)
 			check(pp, y, x);
-# endif
+#endif
 
 		switch (bp->b_type) {
 		  case SHOT:
@@ -106,22 +106,22 @@ moveshots()
 				Bullets = bp;
 			}
 			break;
-# ifdef OOZE
+#ifdef OOZE
 		  case SLIME:
 			if (bp->b_expl || move_normal_shot(bp)) {
 				bp->b_next = Bullets;
 				Bullets = bp;
 			}
 			break;
-# endif
-# ifdef DRONE
+#endif
+#ifdef DRONE
 		  case DSHOT:
 			if (move_drone(bp)) {
 				bp->b_next = Bullets;
 				Bullets = bp;
 			}
 			break;
-# endif
+#endif
 		  default:
 			bp->b_next = Bullets;
 			Bullets = bp;
@@ -135,45 +135,45 @@ moveshots()
 		next = bp->b_next;
 		if (!bp->b_expl) {
 			save_bullet(bp);
-# ifdef MONITOR
+#ifdef MONITOR
 			for (pp = Monitor; pp < End_monitor; pp++)
 				check(pp, bp->b_y, bp->b_x);
-# endif
-# ifdef DRONE
+#endif
+#ifdef DRONE
 			if (bp->b_type == DSHOT)
 				for (pp = Player; pp < End_player; pp++)
 					if (pp->p_scan >= 0)
 						check(pp, bp->b_y, bp->b_x);
-# endif
+#endif
 			continue;
 		}
 
 		chkshot(bp, next);
-		free((char *) bp);
+		free(bp);
 	}
 
 	for (pp = Player; pp < End_player; pp++)
 		Maze[pp->p_y][pp->p_x] = pp->p_face;
 
 ret:
-# ifdef BOOTS
+#ifdef BOOTS
 	for (pp = Boot; pp < &Boot[NBOOTS]; pp++)
 		if (pp->p_flying >= 0)
 			move_flyer(pp);
-# endif
+#endif
 	for (pp = Player; pp < End_player; pp++) {
-# ifdef FLY
+#ifdef FLY
 		if (pp->p_flying >= 0)
 			move_flyer(pp);
-# endif
+#endif
 		sendcom(pp, REFRESH);	/* Flush out the explosions */
 		look(pp);
 		sendcom(pp, REFRESH);
 	}
-# ifdef MONITOR
+#ifdef MONITOR
 	for (pp = Monitor; pp < End_monitor; pp++)
 		sendcom(pp, REFRESH);
-# endif
+#endif
 
 	return;
 }
@@ -183,11 +183,10 @@ ret:
  *	Move a normal shot along its trajectory
  */
 static int
-move_normal_shot(bp)
-	BULLET	*bp;
+move_normal_shot(BULLET *bp)
 {
-	int	i, x, y;
-	PLAYER	*pp;
+	int i, x, y;
+	PLAYER *pp;
 
 	for (i = 0; i < BULSPD; i++) {
 		if (bp->b_expl)
@@ -224,7 +223,7 @@ move_normal_shot(bp)
 				zapshot(bp->b_next, bp);
 			}
 			break;
-# ifdef	REFLECT
+#ifdef REFLECT
 		  case WALL4:	/* reflecting walls */
 			switch (bp->b_face) {
 			  case LEFTS:
@@ -241,10 +240,10 @@ move_normal_shot(bp)
 				break;
 			}
 			Maze[y][x] = WALL5;
-# ifdef MONITOR
+#ifdef MONITOR
 			for (pp = Monitor; pp < End_monitor; pp++)
 				check(pp, y, x);
-# endif
+#endif
 			break;
 		  case WALL5:
 			switch (bp->b_face) {
@@ -262,13 +261,13 @@ move_normal_shot(bp)
 				break;
 			}
 			Maze[y][x] = WALL4;
-# ifdef MONITOR
+#ifdef MONITOR
 			for (pp = Monitor; pp < End_monitor; pp++)
 				check(pp, y, x);
-# endif
+#endif
 			break;
-# endif
-# ifdef RANDOM
+#endif
+#ifdef RANDOM
 		  case DOOR:
 			switch (rand_num(4)) {
 			  case 0:
@@ -285,13 +284,13 @@ move_normal_shot(bp)
 				break;
 			}
 			break;
-# endif
-# ifdef FLY
+#endif
+#ifdef FLY
 		  case FLYER:
 			pp = play_at(y, x);
 			message(pp, "Zing!");
 			break;
-# endif
+#endif
 		  case LEFTS:
 		  case RIGHT:
 		  case BELOW:
@@ -315,11 +314,12 @@ move_normal_shot(bp)
 					pp->p_ident->i_saved++;
 				message(pp, "Absorbed charge (good shield!)");
 				pp->p_ident->i_absorbed += bp->b_charge;
-				free((char *) bp);
-				(void) sprintf(Buf, "%3d", pp->p_ammo);
+				free(bp);
+				(void) snprintf(Buf, sizeof(Buf),
+						"%3d", pp->p_ammo);
 				cgoto(pp, STAT_AMMO_ROW, STAT_VALUE_COL);
 				outstr(pp, Buf, 3);
-				return FALSE;
+				return false;
 			    }
 			    pp->p_ident->i_faced += bp->b_charge;
 			}
@@ -338,7 +338,7 @@ move_normal_shot(bp)
 				message(pp, "Zing!");
 				if (bp->b_owner == NULL)
 					break;
-				message(bp->b_owner,
+				message(bp->b_owner, bp->b_score &&
 					((bp->b_score->i_missed & 0x7) == 0x7) ?
 					"My!  What a bad shot you are!" :
 					"Missed him");
@@ -347,52 +347,52 @@ move_normal_shot(bp)
 			/*
 			 * The shot hit that sucker!  Blow it up.
 			 */
+#ifndef RANDOM
 			/* FALLTHROUGH */
-# ifndef RANDOM
 		  case DOOR:
-# endif
+#endif
+			/* FALLTHROUGH */
 		  case WALL1:
 		  case WALL2:
 		  case WALL3:
-			bp->b_expl = TRUE;
+			bp->b_expl = true;
 			break;
 		}
 
 		bp->b_x = x;
 		bp->b_y = y;
 	}
-	return TRUE;
+	return true;
 }
 
-# ifdef	DRONE
+#ifdef DRONE
 /*
  * move_drone:
  *	Move the drone to the next square
  */
 static void
-move_drone(bp)
-	BULLET	*bp;
+move_drone(BULLET *bp)
 {
-	int	mask, count;
-	int	n, dir;
-	PLAYER	*pp;
+	int mask, count;
+	int n, dir;
+	PLAYER *pp;
 
 	/*
 	 * See if we can give someone a blast
 	 */
-	if (is_player(Maze[bp->b_y][bp->b_x - 1])) {
+	if (isplayer(Maze[bp->b_y][bp->b_x - 1])) {
 		dir = WEST;
 		goto drone_move;
 	}
-	if (is_player(Maze[bp->b_y - 1][bp->b_x])) {
+	if (isplayer(Maze[bp->b_y - 1][bp->b_x])) {
 		dir = NORTH;
 		goto drone_move;
 	}
-	if (is_player(Maze[bp->b_y + 1][bp->b_x])) {
+	if (isplayer(Maze[bp->b_y + 1][bp->b_x])) {
 		dir = SOUTH;
 		goto drone_move;
 	}
-	if (is_player(Maze[bp->b_y][bp->b_x + 1])) {
+	if (isplayer(Maze[bp->b_y][bp->b_x + 1])) {
 		dir = EAST;
 		goto drone_move;
 	}
@@ -414,7 +414,7 @@ move_drone(bp)
 	 * All blocked up, just you wait
 	 */
 	if (count == 0)
-		return TRUE;
+		return true;
 
 	/*
 	 * Only one way to go.
@@ -496,26 +496,25 @@ drone_move:
 			pp = play_at(bp->b_y, bp->b_x);
 			pp->p_ammo += bp->b_charge;
 			message(pp, "**** Absorbed drone ****");
-			free((char *) bp);
-			(void) sprintf(Buf, "%3d", pp->p_ammo);
+			free(bp);
+			(void) snprintf(Buf, sizeof(buf), "%3d", pp->p_ammo);
 			cgoto(pp, STAT_AMMO_ROW, STAT_VALUE_COL);
 			outstr(pp, Buf, 3);
-			return FALSE;
+			return false;
 		}
-		bp->b_expl = TRUE;
+		bp->b_expl = true;
 		break;
 	}
-	return TRUE;
+	return true;
 }
-# endif
+#endif
 
 /*
  * save_bullet:
  *	Put this bullet back onto the bullet list
  */
 static void
-save_bullet(bp)
-	BULLET	*bp;
+save_bullet(BULLET *bp)
 {
 	bp->b_over = Maze[bp->b_y][bp->b_x];
 	switch (bp->b_over) {
@@ -523,15 +522,15 @@ save_bullet(bp)
 	  case GRENADE:
 	  case SATCHEL:
 	  case BOMB:
-# ifdef OOZE
+#ifdef OOZE
 	  case SLIME:
-# ifdef VOLCANO
+#ifdef VOLCANO
 	  case LAVA:
-# endif
-# endif
-# ifdef DRONE
+#endif
+#endif
+#ifdef DRONE
 	  case DSHOT:
-# endif
+#endif
 		find_under(Bullets, bp);
 		break;
 	}
@@ -541,17 +540,18 @@ save_bullet(bp)
 	  case RIGHT:
 	  case ABOVE:
 	  case BELOW:
-# ifdef FLY
+#ifdef FLY
 	  case FLYER:
-# endif
+#endif
 		mark_player(bp);
 		break;
-# ifdef BOOTS
+#ifdef BOOTS
 	  case BOOT:
 	  case BOOT_PAIR:
 		mark_boot(bp);
-# endif
-		
+		break;
+#endif
+
 	  default:
 		Maze[bp->b_y][bp->b_x] = bp->b_type;
 		break;
@@ -566,14 +566,13 @@ save_bullet(bp)
  *	Update the position of a player in flight
  */
 static void
-move_flyer(pp)
-	PLAYER	*pp;
+move_flyer(PLAYER *pp)
 {
-	int	x, y;
+	int x, y;
 
 	if (pp->p_undershot) {
 		fixshots(pp->p_y, pp->p_x, pp->p_over);
-		pp->p_undershot = FALSE;
+		pp->p_undershot = false;
 	}
 	Maze[pp->p_y][pp->p_x] = pp->p_over;
 	x = pp->p_x + pp->p_flyx;
@@ -615,13 +614,13 @@ again:
 	  case WALL1:
 	  case WALL2:
 	  case WALL3:
-# ifdef	REFLECT
+#ifdef REFLECT
 	  case WALL4:
 	  case WALL5:
-# endif
-# ifdef	RANDOM
+#endif
+#ifdef RANDOM
 	  case DOOR:
-# endif
+#endif
 		if (pp->p_flying == 0)
 			pp->p_flying++;
 		break;
@@ -631,21 +630,21 @@ again:
 	pp->p_y = y;
 	pp->p_x = x;
 	if (pp->p_flying-- == 0) {
-# ifdef BOOTS
+#ifdef BOOTS
 		if (pp->p_face != BOOT && pp->p_face != BOOT_PAIR) {
-# endif
-			checkdam(pp, (PLAYER *) NULL, (IDENT *) NULL,
+#endif
+			checkdam(pp, NULL, NULL,
 				rand_num(pp->p_damage / 5), FALL);
 			pp->p_face = rand_dir();
 			showstat(pp);
-# ifdef BOOTS
+#ifdef BOOTS
 		}
 		else {
 			if (Maze[y][x] == BOOT)
 				pp->p_face = BOOT_PAIR;
 			Maze[y][x] = SPACE;
 		}
-# endif
+#endif
 	}
 	pp->p_over = Maze[y][x];
 	Maze[y][x] = pp->p_face;
@@ -657,15 +656,13 @@ again:
  *	Handle explosions
  */
 static void
-chkshot(bp, next)
-	BULLET	*bp;
-	BULLET	*next;
+chkshot(BULLET *bp, BULLET *next)
 {
-	int	y, x;
-	int	dy, dx, absdy;
-	int	delta, damage;
-	char	expl;
-	PLAYER	*pp;
+	int y, x;
+	int dy, dx, absdy;
+	int delta, damage;
+	char expl;
+	PLAYER *pp;
 
 	delta = 0;
 	switch (bp->b_type) {
@@ -677,20 +674,20 @@ chkshot(bp, next)
 	  case BOMB:
 		delta = bp->b_size - 1;
 		break;
-# ifdef	OOZE
+#ifdef OOZE
 	  case SLIME:
-# ifdef VOLCANO
+#ifdef VOLCANO
 	  case LAVA:
-# endif
+#endif
 		chkslime(bp, next);
 		return;
-# endif
-# ifdef DRONE
+#endif
+#ifdef DRONE
 	  case DSHOT:
 		bp->b_type = SLIME;
 		chkslime(bp, next);
 		return;
-# endif
+#endif
 	}
 	for (y = bp->b_y - delta; y <= bp->b_y + delta; y++) {
 		if (y < 0 || y >= HEIGHT)
@@ -717,9 +714,9 @@ chkshot(bp, next)
 			  case RIGHT:
 			  case ABOVE:
 			  case BELOW:
-# ifdef FLY
+#ifdef FLY
 			  case FLYER:
-# endif
+#endif
 				if (dx < 0)
 					dx = -dx;
 				if (absdy > dx)
@@ -737,7 +734,7 @@ chkshot(bp, next)
 					y, x, LEFTS,
 					(Maze[y][x] == GMINE) ?
 					GRENREQ : BULREQ,
-					(PLAYER *) NULL, TRUE, SPACE);
+					NULL, true, SPACE);
 				Maze[y][x] = SPACE;
 				break;
 			}
@@ -745,15 +742,13 @@ chkshot(bp, next)
 	}
 }
 
-# ifdef	OOZE
+#ifdef OOZE
 /*
  * chkslime:
  *	handle slime shot exploding
  */
 static void
-chkslime(bp, next)
-	BULLET	*bp;
-	BULLET	*next;
+chkslime(BULLET *bp, BULLET *next)
 {
 	BULLET	*nbp;
 
@@ -761,13 +756,13 @@ chkslime(bp, next)
 	  case WALL1:
 	  case WALL2:
 	  case WALL3:
-# ifdef	REFLECT
+#ifdef REFLECT
 	  case WALL4:
 	  case WALL5:
-# endif
-# ifdef	RANDOM
+#endif
+#ifdef RANDOM
 	  case DOOR:
-# endif
+#endif
 		switch (bp->b_face) {
 		  case LEFTS:
 			bp->b_x++;
@@ -784,21 +779,13 @@ chkslime(bp, next)
 		}
 		break;
 	}
-	nbp = (BULLET *) malloc(sizeof (BULLET));
-	if (nbp == NULL) {
-# ifdef LOG
-		syslog(LOG_ERR, "Out of memory");
-# else
-		warnx("Out of memory");
-# endif
-		cleanup(1);
-	}
+	nbp = malloc(sizeof(*nbp));
 	*nbp = *bp;
-# ifdef VOLCANO
+#ifdef VOLCANO
 	move_slime(nbp, nbp->b_type == SLIME ? SLIMESPEED : LAVASPEED, next);
-# else
+#else
 	move_slime(nbp, SLIMESPEED, next);
-# endif
+#endif
 }
 
 /*
@@ -806,37 +793,34 @@ chkslime(bp, next)
  *	move the given slime shot speed times and add it back if
  *	it hasn't fizzled yet
  */
-void
-move_slime(bp, speed, next)
-	BULLET	*bp;
-	int	speed;
-	BULLET	*next;
+static void
+move_slime(BULLET *bp, int speed, BULLET *next)
 {
-	int	i, j, dirmask, count;
-	PLAYER	*pp;
-	BULLET	*nbp;
+	int i, j, dirmask, count;
+	PLAYER *pp;
+	BULLET *nbp;
 
 	if (speed == 0) {
 		if (bp->b_charge <= 0)
-			free((char *) bp);
+			free(bp);
 		else
 			save_bullet(bp);
 		return;
 	}
 
-# ifdef VOLCANO
+#ifdef VOLCANO
 	showexpl(bp->b_y, bp->b_x, bp->b_type == LAVA ? LAVA : '*');
-# else
+#else
 	showexpl(bp->b_y, bp->b_x, '*');
-# endif
+#endif
 	switch (Maze[bp->b_y][bp->b_x]) {
 	  case LEFTS:
 	  case RIGHT:
 	  case ABOVE:
 	  case BELOW:
-# ifdef FLY
+#ifdef FLY
 	  case FLYER:
-# endif
+#endif
 		pp = play_at(bp->b_y, bp->b_x);
 		message(pp, "You've been slimed.");
 		checkdam(pp, bp->b_owner, bp->b_score, MINDAM, bp->b_type);
@@ -845,16 +829,16 @@ move_slime(bp, speed, next)
 	  case GRENADE:
 	  case SATCHEL:
 	  case BOMB:
-# ifdef DRONE
+#ifdef DRONE
 	  case DSHOT:
-# endif
+#endif
 		explshot(next, bp->b_y, bp->b_x);
 		explshot(Bullets, bp->b_y, bp->b_x);
 		break;
 	}
 
 	if (--bp->b_charge <= 0) {
-		free((char *) bp);
+		free(bp);
 		return;
 	}
 
@@ -934,85 +918,83 @@ move_slime(bp, speed, next)
 	if (dirmask & WEST) {
 		count--;
 		nbp = create_shot(bp->b_type, bp->b_y, bp->b_x - 1, LEFTS,
-			i, bp->b_size, bp->b_owner, bp->b_score, TRUE, SPACE);
+			i, bp->b_size, bp->b_owner, bp->b_score, true, SPACE);
 		move_slime(nbp, speed - 1, next);
 	}
 	if (dirmask & EAST) {
 		count--;
 		nbp = create_shot(bp->b_type, bp->b_y, bp->b_x + 1, RIGHT,
 			(count < j) ? i + 1 : i, bp->b_size, bp->b_owner,
-			bp->b_score, TRUE, SPACE);
+			bp->b_score, true, SPACE);
 		move_slime(nbp, speed - 1, next);
 	}
 	if (dirmask & NORTH) {
 		count--;
 		nbp = create_shot(bp->b_type, bp->b_y - 1, bp->b_x, ABOVE,
 			(count < j) ? i + 1 : i, bp->b_size, bp->b_owner,
-			bp->b_score, TRUE, SPACE);
+			bp->b_score, true, SPACE);
 		move_slime(nbp, speed - 1, next);
 	}
 	if (dirmask & SOUTH) {
 		count--;
 		nbp = create_shot(bp->b_type, bp->b_y + 1, bp->b_x, BELOW,
 			(count < j) ? i + 1 : i, bp->b_size, bp->b_owner,
-			bp->b_score, TRUE, SPACE);
+			bp->b_score, true, SPACE);
 		move_slime(nbp, speed - 1, next);
 	}
 
-	free((char *) bp);
+	free(bp);
 }
 
 /*
  * iswall:
  *	returns whether the given location is a wall
  */
-static int
-iswall(y, x)
-	int	y, x;
+static bool
+iswall(int y, int x)
 {
 	if (y < 0 || x < 0 || y >= HEIGHT || x >= WIDTH)
-		return TRUE;
+		return true;
 	switch (Maze[y][x]) {
 	  case WALL1:
 	  case WALL2:
 	  case WALL3:
-# ifdef	REFLECT
+#ifdef REFLECT
 	  case WALL4:
 	  case WALL5:
-# endif
-# ifdef	RANDOM
+#endif
+#ifdef RANDOM
 	  case DOOR:
-# endif
-# ifdef OOZE
+#endif
+#ifdef OOZE
 	  case SLIME:
-# ifdef VOLCANO
+#ifdef VOLCANO
 	  case LAVA:
-# endif
-# endif
-		return TRUE;
+#endif
+#endif
+		return true;
 	}
-	return FALSE;
+	return false;
 }
-# endif
+#endif
 
 /*
  * zapshot:
  *	Take a shot out of the air.
  */
 static void
-zapshot(blist, obp)
-	BULLET	*blist, *obp;
+zapshot(BULLET *blist, BULLET *obp)
 {
-	BULLET	*bp;
-	FLAG	explode;
+	BULLET *bp;
+	bool explode;
 
-	explode = FALSE;
+	explode = false;
 	for (bp = blist; bp != NULL; bp = bp->b_next) {
 		if (bp->b_x != obp->b_x || bp->b_y != obp->b_y)
 			continue;
 		if (bp->b_face == obp->b_face)
 			continue;
-		explode = TRUE;
+		explode = true;
 		break;
 	}
 	if (!explode)
@@ -1024,16 +1006,14 @@ zapshot(blist, obp)
  * explshot -
  *	Make all shots at this location blow up
  */
-void
-explshot(blist, y, x)
-	BULLET	*blist;
-	int	y, x;
+static void
+explshot(BULLET *blist, int y, int x)
 {
-	BULLET	*bp;
+	BULLET *bp;
 
 	for (bp = blist; bp != NULL; bp = bp->b_next)
 		if (bp->b_x == x && bp->b_y == y) {
-			bp->b_expl = TRUE;
+			bp->b_expl = true;
 			if (bp->b_owner != NULL)
 				message(bp->b_owner, "Shot intercepted");
 		}
@@ -1044,10 +1024,9 @@ explshot(blist, y, x)
  *	Return a pointer to the player at the given location
  */
 PLAYER *
-play_at(y, x)
-	int	y, x;
+play_at(int y, int x)
 {
-	PLAYER	*pp;
+	PLAYER *pp;
 
 	for (pp = Player; pp < End_player; pp++)
 		if (pp->p_x == x && pp->p_y == y)
@@ -1058,13 +1037,11 @@ play_at(y, x)
 
 /*
  * opposite:
- *	Return TRUE if the bullet direction faces the opposite direction
+ *	Return true if the bullet direction faces the opposite direction
  *	of the player in the maze
  */
-int
-opposite(face, dir)
-	int	face;
-	char	dir;
+bool
+opposite(int face, char dir)
 {
 	switch (face) {
 	  case LEFTS:
@@ -1076,7 +1053,7 @@ opposite(face, dir)
 	  case BELOW:
 		return (dir == ABOVE);
 	  default:
-		return FALSE;
+		return false;
 	}
 }
 
@@ -1086,10 +1063,9 @@ opposite(face, dir)
  *	a pointer to the bullet, otherwise return NULL
  */
 BULLET *
-is_bullet(y, x)
-	int	y, x;
+is_bullet(int y, int x)
 {
-	BULLET	*bp;
+	BULLET *bp;
 
 	for (bp = Bullets; bp != NULL; bp = bp->b_next)
 		if (bp->b_y == y && bp->b_x == x)
@@ -1103,11 +1079,9 @@ is_bullet(y, x)
  *	to the given character.
  */
 void
-fixshots(y, x, over)
-	int	y, x;
-	char	over;
+fixshots(int y, int x, char over)
 {
-	BULLET	*bp;
+	BULLET *bp;
 
 	for (bp = Bullets; bp != NULL; bp = bp->b_next)
 		if (bp->b_y == y && bp->b_x == x)
@@ -1120,10 +1094,9 @@ fixshots(y, x, over)
  *	on another bullet.
  */
 static void
-find_under(blist, bp)
-	BULLET	*blist, *bp;
+find_under(BULLET *blist, BULLET *bp)
 {
-	BULLET	*nbp;
+	BULLET *nbp;
 
 	for (nbp = blist; nbp != NULL; nbp = nbp->b_next)
 		if (bp->b_y == nbp->b_y && bp->b_x == nbp->b_x) {
@@ -1137,33 +1110,31 @@ find_under(blist, bp)
  *	mark a player as under a shot
  */
 static void
-mark_player(bp)
-	BULLET	*bp;
+mark_player(BULLET *bp)
 {
-	PLAYER	*pp;
+	PLAYER *pp;
 
 	for (pp = Player; pp < End_player; pp++)
 		if (pp->p_y == bp->b_y && pp->p_x == bp->b_x) {
-			pp->p_undershot = TRUE;
+			pp->p_undershot = true;
 			break;
 		}
 }
 
-# ifdef BOOTS
+#ifdef BOOTS
 /*
  * mark_boot:
  *	mark a boot as under a shot
  */
 static void
-mark_boot(bp)
-	BULLET	*bp;
+mark_boot(BULLET *bp)
 {
-	PLAYER	*pp;
+	PLAYER *pp;
 
 	for (pp = Boot; pp < &Boot[NBOOTS]; pp++)
 		if (pp->p_y == bp->b_y && pp->p_x == bp->b_x) {
-			pp->p_undershot = TRUE;
+			pp->p_undershot = true;
 			break;
 		}
 }
-# endif
+#endif

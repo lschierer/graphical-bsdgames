@@ -1,4 +1,4 @@
-.\"	$NetBSD: factor.6,v 1.9 2004/02/08 13:16:25 jsm Exp $
+.\"	$NetBSD: factor.6,v 1.18 2020/10/12 13:53:43 christos Exp $
 .\"
 .\" Copyright (c) 1989, 1993
 .\"	The Regents of the University of California.  All rights reserved.
@@ -33,11 +33,9 @@
 .\"	@(#)factor.6	8.1 (Berkeley) 5/31/93
 .\"
 .\"
-.\" By: Landon Curt Noll   chongo@toad.com,   ...!{sun,tolsoft}!hoptoad!chongo
+.\" By Landon Curt Noll, http://www.isthe.com/chongo/index.html /\oo/\
 .\"
-.\"   chongo <for a good prime call: 391581 * 2^216193 - 1> /\oo/\
-.\"
-.Dd February 8, 2004
+.Dd October 12, 2020
 .Dt FACTOR 6
 .Os
 .Sh NAME
@@ -45,37 +43,76 @@
 .Nd factor a number
 .Sh SYNOPSIS
 .Nm
+.Op Fl hx
 .Op Ar number ...
 .Sh DESCRIPTION
 The
 .Nm
-utility will factor integers between \-2147483648 and 2147483647 inclusive.
+utility factors integers larger than 
+.Dv 0 .
 When a number is factored, it is printed, followed by a
 .Dq \&: ,
-and the list of factors on a single line.
+and the list of
+.Pq prime
+factors on a single line.
 Factors are listed in ascending order, and are preceded by a space.
-If a factor divides a value more than once, it will be printed more than once.
+By default, if a factor divides a value more than once, it will be
+printed more than once.
 .Pp
 When
 .Nm
-is invoked with one or more arguments, each argument will be factored.
+is invoked with one or more
+.Ar number
+arguments, each argument will be factored.
 .Pp
 When
 .Nm
-is invoked with no arguments,
+is invoked with no
+.Ar number
+arguments,
 .Nm
 reads numbers, one per line, from standard input, until end of file or error.
 Leading white-space and empty lines are ignored.
-Numbers may be preceded by a single - or +.
+Numbers may be preceded by a single +.
+Numbers that start with
+.Dv 0x
+are interpreted as hexadecimal.
+A 
+.Dv 0
+input exits the program.
+Negative numbers are not allowed.
 Numbers are terminated by a non-digit character (such as a newline).
 After a number is read, it is factored.
-Input lines must not be longer than 255 characters.
+Input lines must not be longer than
+.Dv LINE_MAX \- 1
+(currently 2047) characters.
+.Pp
+By default,
+.Nm
+is compiled against the OpenSSL bignum implementation
+.Xr openssl_bn 3 ,
+which lets it handle arbitrarily large values.
+.Pq Note however that very large values can take a very long time to factor.
+If
+.Nm
+is compiled without OpenSSL it is limited to the maximum value of
+.Vt unsigned long .
+.Pp
+The following option is available:
+.Bl -tag -width flag
+.It Fl h
+If the
+.Fl h
+flag is specified, factors will be printed in "human-readable" format.
+If a factor x divides a value n (>1) times, it will appear as x^n.
+.It Fl x
+If the
+.Fl x
+flag is specified, factors will be printed in hexadecimal format.
+.El
 .Sh DIAGNOSTICS
 Out of range or invalid input results in
-an appropriate error message
-being written to standard error.
-.Sh BUGS
-.Nm
-cannot handle the
-.Dq 10 most wanted
-factor list.
+an appropriate error message to standard error.
+.Sh AUTHORS
+Originally by
+.An Landon Curt Noll .

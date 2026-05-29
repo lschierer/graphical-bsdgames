@@ -1,4 +1,4 @@
-/*	$NetBSD: bcd.c,v 1.13 2004/01/27 20:30:29 jsm Exp $	*/
+/*	$NetBSD: bcd.c,v 1.17 2009/08/12 05:21:28 dholland Exp $	*/
 
 /*
  * Copyright (c) 1989, 1993
@@ -34,15 +34,15 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1989, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1989, 1993\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)bcd.c	8.2 (Berkeley) 3/20/94";
 #else
-__RCSID("$NetBSD: bcd.c,v 1.13 2004/01/27 20:30:29 jsm Exp $");
+__RCSID("$NetBSD: bcd.c,v 1.17 2009/08/12 05:21:28 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -84,7 +84,7 @@ __RCSID("$NetBSD: bcd.c,v 1.13 2004/01/27 20:30:29 jsm Exp $");
 #include <ctype.h>
 #include <unistd.h>
 
-const u_short holes[256] = {
+static const u_short holes[256] = {
     0x0,	 0x0,	  0x0,	   0x0,	    0x0,     0x0,     0x0,     0x0,
     0x0,	 0x0,	  0x0,	   0x0,	    0x0,     0x0,     0x0,     0x0,
     0x0,	 0x0,	  0x0,	   0x0,	    0x0,     0x0,     0x0,     0x0,
@@ -124,18 +124,15 @@ const u_short holes[256] = {
  */
 #define	bit(w,i)	((w)&(1<<(i)))
 
-int	main(int, char *[]);
-void	printcard(unsigned char *);
+static void printcard(char *);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	char cardline[80];
 
 	/* revoke setgid privileges */
-	setregid(getgid(), getgid());
+	setgid(getgid());
 
 	/*
 	 * The original bcd prompts with a "%" when reading from stdin,
@@ -144,34 +141,33 @@ main(argc, argv)
 
 	if (argc > 1) {
 		while (--argc)
-			printcard((unsigned char *)*++argv);
+			printcard(*++argv);
 	} else
 		while (fgets(cardline, sizeof(cardline), stdin))
-			printcard((unsigned char *)cardline);
+			printcard(cardline);
 	exit(0);
 }
 
 #define	COLUMNS	48
 
-void
-printcard(str)
-	unsigned char *str;
+static void
+printcard(char *str)
 {
 	static const char rowchars[] = "   123456789";
 	int i, row;
-	unsigned char *p;
+	char *p;
 
 	/* ruthlessly remove newlines and truncate at 48 characters. */
-	if ((p = (unsigned char *)strchr((char *)str, '\n')))
+	if ((p = strchr(str, '\n')))
 		*p = '\0';
 
-	if (strlen((char *)str) > COLUMNS)
+	if (strlen(str) > COLUMNS)
 		str[COLUMNS] = '\0';
 
 	/* make string upper case. */
 	for (p = str; *p; ++p)
-		if (isascii(*p) && islower(*p))
-			*p = toupper(*p);
+		if (isascii((unsigned char)*p) && islower((unsigned char)*p))
+			*p = toupper((unsigned char) *p);
 
 	 /* top of card */
 	putchar(' ');
@@ -186,7 +182,7 @@ printcard(str)
 	p = str;
 	putchar('/');
 	for (i = 1; *p; i++, p++)
-		if (holes[(int)*p])
+		if (holes[(unsigned char)*p])
 			putchar(*p);
 		else
 			putchar(' ');
@@ -204,7 +200,7 @@ printcard(str)
 	for (row = 0; row <= 11; ++row) {
 		putchar('|');
 		for (i = 0, p = str; *p; i++, p++) {
-			if (bit(holes[(int)*p], 11 - row))
+			if (bit(holes[(unsigned char)*p], 11 - row))
 				putchar(']');
 			else
 				putchar(rowchars[row]);

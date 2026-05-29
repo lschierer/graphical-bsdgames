@@ -1,4 +1,4 @@
-/*	$NetBSD: dock.c,v 1.6 2003/08/07 09:37:50 agc Exp $	*/
+/*	$NetBSD: dock.c,v 1.10 2009/05/24 22:55:03 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)dock.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: dock.c,v 1.6 2003/08/07 09:37:50 agc Exp $");
+__RCSID("$NetBSD: dock.c,v 1.10 2009/05/24 22:55:03 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -58,8 +58,7 @@ __RCSID("$NetBSD: dock.c,v 1.6 2003/08/07 09:37:50 agc Exp $");
 
 /*ARGSUSED*/
 void
-dock(v)
-	int v __attribute__((__unused__));
+dock(int v __unused)
 {
 	int		i, j;
 	int		ok;
@@ -71,23 +70,21 @@ dock(v)
 	}
 	/* check for ok to dock, i.e., adjacent to a starbase */
 	ok = 0;
-	for (i = Ship.sectx - 1; i <= Ship.sectx + 1 && !ok; i++)
-	{
+	for (i = Ship.sectx - 1; i <= Ship.sectx + 1 && !ok; i++) {
 		if (i < 0 || i >= NSECTS)
 			continue;
-		for (j = Ship.secty - 1; j <= Ship.secty + 1; j++)
-		{
+		for (j = Ship.secty - 1; j <= Ship.secty + 1; j++) {
 			if (j  < 0 || j >= NSECTS)
 				continue;
-			if (Sect[i][j] == BASE)
-			{
+			if (Sect[i][j] == BASE) {
 				ok++;
 				break;
 			}
 		}
 	}
 	if (!ok) {
-		printf("Chekov: But captain, we are not adjacent to a starbase.\n");
+		printf("Chekov: But captain, we are not adjacent to a "
+		       "starbase.\n");
 		return;
 	}
 
@@ -112,8 +109,7 @@ dock(v)
 	dumpssradio();
 
 	/* reschedule any device repairs */
-	for (i = 0; i < MAXEVENTS; i++)
-	{
+	for (i = 0; i < MAXEVENTS; i++) {
 		e = &Event[i];
 		if (e->evcode != E_FIXDV)
 			continue;
@@ -132,14 +128,12 @@ dock(v)
 
 /*ARGSUSED*/
 void
-undock(v)
-	int v __attribute__((__unused__));
+undock(int v __unused)
 {
 	struct event	*e;
 	int		i;
 
-	if (Ship.cond != DOCKED)
-	{
+	if (Ship.cond != DOCKED) {
 		printf("Sulu: Pardon me captain, but we are not docked.\n");
 		return;
 	}
@@ -147,8 +141,7 @@ undock(v)
 	Move.free = 0;
 
 	/* reschedule device repair times (again) */
-	for (i = 0; i < MAXEVENTS; i++)
-	{
+	for (i = 0; i < MAXEVENTS; i++) {
 		e = &Event[i];
 		if (e->evcode != E_FIXDV)
 			continue;

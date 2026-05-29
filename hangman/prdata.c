@@ -1,4 +1,4 @@
-/*	$NetBSD: prdata.c,v 1.5 2003/08/07 09:37:22 agc Exp $	*/
+/*	$NetBSD: prdata.c,v 1.8 2020/07/12 02:34:54 dholland Exp $	*/
 
 /*-
  * Copyright (c) 1983, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)prdata.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: prdata.c,v 1.5 2003/08/07 09:37:22 agc Exp $");
+__RCSID("$NetBSD: prdata.c,v 1.8 2020/07/12 02:34:54 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -45,15 +45,22 @@ __RCSID("$NetBSD: prdata.c,v 1.5 2003/08/07 09:37:22 agc Exp $");
  *	Print out the current guesses
  */
 void
-prdata()
+prdata(void)
 {
-	bool *bp;
+	int i, n, l;
 
-	move(GUESSY, GUESSX + sizeof "Guessed: ");
-	bp = Guessed;
-	while (bp < &Guessed[26])
-		if (*bp++)
-			addch((bp - Guessed) + 'a' - 1);
+	for (i = n = 0; i < 26; i++)
+		if (Guessed[i])
+			n++;
+
+	move(GUESSY, GUESSX);
+	l = sizeof "Guessed: ";
+	if (GUESSX + l + n < COLS) {
+		addstr("Guessed: ");
+	}
+	for (i = 0; i < 26; i++)
+		if (Guessed[i])
+			addch(i + 'a');
 	clrtoeol();
 	mvprintw(NUMBERY, NUMBERX + sizeof "Word #:          ", "%d", Wordnum);
 	mvprintw(AVGY, AVGX + sizeof "Current Average: ", "%.3f",

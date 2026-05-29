@@ -1,4 +1,4 @@
-/*	$NetBSD: tetris.c,v 1.17 2004/01/27 20:30:30 jsm Exp $	*/
+/*	$NetBSD: tetris.c,v 1.34 2023/07/01 10:51:35 nia Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -36,8 +36,8 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1992, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1992, 1993\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 /*
@@ -62,8 +62,9 @@ __COPYRIGHT("@(#) Copyright (c) 1992, 1993\n\
 cell	board[B_SIZE];		/* 1 => occupied, 0 => empty */
 
 int	Rows, Cols;		/* current screen size */
+int	Offset;			/* used to center board & shapes */
 
-const struct shape *curshape;
+static const struct shape *curshape;
 const struct shape *nextshape;
 
 long	fallrate;		/* less than 1 million; smaller => faster */
@@ -73,12 +74,12 @@ gid_t	gid, egid;
 
 char	key_msg[100];
 int	showpreview;
+int	nocolor;
 
-static	void	elide(void);
-static	void	setup_board(void);
-	int	main(int, char **);
-	void	onintr(int) __attribute__((__noreturn__));
-	void	usage(void) __attribute__((__noreturn__));
+static void elide(void);
+static void setup_board(void);
+static void onintr(int) __dead;
+static void usage(void) __dead;
 
 /*
  * Set up the initial board.  The bottom display row is completely set,
@@ -86,21 +87,21 @@ static	void	setup_board(void);
  * right edges are set.
  */
 static void
-setup_board()
+setup_board(void)
 {
 	int i;
 	cell *p;
 
 	p = board;
 	for (i = B_SIZE; i; i--)
-		*p++ = i <= (2 * B_COLS) || (i % B_COLS) < 2;
+		*p++ = (i <= (2 * B_COLS) || (i % B_COLS) < 2) ? 7 : 0;
 }
 
 /*
  * Elide any full active rows.
  */
 static void
-elide()
+elide(void)
 {
 	int i, j, base;
 	cell *p;
@@ -116,6 +117,8 @@ elide()
 				tsleep();
 				while (--base != 0)
 					board[base + B_COLS] = board[base];
+				/* don't forget to clear 0th row */
+				memset(&board[1], 0, B_COLS - 2);
 				scr_update();
 				tsleep();
 				break;
@@ -125,14 +128,14 @@ elide()
 }
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	int pos, c;
 	const char *keys;
 	int level = 2;
-	char key_write[6][10];
+#define NUMKEYS 7
+	char key_write[NUMKEYS][10];
+	char *nocolor_env;
 	int ch, i, j;
 	int fd;
 
@@ -145,12 +148,15 @@ main(argc, argv)
 		exit(1);
 	close(fd);
 
-	keys = "jkl pq";
+	keys = "jkl pqn";
 
-	while ((ch = getopt(argc, argv, "k:l:ps")) != -1)
+	while ((ch = getopt(argc, argv, "bk:l:ps")) != -1)
 		switch(ch) {
+		case 'b':
+			nocolor = 1;
+			break;
 		case 'k':
-			if (strlen(keys = optarg) != 6)
+			if (strlen(keys = optarg) != NUMKEYS)
 				usage();
 			break;
 		case 'l':
@@ -177,10 +183,15 @@ main(argc, argv)
 	if (argc)
 		usage();
 
+	nocolor_env = getenv("NO_COLOR");
+
+	if (nocolor_env != NULL && nocolor_env[0] != '\0')
+		nocolor = 1;
+
 	fallrate = 1000000 / level;
 
-	for (i = 0; i <= 5; i++) {
-		for (j = i+1; j <= 5; j++) {
+	for (i = 0; i <= (NUMKEYS-1); i++) {
+		for (j = i+1; j <= (NUMKEYS-1); j++) {
 			if (keys[i] == keys[j]) {
 				errx(1, "duplicate command keys specified.");
 			}
@@ -193,16 +204,15 @@ main(argc, argv)
 		}
 	}
 
-	sprintf(key_msg,
-"%s - left   %s - rotate   %s - right   %s - drop   %s - pause   %s - quit",
+	snprintf(key_msg, sizeof(key_msg),
+"%s - left  %s - rotate  %s - right  %s - drop  %s - pause  %s - quit  %s - down",
 		key_write[0], key_write[1], key_write[2], key_write[3],
-		key_write[4], key_write[5]);
+		key_write[4], key_write[5], key_write[6]);
 
 	(void)signal(SIGINT, onintr);
 	scr_init();
 	setup_board();
 
-	srandom(getpid());
 	scr_set();
 
 	pos = A_FIRST*B_COLS + (B_COLS/2)-1;
@@ -262,7 +272,7 @@ main(argc, argv)
 				scr_msg(key_msg, 0);
 				scr_msg(msg, 1);
 				(void) fflush(stdout);
-			} while (rwait((struct timeval *)NULL) == -1);
+			} while (rwait(NULL) == -1);
 			scr_msg(msg, 0);
 			scr_msg(key_msg, 1);
 			place(curshape, pos, 0);
@@ -296,6 +306,14 @@ main(argc, argv)
 			}
 			continue;
 		}
+		if (c == keys[6]) {
+			/* move down */
+			if (fits_in(curshape, pos + B_COLS)) {
+				pos += B_COLS;
+				score++;
+			}
+			continue;
+		}
 		if (c == '\f') {
 			scr_clear();
 			scr_msg(key_msg, 1);
@@ -320,18 +338,18 @@ main(argc, argv)
 	exit(0);
 }
 
-void
-onintr(signo)
-	int signo __attribute__((__unused__));
+static void
+onintr(int signo __unused)
 {
 	scr_clear();
 	scr_end();
 	exit(0);
 }
 
-void
-usage()
+static void
+usage(void)
 {
-	(void)fprintf(stderr, "usage: tetris-bsd [-ps] [-k keys] [-l level]\n");
+	(void)fprintf(stderr, "usage: %s [-bps] [-k keys] [-l level]\n",
+	    getprogname());
 	exit(1);
 }

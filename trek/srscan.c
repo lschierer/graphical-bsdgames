@@ -1,4 +1,4 @@
-/*	$NetBSD: srscan.c,v 1.6 2003/08/07 09:37:54 agc Exp $	*/
+/*	$NetBSD: srscan.c,v 1.11 2009/08/12 08:54:54 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)srscan.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: srscan.c,v 1.6 2003/08/07 09:37:54 agc Exp $");
+__RCSID("$NetBSD: srscan.c,v 1.11 2009/08/12 08:54:54 dholland Exp $");
 #endif
 #endif /* not lint */
 
@@ -57,8 +57,7 @@ __RCSID("$NetBSD: srscan.c,v 1.6 2003/08/07 09:37:54 agc Exp $");
 **	The current quadrant is filled in on the computer chart.
 */
 
-const char	*const Color[4] =
-{
+static const char *const Color[4] = {
 	"GREEN",
 	"DOCKED",
 	"YELLOW",
@@ -66,8 +65,7 @@ const char	*const Color[4] =
 };
 
 void
-srscan(f)
-int	f;
+srscan(int f)
 {
 	int		i, j;
 	int		statinfo;
@@ -76,41 +74,34 @@ int	f;
 	struct quad	*q = NULL;
 	const struct cvntab	*p;
 
-	if (f >= 0 && check_out(SRSCAN))
-	{
+	if (f >= 0 && check_out(SRSCAN)) {
 		return;
 	}
-	if (f)
+	if (f) {
 		statinfo = 1;
-	else
-	{
+	} else {
 		if (!testnl())
 			Etc.statreport = getynpar("status report");
 		statinfo = Etc.statreport;
 	}
-	if (f > 0)
-	{
+	if (f > 0) {
 		Etc.statreport = 1;
 		if (!Etc.fast)
 			return;
 	}
-	if (f >= 0)
-	{
+	if (f >= 0) {
 		printf("\nShort range sensor scan\n");
 		q = &Quad[Ship.quadx][Ship.quady];
 		q->scanned = q->klings * 100 + q->bases * 10 + q->stars;
 		printf("  ");
-		for (i = 0; i < NSECTS; i++)
-		{
+		for (i = 0; i < NSECTS; i++) {
 			printf("%d ", i);
 		}
 		printf("\n");
 	}
 
-	for (i = 0; i < NSECTS; i++)
-	{
-		if (f >= 0)
-		{
+	for (i = 0; i < NSECTS; i++) {
+		if (f >= 0) {
 			printf("%d ", i);
 			for (j = 0; j < NSECTS; j++)
 				printf("%c ", Sect[i][j]);
@@ -119,8 +110,7 @@ int	f;
 				printf("   ");
 		}
 		if (statinfo)
-			switch (i)
-			{
+			switch (i) {
 			  case 0:
 				printf("stardate      %.2f", Now.date);
 				break;
@@ -130,7 +120,8 @@ int	f;
 					printf(", CLOAKED");
 				break;
 			  case 2:
-				printf("position      %d,%d/%d,%d",Ship.quadx, Ship.quady, Ship.sectx, Ship.secty);
+				printf("position      %d,%d/%d,%d", Ship.quadx,
+					Ship.quady, Ship.sectx, Ship.secty);
 				break;
 			  case 3:
 				printf("warp factor   %.1f", Ship.warp);
@@ -158,9 +149,9 @@ int	f;
 				break;
 			  case 9:
 				printf("life support  ");
-				if (damaged(LIFESUP))
-				{
-					printf("damaged, reserves = %.2f", Ship.reserves);
+				if (damaged(LIFESUP)) {
+					printf("damaged, reserves = %.2f",
+						Ship.reserves);
 					break;
 				}
 				printf("active");
@@ -168,17 +159,16 @@ int	f;
 			}
 		printf("\n");
 	}
-	if (f < 0)
-	{
+	if (f < 0) {
 		printf("current crew  %d\n", Ship.crew);
 		printf("brig space    %d\n", Ship.brigfree);
 		printf("Klingon power %d\n", Param.klingpwr);
 		p = &Lentab[Game.length - 1];
 		if (Game.length > 2)
 			p--;
-		printf("Length, Skill %s%s, ", p->abrev, p->full);
+		printf("Length, Skill %s%s, ", p->abbrev, p->full);
 		p = &Skitab[Game.skill - 1];
-		printf("%s%s\n", p->abrev, p->full);
+		printf("%s%s\n", p->abbrev, p->full);
 		return;
 	}
 	printf("  ");

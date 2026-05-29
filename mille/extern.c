@@ -1,4 +1,4 @@
-/*	$NetBSD: extern.c,v 1.7 2003/08/07 09:37:25 agc Exp $	*/
+/*	$NetBSD: extern.c,v 1.12 2021/05/02 12:50:45 rillig Exp $	*/
 
 /*
  * Copyright (c) 1982, 1993
@@ -34,11 +34,11 @@
 #if 0
 static char sccsid[] = "@(#)extern.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: extern.c,v 1.7 2003/08/07 09:37:25 agc Exp $");
+__RCSID("$NetBSD: extern.c,v 1.12 2021/05/02 12:50:45 rillig Exp $");
 #endif
 #endif /* not lint */
 
-# include	"mille.h"
+#include "mille.h"
 
 /*
  * @(#)extern.c	1.1 (Berkeley) 4/1/82
@@ -51,10 +51,9 @@ bool	Debug,			/* set if debugging code on		*/
 	Order,			/* set if hand should be sorted		*/
 	Saved;			/* set if game just saved		*/
 
-char	Initstr[100];		/* initial string for error field	*/
-const char	*C_fmt = "%-18.18s",	/* format for printing cards	*/
-	*Fromfile = NULL,	/* startup file for game		*/
-	*const _cn[NUM_CARDS] = {	/* Card name buffer		*/
+char	Initstr[INITSTR_SIZE];	/* initial string for error field	*/
+const char *Fromfile = NULL;	/* startup file for game		*/
+static const char *const _cn[NUM_CARDS] = {/* Card name buffer		*/
 		"",
 		"25",
 		"50",
@@ -65,7 +64,7 @@ const char	*C_fmt = "%-18.18s",	/* format for printing cards	*/
 		"Flat Tire",
 		"Accident",
 		"Stop",
-		"Speed Limit", 
+		"Speed Limit",
 		"Gasoline",
 		"Spare Tire",
 		"Repairs",
@@ -75,8 +74,8 @@ const char	*C_fmt = "%-18.18s",	/* format for printing cards	*/
 		"Puncture Proof",
 		"Driving Ace",
 		"Right of Way"
-	},
-	*const *C_name = &_cn[1];	/* Card names			*/
+};
+const char *const *C_name = &_cn[1];	/* Card names			*/
 
 int	Card_no,		/* Card number for current move		*/
 	End,			/* End value for current hand		*/

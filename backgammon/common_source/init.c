@@ -1,4 +1,4 @@
-/*	$NetBSD: init.c,v 1.8 2003/08/07 09:36:57 agc Exp $	*/
+/*	$NetBSD: init.c,v 1.11 2024/08/22 20:46:40 rillig Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,24 +34,25 @@
 #if 0
 static char sccsid[] = "@(#)init.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: init.c,v 1.8 2003/08/07 09:36:57 agc Exp $");
+__RCSID("$NetBSD: init.c,v 1.11 2024/08/22 20:46:40 rillig Exp $");
 #endif
 #endif /* not lint */
 
 #include <termios.h>
+
+#include "back.h"
 
 /*
  * variable initialization.
  */
 
  /* name of executable object programs */
-const char    EXEC[] = EXEC_PATH;
-const char    TEACH[] = TEACH_PATH;
+const char    EXEC[] = "/usr/games/backgammon";
+const char    TEACH[] = "/usr/games/teachgammon";
 
 int     pnum = 2;		/* color of player: -1 = white 1 = red 0 =
 				 * both 2 = not yet init'ed */
-int     acnt = 1;		/* length of args */
-char	args[100] = "-";
+int     acnt = 0;		/* length of args */
 int     aflag = 1;		/* flag to ask for rules or instructions */
 int     bflag = 0;		/* flag for automatic board printing */
 int     cflag = 0;		/* case conversion flag */
@@ -81,20 +82,25 @@ int	colen;
 int	cturn;
 int	curc;
 int	curr;
-int	d0;
-int	dice[2];
 int	dlast;
-int	g[5];
 int	gvalue;
-int	h[4];
 int	home;
 int	in[2];
-int	mvl;
-int	mvlim;
 int	ncin;
 int	off[2];
-int	p[5];
 int	rscore;
 int	table[6][6];
 int	wscore;
-struct termios	old, noech, bg_raw;
+struct termios	old, noech, raw;
+
+void
+move_init(struct move *mm)
+{
+	mm->D0 = 0;
+	mm->D1 = 0;
+	mm->mvlim = 0;
+	mm->p[0] = mm->p[1] = mm->p[2] = mm->p[3] = mm->p[4] = 0;
+	mm->g[0] = mm->g[1] = mm->g[2] = mm->g[3] = mm->g[4] = 0;
+	mm->h[0] = mm->h[1] = mm->h[2] = mm->h[3] = 0;
+	mm->d0 = 0;
+}

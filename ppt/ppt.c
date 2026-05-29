@@ -1,4 +1,4 @@
-/*	$NetBSD: ppt.c,v 1.16 2004/01/27 20:30:30 jsm Exp $	*/
+/*	$NetBSD: ppt.c,v 1.19 2011/08/29 20:30:37 joerg Exp $	*/
 
 /*
  * Copyright (c) 1988, 1993
@@ -31,15 +31,15 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1988, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1988, 1993\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)ppt.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: ppt.c,v 1.16 2004/01/27 20:30:30 jsm Exp $");
+__RCSID("$NetBSD: ppt.c,v 1.19 2011/08/29 20:30:37 joerg Exp $");
 #endif
 #endif /* not lint */
 
@@ -51,12 +51,10 @@ __RCSID("$NetBSD: ppt.c,v 1.16 2004/01/27 20:30:30 jsm Exp $");
 
 #define	EDGE	"___________"
 
-       void	usage(void);
-	int	main(int, char *[]);
-static void	putppt(int);
-	int	getppt(const char *);
+static void putppt(int);
+static int getppt(const char *);
 
-void
+__dead static void
 usage(void)
 {
 	extern char *__progname;
@@ -65,15 +63,13 @@ usage(void)
 }
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	char *p, buf[132];
 	int c, start, neednl, dflag;
 
 	/* Revoke setgid privileges */
-	setregid(getgid(), getgid());
+	setgid(getgid());
 
 	dflag = 0;
 	while ((c = getopt(argc, argv, "dh")) != -1)
@@ -131,8 +127,7 @@ main(argc, argv)
 }
 
 static void
-putppt(c)
-	int c;
+putppt(int c)
 {
 	int i;
 
@@ -149,7 +144,7 @@ putppt(c)
 	(void) putchar('\n');
 }
 
-int
+static int
 getppt(const char *buf)
 {
 	const char *p = strchr(buf, '.');

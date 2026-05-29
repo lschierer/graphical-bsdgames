@@ -1,4 +1,4 @@
-/*	$NetBSD: make_level.c,v 1.7 2003/08/07 09:37:36 agc Exp $	*/
+/*	$NetBSD: make_level.c,v 1.10 2009/07/20 06:39:06 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,22 +34,24 @@
 #if 0
 static char sccsid[] = "@(#)make_level.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: make_level.c,v 1.7 2003/08/07 09:37:36 agc Exp $");
+__RCSID("$NetBSD: make_level.c,v 1.10 2009/07/20 06:39:06 dholland Exp $");
 #endif
 #endif /* not lint */
 
-# include	"robots.h"
+#include <curses.h>
+#include <string.h>
+#include "robots.h"
 
 /*
  * make_level:
  *	Make the current level
  */
 void
-make_level()
+make_level(void)
 {
-	int	i;
-	COORD	*cp;
-	int	x;
+	int i;
+	COORD *cp;
+	int x;
 
 	reset_count();
 	for (i = 1; i < Y_FIELDSIZE; i++)
@@ -59,7 +61,7 @@ make_level()
 	if (My_pos.y > 0)
 		mvaddch(My_pos.y, My_pos.x, ' ');
 
-	Waiting = FALSE;
+	Waiting = false;
 	Wait_bonus = 0;
 	leaveok(stdscr, FALSE);
 	for (cp = Robots; cp < &Robots[MAXROBOTS]; cp++)

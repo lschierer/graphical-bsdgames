@@ -1,4 +1,4 @@
-/*	$NetBSD: extern.h,v 1.30 2004/01/27 20:30:29 jsm Exp $ */
+/*	$NetBSD: extern.h,v 1.36 2014/03/22 23:33:33 dholland Exp $ */
 
 /*
  * Copyright (c) 1983, 1993
@@ -38,17 +38,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <time.h>
 #include <unistd.h>
 
-#define BITS (8 * sizeof (int))
+#define BITS (CHAR_BIT * sizeof (unsigned int))
 
 #define OUTSIDE		(position > 68 && position < 246 && position != 218)
-#define rnd(x)		(rand() % (x))
+#define rnd(x)		(random() % (x))
 #define max(a,b)	((a) < (b) ? (b) : (a))
-#define testbit(array, index)	(array[index/BITS] & (1 << (index % BITS)))
-#define setbit(array, index)	(array[index/BITS] |= (1 << (index % BITS)))
-#define clearbit(array, index)	(array[index/BITS] &= ~(1 << (index % BITS)))
+#define testbit(array, index)	(array[index/BITS] & (1U << (index % BITS)))
+#define setbit(array, index)	(array[index/BITS] |= (1U << (index % BITS)))
+#define clearbit(array, index)	(array[index/BITS] &= ~(1U << (index % BITS)))
 
  /* well known rooms */
 #define FINAL	275
@@ -331,11 +332,10 @@ extern const struct objs nightobjs[];
 void bury(void);
 int card(const char *, int);
 void chime(void);
-void convert(int);
 void crash(void);
 int cypher(void);
-void die(void) __attribute__((__noreturn__));
-void diesig(int) __attribute__((__noreturn__));
+void die(void) __dead;
+void diesig(int) __dead;
 void dig(void);
 void dooropen(void);
 int draw(void);
@@ -354,7 +354,7 @@ void kiss(void);
 int land(void);
 int launch(void);
 void light(void);
-void live(void) __attribute__((__noreturn__));
+void live(void) __dead;
 void love(void);
 int moveplayer(int, int);
 void murder(void);
@@ -362,7 +362,6 @@ void news(void);
 void newway(int);
 void open_score_file(void);
 void parse(void);
-void post(char);
 void printobjs(void);
 int put(void);
 int puton(void);
@@ -376,7 +375,7 @@ int shoot(void);
 int take(unsigned int[]);
 int takeoff(void);
 int throw(const char *);
-const char *truedirec(int, char);
+const char *truedirec(int, int);
 int ucard(const unsigned int *);
 int use(void);
 int visual(void);

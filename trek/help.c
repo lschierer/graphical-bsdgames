@@ -1,4 +1,4 @@
-/*	$NetBSD: help.c,v 1.7 2003/08/07 09:37:52 agc Exp $	*/
+/*	$NetBSD: help.c,v 1.13 2009/08/12 08:54:54 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,13 +34,14 @@
 #if 0
 static char sccsid[] = "@(#)help.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: help.c,v 1.7 2003/08/07 09:37:52 agc Exp $");
+__RCSID("$NetBSD: help.c,v 1.13 2009/08/12 08:54:54 dholland Exp $");
 #endif
 #endif /* not lint */
 
 #include <stdio.h>
 #include <math.h>
 #include <unistd.h>
+#include <limits.h>
 #include "trek.h"
 
 /*
@@ -63,13 +64,13 @@ __RCSID("$NetBSD: help.c,v 1.7 2003/08/07 09:37:52 agc Exp $");
 **	to drop you.  After that, it's your problem.
 */
 
-const char	*const Cntvect[3] =
-{"first", "second", "third"};
+static const char *const Cntvect[3] = {
+	"first", "second", "third"
+};
 
 /*ARGSUSED*/
 void
-help(v)
-	int v __attribute__((__unused__));
+help(int v __unused)
 {
 	int		i;
 	double		dist, x;
@@ -96,12 +97,10 @@ help(v)
 	Game.helps += 1;
 
 	/* find the closest base */
-	dist = 1e50;
-	if (Quad[Ship.quadx][Ship.quady].bases <= 0)
-	{
+	dist = TOOLARGE;
+	if (Quad[Ship.quadx][Ship.quady].bases <= 0) {
 		/* there isn't one in this quadrant */
-		for (i = 0; i < Now.bases; i++)
-		{
+		for (i = 0; i < Now.bases; i++) {
 			/* compute distance */
 			dx = Now.base[i].x - Ship.quadx;
 			dy = Now.base[i].y - Ship.quady;
@@ -109,8 +108,7 @@ help(v)
 			x = sqrt(x);
 
 			/* see if better than what we already have */
-			if (x < dist)
-			{
+			if (x < dist) {
 				dist = x;
 				l = i;
 			}
@@ -120,9 +118,7 @@ help(v)
 		Ship.quadx = Now.base[l].x;
 		Ship.quady = Now.base[l].y;
 		initquad(1);
-	}
-	else
-	{
+	} else {
 		dist = 0.0;
 	}
 
@@ -134,25 +130,22 @@ help(v)
 	x = pow(1.0 - pow(0.94, dist), 0.3333333);
 
 	/* attempt to rematerialize */
-	for (i = 0; i < 3; i++)
-	{
+	for (i = 0; i < 3; i++) {
 		sleep(2);
 		printf("%s attempt to rematerialize ", Cntvect[i]);
-		if (franf() > x)
-		{
+		if (franf() > x) {
 			/* ok, that's good.  let's see if we can set her down */
-			for (j = 0; j < 5; j++)
-			{
+			for (j = 0; j < 5; j++) {
 				dx = Etc.starbase.x + ranf(3) - 1;
 				if (dx < 0 || dx >= NSECTS)
 					continue;
 				dy = Etc.starbase.y + ranf(3) - 1;
-				if (dy < 0 || dy >= NSECTS || Sect[dx][dy] != EMPTY)
+				if (dy < 0 || dy >= NSECTS ||
+				    Sect[dx][dy] != EMPTY)
 					continue;
 				break;
 			}
-			if (j < 5)
-			{
+			if (j < 5) {
 				/* found an empty spot */
 				printf("succeeds\n");
 				Ship.sectx = dx;

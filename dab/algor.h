@@ -1,4 +1,4 @@
-/*	$NetBSD: algor.h,v 1.1.1.1 2003/12/26 17:57:03 christos Exp $	*/
+/*	$NetBSD: algor.h,v 1.6 2021/12/05 09:22:45 rillig Exp $	*/
 
 /*-
  * Copyright (c) 2003 The NetBSD Foundation, Inc.
@@ -15,13 +15,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -37,7 +30,7 @@
  */
 
 /*
- * algor.h: Computer's algorithm
+ * Computer's algorithm
  */
 
 #ifndef _H_ALGOR
@@ -51,16 +44,17 @@ class BOX;
 class ALGOR : public PLAYER {
   public:
     ALGOR(const char c);
+    virtual ~ALGOR() {}
     // Return a proposed move in (y, x, dir)
     void play(const BOARD& b, size_t& y, size_t& x, int& dir);
 
   private:
     // Closure searches
     int find_closure(size_t& y, size_t& x, int& dir, BOARD& b);
-    int find_max_closure(size_t& y, size_t& x, int& dir, const BOARD& b);
-    int find_min_closure1(size_t& y, size_t& x, int& dir, const BOARD& b,
-			  int last);
-    int find_min_closure(size_t& y, size_t& x, int& dir, const BOARD& b);
+    size_t find_max_closure(size_t& y, size_t& x, int& dir, const BOARD& b);
+    size_t find_min_closure1(size_t& y, size_t& x, int& dir, const BOARD& b,
+	int last);
+    size_t find_min_closure(size_t& y, size_t& x, int& dir, const BOARD& b);
 
     // Move searches
     int find_good_turn(size_t& y, size_t& x, int& dir, const BOARD& b);
@@ -77,10 +71,6 @@ class ALGOR : public PLAYER {
 #ifdef notyet
     size_t find_single(void);
 #endif
-
-    size_t _edge1;
-    size_t _edge2;
-    size_t _maxedge;
 };
 
 #endif

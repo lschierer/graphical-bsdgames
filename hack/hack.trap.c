@@ -1,4 +1,4 @@
-/*	$NetBSD: hack.trap.c,v 1.7 2003/04/02 18:36:41 jsm Exp $	*/
+/*	$NetBSD: hack.trap.c,v 1.10 2011/08/07 06:03:45 dholland Exp $	*/
 
 /*
  * Copyright (c) 1985, Stichting Centrum voor Wiskunde en Informatica,
@@ -63,7 +63,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: hack.trap.c,v 1.7 2003/04/02 18:36:41 jsm Exp $");
+__RCSID("$NetBSD: hack.trap.c,v 1.10 2011/08/07 06:03:45 dholland Exp $");
 #endif				/* not lint */
 
 #include <stdlib.h>
@@ -85,9 +85,12 @@ const char           *const traps[] = {
 	" mimic"
 };
 
+static void vtele(void);
+static void teleds(int, int);
+static int teleok(int, int);
+
 struct trap    *
-maketrap(x, y, typ)
-	int x, y, typ;
+maketrap(int x, int y, int typ)
 {
 	struct trap    *ttmp;
 
@@ -103,8 +106,7 @@ maketrap(x, y, typ)
 }
 
 void
-dotrap(trap)
-	struct trap    *trap;
+dotrap(struct trap *trap)
 {
 	int             ttype = trap->ttyp;
 
@@ -206,8 +208,7 @@ dotrap(trap)
 }
 
 int
-mintrap(mtmp)
-	struct monst   *mtmp;
+mintrap(struct monst *mtmp)
 {
 	struct trap    *trap = t_at(mtmp->mx, mtmp->my);
 	int             wasintrap = mtmp->mtrapped;
@@ -299,8 +300,7 @@ mintrap(mtmp)
 }
 
 void
-selftouch(arg)
-	const char           *arg;
+selftouch(const char *arg)
 {
 	if (uwep && uwep->otyp == DEAD_COCKATRICE) {
 		pline("%s touch the dead cockatrice.", arg);
@@ -311,7 +311,7 @@ selftouch(arg)
 }
 
 void
-float_up()
+float_up(void)
 {
 	if (u.utrap) {
 		if (u.utraptype == TT_PIT) {
@@ -325,7 +325,7 @@ float_up()
 }
 
 void
-float_down()
+float_down(void)
 {
 	struct trap    *trap;
 	pline("You float gently to the ground.");
@@ -336,15 +336,15 @@ float_down()
 		case TRAPDOOR:
 			if (!xdnstair || u.ustuck)
 				break;
-			/* fall into next case */
+			/* FALLTHROUGH */
 		default:
 			dotrap(trap);
 		}
 	pickup(1);
 }
 
-void
-vtele()
+static void
+vtele(void)
 {
 	struct mkroom  *croom;
 	for (croom = &rooms[0]; croom->hx >= 0; croom++)
@@ -362,7 +362,7 @@ vtele()
 }
 
 void
-tele()
+tele(void)
 {
 	coord           cc;
 	int             nux, nuy;
@@ -387,9 +387,8 @@ tele()
 	teleds(nux, nuy);
 }
 
-void
-teleds(nux, nuy)
-	int             nux, nuy;
+static void
+teleds(int nux, int nuy)
 {
 	if (Punished)
 		unplacebc();
@@ -414,9 +413,8 @@ teleds(nux, nuy)
 		read_engr_at(u.ux, u.uy);
 }
 
-int
-teleok(x, y)
-	int             x, y;
+static int
+teleok(int x, int y)
 {				/* might throw him into a POOL */
 	return (isok(x, y) && !IS_ROCK(levl[x][y].typ) && !m_at(x, y) &&
 		!sobj_at(ENORMOUS_ROCK, x, y) && !t_at(x, y)
@@ -425,7 +423,7 @@ teleok(x, y)
 }
 
 int
-dotele()
+dotele(void)
 {
 	if (
 #ifdef WIZARD
@@ -446,8 +444,7 @@ dotele()
 }
 
 void
-placebc(attach)
-	int             attach;
+placebc(int attach)
 {
 	if (!uchain || !uball) {
 		impossible("Where are your chain and ball??");
@@ -466,7 +463,7 @@ placebc(attach)
 }
 
 void
-unplacebc()
+unplacebc(void)
 {
 	if (!carried(uball)) {
 		freeobj(uball);
@@ -477,7 +474,7 @@ unplacebc()
 }
 
 void
-level_tele()
+level_tele(void)
 {
 	int             newlevel;
 	if (Teleport_control) {
@@ -529,7 +526,7 @@ level_tele()
 }
 
 void
-drown()
+drown(void)
 {
 	pline("You fall into a pool!");
 	pline("You can't swim!");

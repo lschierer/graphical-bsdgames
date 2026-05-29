@@ -1,4 +1,4 @@
-/*	$NetBSD: getinp.c,v 1.13 2004/11/05 21:30:32 dsl Exp $	*/
+/*	$NetBSD: getinp.c,v 1.19 2012/06/19 05:35:32 dholland Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,14 +34,15 @@
 #if 0
 static char sccsid[] = "@(#)getinp.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: getinp.c,v 1.13 2004/11/05 21:30:32 dsl Exp $");
+__RCSID("$NetBSD: getinp.c,v 1.19 2012/06/19 05:35:32 dholland Exp $");
 #endif
 #endif /* not lint */
 
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include "monop.ext"
+
+#include "monop.h"
 
 #define	LINE	70
 
@@ -50,38 +51,31 @@ static char	buf[257];
 static int comp(const char *);
 
 int
-getinp(prompt, list)
-	const char *prompt, *const list[]; 
+getinp(const char *prompt, const char *const lst [])
 {
 	int i, n_match, match = 0;
 	char *sp;
-	int c;
 
 	for (;;) {
-inter:
 		printf("%s", prompt);
-		for (sp = buf; (c=getchar()) != '\n'; ) {
-			*sp = c;
-			if (c == -1)	/* check for interrupted system call */
-				goto inter;
-			else if (sp != buf || *sp != ' ')
-				sp++;
+		fgets(buf, sizeof(buf), stdin);
+		if (feof(stdin)) {
+			return 0;
 		}
-		*sp = c;
 		if (buf[0] == '?' && buf[1] == '\n') {
 			printf("Valid inputs are: ");
-			for (i = 0, match = 18; list[i]; i++) {
-				if ((match+=(n_match=strlen(list[i]))) > LINE) {
+			for (i = 0, match = 18; lst[i]; i++) {
+				if ((match+=(n_match=strlen(lst[i]))) > LINE) {
 					printf("\n\t");
 					match = n_match + 8;
 				}
-				if (*list[i] == '\0') {
+				if (*lst[i] == '\0') {
 					match += 8;
 					printf("<RETURN>");
 				}
 				else
-					printf("%s", list[i]);
-				if (list[i+1])
+					printf("%s", lst[i]);
+				if (lst[i+1])
 					printf(", ");
 				else
 					putchar('\n');
@@ -89,11 +83,12 @@ inter:
 			}
 			continue;
 		}
-		*sp = '\0';
+		if ((sp = strchr(buf, '\n')) != NULL)
+			*sp = '\0';
 		for (sp = buf; *sp; sp++)
 			*sp = tolower((unsigned char)*sp);
-		for (i = n_match = 0; list[i]; i++)
-			if (comp(list[i])) {
+		for (i = n_match = 0; lst[i]; i++)
+			if (comp(lst[i])) {
 				n_match++;
 				match = i;
 			}
@@ -106,8 +101,7 @@ inter:
 }
 
 static int
-comp(s1)
-	const char *s1;
+comp(const char *s1)
 {
 	const char *sp, *tsp;
 	char c;

@@ -1,4 +1,4 @@
-/*	$NetBSD: setwarp.c,v 1.6 2003/08/07 09:37:54 agc Exp $	*/
+/*	$NetBSD: setwarp.c,v 1.9 2022/05/24 06:27:59 andvar Exp $	*/
 
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +34,7 @@
 #if 0
 static char sccsid[] = "@(#)setwarp.c	8.1 (Berkeley) 5/31/93";
 #else
-__RCSID("$NetBSD: setwarp.c,v 1.6 2003/08/07 09:37:54 agc Exp $");
+__RCSID("$NetBSD: setwarp.c,v 1.9 2022/05/24 06:27:59 andvar Exp $");
 #endif
 #endif /* not lint */
 
@@ -46,13 +46,12 @@ __RCSID("$NetBSD: setwarp.c,v 1.6 2003/08/07 09:37:54 agc Exp $");
 **  SET WARP FACTOR
 **
 **	The warp factor is set for future move commands.  It is
-**	checked for consistancy.
+**	checked for consistency.
 */
 
 /*ARGSUSED*/
 void
-setwarp(v)
-	int v __attribute__((__unused__));
+setwarp(int v __unused)
 {
 	double	warpfac;
 

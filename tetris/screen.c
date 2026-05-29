@@ -1,5 +1,4 @@
-/*	$NetBSD: screen.c,v screen.c,v 1.19 2004/01/27 20:30:30 jsm Exp $	*/
-/* For Linux: still using old termcap interface from version 1.13.  */
+/*	$NetBSD: screen.c,v 1.34 2021/05/02 12:50:46 rillig Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -39,6 +38,7 @@
  * Tetris screen control.
  */
 
+#include <sys/cdefs.h>
 #include <sys/ioctl.h>
 
 #include <setjmp.h>
@@ -46,7 +46,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <termcap.h>
+#include <term.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -64,72 +64,14 @@ static struct termios oldtt;
 static void (*tstp)(int);
 
 static	void	scr_stop(int);
-static	void	stopset(int) __attribute__((__noreturn__));
-
-
-/*
- * Capabilities from TERMCAP.
- */
-extern char	PC, *BC, *UP;	/* tgoto requires globals: ugh! */
-static char BCdefault[] = "\b";
-#ifndef NCURSES_VERSION
-short	ospeed;
-#endif
-
-static char
-	*bcstr,			/* backspace char */
-	*CEstr,			/* clear to end of line */
-	*CLstr,			/* clear screen */
-	*CMstr,			/* cursor motion string */
-#ifdef unneeded
-	*CRstr,			/* "\r" equivalent */
-#endif
-	*HOstr,			/* cursor home */
-	*LLstr,			/* last line, first column */
-	*pcstr,			/* pad character */
-	*TEstr,			/* end cursor motion mode */
-	*TIstr;			/* begin cursor motion mode */
-char
-	*SEstr,			/* end standout mode */
-	*SOstr;			/* begin standout mode */
-static int
-	COnum,			/* co# value */
-	LInum,			/* li# value */
-	MSflag;			/* can move in standout mode */
-
-
-struct tcsinfo {	/* termcap string info; some abbrevs above */
-	char tcname[3];
-	char **tcaddr;
-} tcstrings[] = {
-	{"bc", &bcstr},
-	{"ce", &CEstr},
-	{"cl", &CLstr},
-	{"cm", &CMstr},
-#ifdef unneeded
-	{"cr", &CRstr},
-#endif
-	{"le", &BC},		/* move cursor left one space */
-	{"pc", &pcstr},
-	{"se", &SEstr},
-	{"so", &SOstr},
-	{"te", &TEstr},
-	{"ti", &TIstr},
-	{"up", &UP},		/* cursor up */
-	{ {0}, NULL}
-};
-
-/* This is where we will actually stuff the information */
-
-static char combuf[1024], tbuf[1024];
+static	void	stopset(int) __dead;
 
 
 /*
  * Routine used by tputs().
  */
 int
-put(c)
-	int c;
+put(int c)
 {
 
 	return (putchar(c));
@@ -141,103 +83,75 @@ put(c)
  * count=1.  (See screen.h for putpad().)
  */
 #define	putstr(s)	(void)fputs(s, stdout)
-#define	moveto(r, c)	putpad(tgoto(CMstr, c, r))
+
+static void
+moveto(int r, int c)
+{
+	char *buf;
+
+	buf = tiparm(cursor_address, r, c);
+	if (buf != NULL)
+		putpad(buf);
+}
+
+static void
+setcolor(int c)
+{
+	char *buf;
+	char monochrome[] = "\033[0m";
+	if (nocolor == 1)
+		return;
+	if (set_a_foreground == NULL)
+		return;
+
+	if (c == 0 || c == 7)
+		buf = monochrome;
+	else
+		buf = tiparm(set_a_foreground, c);
+	if (buf != NULL)
+		putpad(buf);
+}
 
 /*
  * Set up from termcap.
  */
 void
-scr_init()
+scr_init(void)
 {
-	static int bsflag, xsflag, sgnum;
-#ifdef unneeded
-	static int ncflag;
-#endif
-	char *term, *fill;
-	static struct tcninfo {	/* termcap numeric and flag info */
-		char tcname[3];
-		int *tcaddr;
-	} tcflags[] = {
-		{"bs", &bsflag},
-		{"ms", &MSflag},
-#ifdef unneeded
-		{"nc", &ncflag},
-#endif
-		{"xs", &xsflag},
-		{ {0}, NULL}
-	}, tcnums[] = {
-		{"co", &COnum},
-		{"li", &LInum},
-		{"sg", &sgnum},
-		{ {0}, NULL}
-	};
-	
-	if ((term = getenv("TERM")) == NULL)
-		stop("you must set the TERM environment variable");
-	if (tgetent(tbuf, term) <= 0)
-		stop("cannot find your termcap");
-	fill = combuf;
-	{
-		struct tcsinfo *p;
 
-		for (p = tcstrings; p->tcaddr; p++)
-			*p->tcaddr = tgetstr(p->tcname, &fill);
-	}
-	{
-		struct tcninfo *p;
-
-		for (p = tcflags; p->tcaddr; p++)
-			*p->tcaddr = tgetflag(p->tcname);
-		for (p = tcnums; p->tcaddr; p++)
-			*p->tcaddr = tgetnum(p->tcname);
-	}
-	if (bsflag)
-		BC = BCdefault;
-	else if (BC == NULL && bcstr != NULL)
-		BC = bcstr;
-	if (CLstr == NULL)
+	setupterm(NULL, 0, NULL);
+	if (clear_screen == NULL)
 		stop("cannot clear screen");
-	if (CMstr == NULL || UP == NULL || BC == NULL)
-		stop("cannot do random cursor positioning via tgoto()");
-	PC = pcstr ? *pcstr : 0;
-	if (sgnum >= 0 || xsflag)
-		SOstr = SEstr = NULL;
-#ifdef unneeded
-	if (ncflag)
-		CRstr = NULL;
-	else if (CRstr == NULL)
-		CRstr = "\r";
-#endif
+	if (cursor_address == NULL || cursor_up == NULL)
+		stop("cannot do random cursor positioning");
 }
 
 /* this foolery is needed to modify tty state `atomically' */
 static jmp_buf scr_onstop;
 
 static void
-stopset(sig)
-	int sig;
+stopset(int sig)
 {
-	sigset_t sigset;
+	sigset_t set;
 
 	(void) signal(sig, SIG_DFL);
 	(void) kill(getpid(), sig);
-	sigemptyset(&sigset);
-	sigaddset(&sigset, sig);
-	(void) sigprocmask(SIG_UNBLOCK, &sigset, (sigset_t *)0);
+	sigemptyset(&set);
+	sigaddset(&set, sig);
+	(void) sigprocmask(SIG_UNBLOCK, &set, (sigset_t *)0);
 	longjmp(scr_onstop, 1);
 }
 
 static void
-scr_stop(sig)
-	int sig;
+scr_stop(int sig)
 {
-	sigset_t sigset;
+	sigset_t set;
 
 	scr_end();
 	(void) kill(getpid(), sig);
-	sigemptyset(&sigset);
-	sigaddset(&sigset, sig);
-	(void) sigprocmask(SIG_UNBLOCK, &sigset, (sigset_t *)0);
+	sigemptyset(&set);
+	sigaddset(&set, sig);
+	(void) sigprocmask(SIG_UNBLOCK, &set, (sigset_t *)0);
 	scr_set();
 	scr_msg(key_msg, 1);
 }
@@ -246,17 +160,17 @@ scr_stop(sig)
  * Set up screen mode.
  */
 void
-scr_set()
+scr_set(void)
 {
 	struct winsize ws;
 	struct termios newtt;
-	sigset_t sigset, osigset;
+	sigset_t nsigset, osigset;
 	void (*ttou)(int);
 
-	sigemptyset(&sigset);
-	sigaddset(&sigset, SIGTSTP);
-	sigaddset(&sigset, SIGTTOU);
-	(void) sigprocmask(SIG_BLOCK, &sigset, &osigset);
+	sigemptyset(&nsigset);
+	sigaddset(&nsigset, SIGTSTP);
+	sigaddset(&nsigset, SIGTTOU);
+	(void) sigprocmask(SIG_BLOCK, &nsigset, &osigset);
 	if ((tstp = signal(SIGTSTP, stopset)) == SIG_IGN)
 		(void) signal(SIGTSTP, SIG_IGN);
 	if ((ttou = signal(SIGTTOU, stopset)) == SIG_IGN)
@@ -274,33 +188,35 @@ scr_set()
 		Cols = ws.ws_col;
 	}
 	if (Rows == 0)
-		Rows = LInum;
+		Rows = lines;
 	if (Cols == 0)
-	Cols = COnum;
+	    Cols = columns;
 	if (Rows < MINROWS || Cols < MINCOLS) {
 		(void) fprintf(stderr,
 		    "the screen is too small: must be at least %dx%d, ",
 		    MINCOLS, MINROWS);
 		stop("");	/* stop() supplies \n */
 	}
+	Offset = (Rows - D_LAST + D_FIRST - 2) / 2;
 	if (tcgetattr(0, &oldtt) < 0)
 		stop("tcgetattr() fails");
 	newtt = oldtt;
 	newtt.c_lflag &= ~(ICANON|ECHO);
 	newtt.c_oflag &= ~OXTABS;
-	newtt.c_cc[VMIN] = 1;
-	newtt.c_cc[VTIME] = 0;
 	if (tcsetattr(0, TCSADRAIN, &newtt) < 0)
 		stop("tcsetattr() fails");
 	ospeed = cfgetospeed(&newtt);
-	(void) sigprocmask(SIG_BLOCK, &sigset, &osigset);
+	(void) sigprocmask(SIG_BLOCK, &nsigset, &osigset);
 
 	/*
 	 * We made it.  We are now in screen mode, modulo TIstr
 	 * (which we will fix immediately).
 	 */
-	if (TIstr)
-		putstr(TIstr);	/* termcap(5) says this is not padded */
+	const char *tstr;
+	if ((tstr = enter_ca_mode) != NULL)
+		putstr(tstr);
+	if ((tstr = cursor_invisible) != NULL)
+		putstr(tstr);
 	if (tstp != SIG_IGN)
 		(void) signal(SIGTSTP, scr_stop);
 	if (ttou != SIG_IGN)
@@ -315,22 +231,25 @@ scr_set()
  * End screen mode.
  */
 void
-scr_end()
+scr_end(void)
 {
-	sigset_t sigset, osigset;
+	sigset_t nsigset, osigset;
 
-	sigemptyset(&sigset);
-	sigaddset(&sigset, SIGTSTP);
-	sigaddset(&sigset, SIGTTOU);
-	(void) sigprocmask(SIG_BLOCK, &sigset, &osigset);
+	sigemptyset(&nsigset);
+	sigaddset(&nsigset, SIGTSTP);
+	sigaddset(&nsigset, SIGTTOU);
+	(void) sigprocmask(SIG_BLOCK, &nsigset, &osigset);
 	/* move cursor to last line */
-	if (LLstr)
-		putstr(LLstr);	/* termcap(5) says this is not padded */
+	const char *tstr;
+	if ((tstr = cursor_to_ll) != NULL)
+		putstr(tstr);
 	else
 		moveto(Rows - 1, 0);
 	/* exit screen mode */
-	if (TEstr)
-		putstr(TEstr);	/* termcap(5) says this is not padded */
+	if ((tstr = exit_ca_mode) != NULL)
+		putstr(tstr);
+	if ((tstr = cursor_normal) != NULL)
+		putstr(tstr);
 	(void) fflush(stdout);
 	(void) tcsetattr(0, TCSADRAIN, &oldtt);
 	isset = 0;
@@ -340,8 +259,7 @@ scr_end()
 }
 
 void
-stop(why)
-	const char *why;
+stop(const char *why)
 {
 
 	if (isset)
@@ -354,10 +272,10 @@ stop(why)
  * Clear the screen, forgetting the current contents in the process.
  */
 void
-scr_clear()
+scr_clear(void)
 {
 
-	putpad(CLstr);
+	putpad(clear_screen);
 	curscore = -1;
 	memset((char *)curscreen, 0, sizeof(curscreen));
 }
@@ -372,40 +290,40 @@ typedef cell regcell;
  * Update the screen.
  */
 void
-scr_update()
+scr_update(void)
 {
 	cell *bp, *sp;
 	regcell so, cur_so = 0;
 	int i, ccol, j;
-	sigset_t sigset, osigset;
+	sigset_t nsigset, osigset;
 	static const struct shape *lastshape;
 
-	sigemptyset(&sigset);
-	sigaddset(&sigset, SIGTSTP);
-	(void) sigprocmask(SIG_BLOCK, &sigset, &osigset);
+	sigemptyset(&nsigset);
+	sigaddset(&nsigset, SIGTSTP);
+	(void) sigprocmask(SIG_BLOCK, &nsigset, &osigset);
 
 	/* always leave cursor after last displayed point */
 	curscreen[D_LAST * B_COLS - 1] = -1;
 
 	if (score != curscore) {
-		if (HOstr)
-			putpad(HOstr);
+		if (cursor_home)
+			putpad(cursor_home);
 		else
 			moveto(0, 0);
+		setcolor(0);
 		(void) printf("Score: %d", score);
 		curscore = score;
 	}
 
 	/* draw preview of nextpattern */
 	if (showpreview && (nextshape != lastshape)) {
-		int i;
 		static int r=5, c=2;
-		int tr, tc, t; 
+		int tr, tc, t;
 
 		lastshape = nextshape;
-		
+
 		/* clean */
-		putpad(SEstr);
+		putpad(exit_standout_mode);
 		moveto(r-1, c-1); putstr("          ");
 		moveto(r,   c-1); putstr("          ");
 		moveto(r+1, c-1); putstr("          ");
@@ -413,9 +331,10 @@ scr_update()
 
 		moveto(r-3, c-2);
 		putstr("Next shape:");
-						
+
 		/* draw */
-		putpad(SOstr);
+		setcolor(nextshape->color);
+		putpad(enter_standout_mode);
 		moveto(r, 2*c);
 		putstr("  ");
 		for(i=0; i<3; i++) {
@@ -428,9 +347,9 @@ scr_update()
 			moveto(tr, 2*tc);
 			putstr("  ");
 		}
-		putpad(SEstr);
+		putpad(exit_standout_mode);
 	}
-	
+
 	bp = &board[D_FIRST * B_COLS];
 	sp = &curscreen[D_FIRST * B_COLS];
 	for (j = D_FIRST; j < D_LAST; j++) {
@@ -440,18 +359,27 @@ scr_update()
 				continue;
 			*sp = so;
 			if (i != ccol) {
-				if (cur_so && MSflag) {
-					putpad(SEstr);
+				if (cur_so && move_standout_mode) {
+					putpad(exit_standout_mode);
 					cur_so = 0;
 				}
-				moveto(RTOD(j), CTOD(i));
+				moveto(RTOD(j + Offset), CTOD(i));
 			}
-			if (SOstr) {
+			if (enter_standout_mode) {
 				if (so != cur_so) {
-					putpad(so ? SOstr : SEstr);
+					setcolor(so);
+					putpad(so ?
+					    enter_standout_mode :
+					    exit_standout_mode);
 					cur_so = so;
 				}
+#ifdef DEBUG
+				char buf[3];
+				snprintf(buf, sizeof(buf), "%d%d", so, so);
+				putstr(buf);
+#else
 				putstr("  ");
+#endif
 			} else
 				putstr(so ? "XX" : "  ");
 			ccol = i + 1;
@@ -475,7 +403,7 @@ scr_update()
 		}
 	}
 	if (cur_so)
-		putpad(SEstr);
+		putpad(exit_standout_mode);
 	(void) fflush(stdout);
 	(void) sigprocmask(SIG_SETMASK, &osigset, (sigset_t *)0);
 }
@@ -485,12 +413,10 @@ scr_update()
  * (We need its length in case we have to overwrite with blanks.)
  */
 void
-scr_msg(s, set)
-	char *s;
-	int set;
+scr_msg(char *s, int set)
 {
-	
-	if (set || CEstr == NULL) {
+
+	if (set || clr_eol == NULL) {
 		int l = strlen(s);
 
 		moveto(Rows - 2, ((Cols - l) >> 1) - 1);
@@ -501,6 +427,6 @@ scr_msg(s, set)
 				(void) putchar(' ');
 	} else {
 		moveto(Rows - 2, 0);
-		putpad(CEstr);
+		putpad(clr_eol);
 	}
 }

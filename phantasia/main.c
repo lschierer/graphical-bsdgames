@@ -1,4 +1,4 @@
-/*	$NetBSD: main.c,v 1.15 2004/12/09 05:15:59 jmc Exp $	*/
+/*	$NetBSD: main.c,v 1.25 2022/06/27 22:41:28 andvar Exp $	*/
 
 /*
  * Phantasia 3.3.2 -- Interterminal fantasy game
@@ -27,10 +27,25 @@
  * AT&T is in no way connected with this game.
  */
 
-#include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <err.h>
+#include <math.h>
 #include <pwd.h>
-#include <termios.h>
+#include <setjmp.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "macros.h"
+#include "phantdefs.h"
+#include "phantstruct.h"
+#include "phantglobs.h"
+#include "pathnames.h"
+
+#undef bool
+#include <curses.h>
 
 /*
  * The program allocates as much file space as it needs to store characters,
@@ -57,16 +72,19 @@
  * main.c	Main routines for Phantasia
  */
 
-#include "include.h"
-#undef bool
-#include <curses.h>
+static void genchar(int);
+static void initialstate(void);
+static void neatstuff(void);
+static void playinit(void);
+static void procmain(void);
+static long recallplayer(void);
+static long rollnewplayer(void);
+static void titlelist(void);
 
 int	main(int, char **);
 
 int
-main(argc, argv)
-	int     argc;
-	char  **argv;
+main(int argc, char **argv)
 {
 	bool    noheader = FALSE;	/* set if don't want header */
 	bool    headeronly = FALSE;	/* set if only want header */
@@ -90,11 +108,13 @@ main(argc, argv)
 		case 'a':	/* all users */
 			activelist();
 			cleanup(TRUE);
+			__unreachable();
 			/* NOTREACHED */
 
 		case 'p':	/* purge old players */
 			purgeoldplayers();
 			cleanup(TRUE);
+			__unreachable();
 			/* NOTREACHED */
 
 		case 'S':	/* set 'Wizard' */
@@ -108,11 +128,13 @@ main(argc, argv)
 		case 'm':	/* monsters */
 			monstlist();
 			cleanup(TRUE);
+			__unreachable();
 			/* NOTREACHED */
 
 		case 'b':	/* scoreboard */
 			scorelist();
 			cleanup(TRUE);
+			__unreachable();
 			/* NOTREACHED */
 		}
 
@@ -125,15 +147,18 @@ main(argc, argv)
 	if (examine) {
 		changestats(FALSE);
 		cleanup(TRUE);
+		__unreachable();
 		/* NOTREACHED */
 	}
 	if (!noheader) {
 		titlelist();
 		purgeoldplayers();	/* clean up old characters */
 	}
-	if (headeronly)
+	if (headeronly) {
 		cleanup(TRUE);
-	/* NOTREACHED */
+		__unreachable();
+		/* NOTREACHED */
+	}
 
 	do
 		/* get the player structure filled */
@@ -149,6 +174,7 @@ main(argc, argv)
 
 		case 'Q':
 			cleanup(TRUE);
+			__unreachable();
 			/* NOTREACHED */
 
 		default:
@@ -164,7 +190,7 @@ main(argc, argv)
 		Timeout = TRUE;
 
 	/* update some important player statistics */
-	strcpy(Player.p_login, Login);
+	strlcpy(Player.p_login, Login, sizeof(Player.p_login));
 	time(&seconds);
 	Player.p_lastused = localtime(&seconds)->tm_yday;
 	Player.p_status = S_PLAYING;
@@ -270,10 +296,11 @@ main(argc, argv)
 	}
 }
 
-void
-initialstate()
+static void
+initialstate(void)
 {
 	struct stat sb;
+	struct passwd *pw;
 
 	Beyond = FALSE;
 	Marsh = FALSE;
@@ -286,8 +313,13 @@ initialstate()
 	Echo = TRUE;
 
 	/* setup login name */
-	if ((Login = getlogin()) == NULL)
-		Login = getpwuid(getuid())->pw_name;
+	if ((Login = getlogin()) == NULL) {
+		pw = getpwuid(getuid());
+		if (pw == NULL) {
+			errx(1, "Who are you?");
+		}
+		Login = pw->pw_name;
+	}
 
 	/* open some files */
 	if ((Playersfp = fopen(_PATH_PEOPLE, "r+")) == NULL)
@@ -321,8 +353,8 @@ initialstate()
 	srandom((unsigned) time(NULL));	/* prime random numbers */
 }
 
-long
-rollnewplayer()
+static long
+rollnewplayer(void)
 {
 	int     chartype;	/* character type */
 	int     ch;		/* input */
@@ -411,8 +443,8 @@ rollnewplayer()
 	return (allocrecord());
 }
 
-void
-procmain()
+static void
+procmain(void)
 {
 	int     ch;		/* input */
 	double  x;		/* desired new x coordinate */
@@ -520,6 +552,7 @@ procmain()
 
 	case '5':		/* good-bye */
 		leavegame();
+		__unreachable();
 		/* NOTREACHED */
 
 	case '6':		/* cloak */
@@ -621,8 +654,8 @@ procmain()
 	}
 }
 
-void
-titlelist()
+static void
+titlelist(void)
 {
 	FILE   *fp;		/* used for opening various files */
 	bool    councilfound = FALSE;	/* set if we find a member of the
@@ -650,7 +683,8 @@ titlelist()
 		    Other.p_status != S_NOTUSED)
 			/* found the king */
 		{
-			sprintf(Databuf, "The present ruler is %s  Level:%.0f",
+			snprintf(Databuf, SZ_DATABUF,
+			    "The present ruler is %s  Level:%.0f",
 			    Other.p_name, Other.p_level);
 			mvaddstr(4, 40 - strlen(Databuf) / 2, Databuf);
 			kingfound = TRUE;
@@ -665,7 +699,9 @@ titlelist()
 		if (Other.p_specialtype == SC_VALAR && Other.p_status != S_NOTUSED)
 			/* found the valar */
 		{
-			sprintf(Databuf, "The Valar is %s   Login:  %s", Other.p_name, Other.p_login);
+			snprintf(Databuf, SZ_DATABUF,
+				"The Valar is %s   Login:  %s",
+				Other.p_name, Other.p_login);
 			mvaddstr(6, 40 - strlen(Databuf) / 2, Databuf);
 			break;
 		}
@@ -681,7 +717,8 @@ titlelist()
 				councilfound = TRUE;
 			}
 			/* This assumes a finite (<=5) number of C.O.W.: */
-			sprintf(Databuf, "%s   Login:  %s", Other.p_name, Other.p_login);
+			snprintf(Databuf, SZ_DATABUF,
+				"%s   Login:  %s", Other.p_name, Other.p_login);
 			mvaddstr(Lines++, 40 - strlen(Databuf) / 2, Databuf);
 		}
 	/* search for the two highest players */
@@ -711,7 +748,8 @@ titlelist()
 				strcpy(nxtname, Other.p_name);
 			}
 	mvaddstr(15, 28, "Highest characters are:");
-	sprintf(Databuf, "%s  Level:%.0f   and   %s  Level:%.0f",
+	snprintf(Databuf, SZ_DATABUF,
+	    "%s  Level:%.0f   and   %s  Level:%.0f",
 	    hiname, hilvl, nxtname, nxtlvl);
 	mvaddstr(17, 40 - strlen(Databuf) / 2, Databuf);
 
@@ -720,13 +758,14 @@ titlelist()
 	    && fgets(Databuf, SZ_DATABUF, fp) != NULL) {
 		mvaddstr(19, 25, "The last character to die was:");
 		mvaddstr(20, 40 - strlen(Databuf) / 2, Databuf);
-		fclose(fp);
 	}
+	if (fp)
+		fclose(fp);
 	refresh();
 }
 
-long
-recallplayer()
+static long
+recallplayer(void)
 {
 	long    loc = 0L;	/* location in player file */
 	int     loop;		/* loop counter */
@@ -784,8 +823,8 @@ recallplayer()
 	return (-1L);
 }
 
-void
-neatstuff()
+static void
+neatstuff(void)
 {
 	double  temp;		/* for temporary calculations */
 	int     ch;		/* input */
@@ -886,9 +925,8 @@ neatstuff()
 	}
 }
 
-void
-genchar(type)
-	int     type;
+static void
+genchar(int type)
 {
 	int     subscript;	/* used for subscripting into Stattable */
 	const struct charstats *statptr; /* for pointing into Stattable */
@@ -923,13 +961,10 @@ genchar(type)
 		Player.p_experience = ROLL(600.0, 200.0);
 }
 
-void
-playinit()
+static void
+playinit(void)
 {
-#ifdef NCURSES_VERSION
-	struct termios tty;
-#endif
-	/* catch/ingnore signals */
+	/* catch/ignore signals */
 
 #ifdef	BSD41
 	sigignore(SIGQUIT);
@@ -998,22 +1033,19 @@ playinit()
 	signal(SIGPIPE, ill_sig);
 #endif
 
-	initscr();		/* turn on curses */
+	if (!initscr()) {	/* turn on curses */
+		fprintf(stderr, "couldn't initialize screen\n");
+		exit (0);
+	}
 	noecho();		/* do not echo input */
 	cbreak();		/* do not process erase, kill */
-#ifdef NCURSES_VERSION /* Ncurses needs some terminal mode fiddling */
-	tcgetattr(0, &tty);
-	tty.c_iflag |= ICRNL;
-	tcsetattr(0, TCSANOW, &tty);
-#endif
 	clear();
 	refresh();
 	Windows = TRUE;		/* mark the state */
 }
 
 void
-cleanup(doexit)
-	int    doexit;
+cleanup(int doexit)
 {
 	if (Windows) {
 		move(LINES - 2, 0);

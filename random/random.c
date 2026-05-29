@@ -1,4 +1,4 @@
-/*	$NetBSD: random.c,v 1.9 2004/01/27 20:30:30 jsm Exp $	*/
+/*	$NetBSD: random.c,v 1.16 2021/05/02 12:50:46 rillig Exp $	*/
 
 /*
  * Copyright (c) 1994
@@ -34,15 +34,15 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1994\n\
-	The Regents of the University of California.  All rights reserved.\n");
+__COPYRIGHT("@(#) Copyright (c) 1994\
+ The Regents of the University of California.  All rights reserved.");
 #endif /* not lint */
 
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)random.c	8.6 (Berkeley) 6/1/94";
 #else
-__RCSID("$NetBSD: random.c,v 1.9 2004/01/27 20:30:30 jsm Exp $");
+__RCSID("$NetBSD: random.c,v 1.16 2021/05/02 12:50:46 rillig Exp $");
 #endif
 #endif /* not lint */
 
@@ -57,23 +57,14 @@ __RCSID("$NetBSD: random.c,v 1.9 2004/01/27 20:30:30 jsm Exp $");
 #include <unistd.h>
 #include <limits.h>
 
-#define MAXRANDOM	2147483647
-
-int  main(int, char **);
-void usage(void) __attribute__((__noreturn__));
+static void usage(void) __dead;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
-	struct timeval tp;
 	double denom;
 	int ch, random_exit, selected, unbuffer_output;
 	char *ep;
-
-	/* Revoke setgid privileges */
-	setregid(getgid(), getgid());
 
 	denom = 0;
 	random_exit = unbuffer_output = 0;
@@ -107,16 +98,13 @@ main(argc, argv)
 			errx(1, "denominator is not valid.");
 		break;
 	default:
-		usage(); 
+		usage();
 		/* NOTREACHED */
 	}
 
-	(void)gettimeofday(&tp, NULL);
-	srandom((u_int)(tp.tv_usec + tp.tv_sec + getpid()));
-
 	/* Compute a random exit status between 0 and denom - 1. */
 	if (random_exit)
-		return ((denom * random()) / MAXRANDOM);
+		return arc4random_uniform(denom);
 
 	/*
 	 * Act as a filter, randomly choosing lines of the standard input
@@ -124,14 +112,14 @@ main(argc, argv)
 	 */
 	if (unbuffer_output)
 		setbuf(stdout, NULL);
-	
+
 	/*
 	 * Select whether to print the first line.  (Prime the pump.)
 	 * We find a random number between 0 and denom - 1 and, if it's
 	 * 0 (which has a 1 / denom chance of being true), we select the
 	 * line.
 	 */
-	selected = (int)(denom * random() / MAXRANDOM) == 0;
+	selected = (arc4random_uniform(denom) == 0);
 	while ((ch = getchar()) != EOF) {
 		if (selected)
 			(void)putchar(ch);
@@ -141,16 +129,18 @@ main(argc, argv)
 				err(2, "stdout");
 
 			/* Now see if the next line is to be printed. */
-			selected = (int)(denom * random() / MAXRANDOM) == 0;
+			selected = (arc4random_uniform(denom) == 0);
 		}
 	}
 	if (ferror(stdin))
 		err(2, "stdin");
 	exit (0);
+
+	return 0;
 }
 
-void
-usage()
+static void
+usage(void)
 {
 
 	(void)fprintf(stderr, "usage: random [-er] [denominator]\n");

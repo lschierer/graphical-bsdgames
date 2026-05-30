@@ -39,17 +39,21 @@ class _AtcScreenState extends State<AtcScreen> {
 
   // Keyboard command state machine
   _KbdState _kbdState = _KbdState.idle;
-  String _kbdBuffer = '';           // typed chars (for display)
-  AtcCommand? _pendingCmd;          // delayable command waiting for Enter or ab-N
+  String _kbdBuffer = '';      // typed chars for display
+  AtcCommand? _pendingCmd;     // command queued for optional delay suffix
 
   @override
   void initState() {
     super.initState();
+    // Use HardwareKeyboard so we capture keys regardless of which widget has
+    // focus — the Focus-widget approach loses capture to command-panel buttons.
+    HardwareKeyboard.instance.addHandler(_hardwareKeyHandler);
     _loadScenarios();
   }
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_hardwareKeyHandler);
     _timer?.cancel();
     super.dispose();
   }
@@ -108,36 +112,29 @@ class _AtcScreenState extends State<AtcScreen> {
     });
   }
 
-  // ── Keyboard command handler ──────────────────────────────────────────────
+  // ── Hardware keyboard handler (bypasses Flutter focus routing) ───────────
+  // Using HardwareKeyboard.instance ensures we receive every key event even
+  // when a command-panel button has widget focus, which would swallow Enter
+  // when using the older Focus(onKeyEvent:) approach.
 
-  KeyEventResult _handleKeyEvent(FocusNode _, KeyEvent event) {
-    if (event is KeyUpEvent) return KeyEventResult.ignored;
+  bool _hardwareKeyHandler(KeyEvent event) {
+    if (!mounted) return false;
+    if (event is KeyUpEvent) return false;
+
     final game = _game;
-    if (game == null || game.status != AtcStatus.playing) return KeyEventResult.ignored;
+    if (game == null || game.status != AtcStatus.playing) return false;
 
     final logKey = event.logicalKey;
 
     if (logKey == LogicalKeyboardKey.escape ||
         logKey == LogicalKeyboardKey.backspace) {
-      setState(() { _kbdBuffer = ''; _kbdState = _KbdState.idle; });
-      return KeyEventResult.handled;
+      setState(() { _kbdBuffer = ''; _kbdState = _KbdState.idle; _pendingCmd = null; });
+      return true;
     }
 
-    // Enter = fast-forward one tick (from idle), or confirm pending turn
     if (logKey == LogicalKeyboardKey.enter ||
         logKey == LogicalKeyboardKey.numpadEnter) {
-      // Execute any queued delayable command on Enter
-      if (_kbdState == _KbdState.turnLeftAmt) {
-        _execReset(CmdTurnLeft(_kbdBuffer[0], 1), game);
-        return KeyEventResult.handled;
-      } else if (_kbdState == _KbdState.turnRightAmt) {
-        _execReset(CmdTurnRight(_kbdBuffer[0], 1), game);
-        return KeyEventResult.handled;
-      } else if (_kbdState == _KbdState.delayable) {
-        final cmd = _pendingCmd;
-        if (cmd != null) _execReset(cmd, game);
-        return KeyEventResult.handled;
-      } else if (_kbdState == _KbdState.idle) {
+      if (_kbdState == _KbdState.idle) {
         // Fast-forward one tick
         setState(() { game.advance(); game.recentEvents.clear(); });
         if (game.status != AtcStatus.playing) {
@@ -145,16 +142,17 @@ class _AtcScreenState extends State<AtcScreen> {
           WidgetsBinding.instance.addPostFrameCallback((_) => _showEndDialog());
         }
       } else {
-        setState(() { _kbdBuffer = ''; _kbdState = _KbdState.idle; });
+        // Cancel partial command
+        setState(() { _kbdBuffer = ''; _kbdState = _KbdState.idle; _pendingCmd = null; });
       }
-      return KeyEventResult.handled;
+      return true;
     }
 
     final ch = event.character;
-    if (ch == null || ch.isEmpty) return KeyEventResult.ignored;
+    if (ch == null || ch.isEmpty) return false;
 
     _processKbdChar(ch, game);
-    return KeyEventResult.handled;
+    return true;
   }
 
   void _processKbdChar(String ch, AtcGame game) {
@@ -235,12 +233,16 @@ class _AtcScreenState extends State<AtcScreen> {
           _queueDelayable(CmdTurnRight(lbl, 1), '');
         }
 
-      // Command is queued; waiting for Enter (execute now) or a/@ (add delay).
+      // Command was just executed; player may optionally type a/@bN to add
+      // a delay retroactively (sets delayedAtBeacon on the plane).
       case _KbdState.delayable:
         if (ch == 'a' || ch == '@') {
           _startDelay();
+        } else {
+          // Non-delay char: close the delay window, re-process in idle
+          setState(() { _kbdBuffer = ''; _kbdState = _KbdState.idle; _pendingCmd = null; });
+          _processKbdChar(ch, game);
         }
-        // Any other char: ignore (user must press Enter or a/@)
 
       // Typed a/@; waiting for 'b' or '*' (beacon specifier)
       case _KbdState.delayAtBeacon:
@@ -251,14 +253,15 @@ class _AtcScreenState extends State<AtcScreen> {
       // Typed ab; waiting for beacon number
       case _KbdState.delayAtBeaconNum:
         if (RegExp(r'^[0-9]$').hasMatch(ch)) {
-          final beaconNo = int.parse(ch) - 1; // 1-indexed in UI
+          final beaconNo = int.parse(ch) - 1;
           final pending = _pendingCmd;
           if (pending != null && beaconNo >= 0 &&
               beaconNo < game.scenario.beacons.length) {
-            _execReset(CmdWithDelay(pending.planeLabel, pending, beaconNo), game);
-          } else {
-            setState(() { _kbdBuffer = ''; _kbdState = _KbdState.idle; _pendingCmd = null; });
+            // The inner command already executed; CmdWithDelay re-applies its
+            // direction/circling effect then freezes it until the beacon.
+            game.applyCommand(CmdWithDelay(pending.planeLabel, pending, beaconNo));
           }
+          setState(() { _kbdBuffer = ''; _kbdState = _KbdState.idle; _pendingCmd = null; });
         }
 
       case _KbdState.towards:
@@ -303,10 +306,13 @@ class _AtcScreenState extends State<AtcScreen> {
     }
   }
 
-  // Queue a delayable command: store it and wait for Enter or a/@ delay.
+  // Execute a delayable command immediately, then open a brief window where
+  // the player can type a/@bN to add a beacon delay retroactively.
   void _queueDelayable(AtcCommand cmd, String suffix) {
+    final game = _game;
+    if (game != null) game.applyCommand(cmd);
     setState(() {
-      _pendingCmd = cmd;
+      _pendingCmd = cmd;          // kept so _startDelay can wrap it
       _kbdBuffer += suffix;
       _kbdState = _KbdState.delayable;
     });
@@ -376,7 +382,7 @@ class _AtcScreenState extends State<AtcScreen> {
         backgroundColor: const Color(0xFF0A2A0A),
         foregroundColor: const Color(0xFF90FF90),
         title: Text(
-          'ATC: ${sc.name}   t:${game.tick}  safe:${game.safeExits}',
+          'ATC: ${sc.name}',
           style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
         ),
         actions: [
@@ -397,34 +403,246 @@ class _AtcScreenState extends State<AtcScreen> {
           ),
         ],
       ),
-      body: Focus(
-        autofocus: true,
-        onKeyEvent: _handleKeyEvent,
-        child: LayoutBuilder(builder: (context, constraints) {
-        // Panel is a fixed height so the radar never jumps when switching
-        // sub-panels.  Radar fills the space above it.
-        const panelH = 170.0;
-        final cellW = constraints.maxWidth / sc.width;
-        final cellH = (constraints.maxHeight - panelH) / sc.height;
-        final cellSize = cellW < cellH ? cellW : cellH;
+      body: LayoutBuilder(builder: (context, constraints) {
+        // Wide (ChromeOS / macOS / landscape tablet): radar left, sidebar right.
+        // Narrow (portrait phone): radar top, compact panel bottom.
+        const sidebarW = 185.0;
+        final useWide = constraints.maxWidth >= 520;
 
-        return Column(
-          children: [
-            GestureDetector(
-              onTapUp: (d) => _handleRadarTap(d.localPosition, cellSize),
-              child: SizedBox(
-                width: cellSize * sc.width,
-                height: cellSize * sc.height,
-                child: CustomPaint(
-                  painter: AtcPainter(game,
-                      selectedLabel: _selectedLabel, cellSize: cellSize),
-                ),
-              ),
-            ),
+        if (useWide) {
+          final radarW = constraints.maxWidth - sidebarW;
+          final cellSize = [radarW / sc.width, constraints.maxHeight / sc.height]
+              .reduce((a, b) => a < b ? a : b);
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildRadar(game, cellSize),
+              Container(width: 1, color: const Color(0xFF1A5C1A)),
+              Expanded(child: _buildSidebar(game)),
+            ],
+          );
+        } else {
+          const panelH = 170.0;
+          final cellSize = [
+            constraints.maxWidth / sc.width,
+            (constraints.maxHeight - panelH) / sc.height,
+          ].reduce((a, b) => a < b ? a : b);
+          return Column(children: [
+            _buildRadar(game, cellSize),
             SizedBox(height: panelH, child: _buildPanel(game)),
+          ]);
+        }
+      }),
+    );
+  }
+
+  Widget _buildRadar(AtcGame game, double cellSize) {
+    final sc = game.scenario;
+    return GestureDetector(
+      onTapUp: (d) => _handleRadarTap(d.localPosition, cellSize),
+      child: SizedBox(
+        width: cellSize * sc.width,
+        height: cellSize * sc.height,
+        child: CustomPaint(
+          painter: AtcPainter(game,
+              selectedLabel: _selectedLabel, cellSize: cellSize),
+        ),
+      ),
+    );
+  }
+
+  // ── Right sidebar (wide layout) ────────────────────────────────────────────
+
+  Widget _buildSidebar(AtcGame game) {
+    final active = game.planes
+        .where((p) => p.status != PlaneStatus.gone)
+        .toList()
+      ..sort((a, b) => a.label.compareTo(b.label));
+
+    final airborne = active.where((p) => p.isAirborne).toList();
+    final ground   = active.where((p) => !p.isAirborne).toList();
+
+    const mono = TextStyle(fontFamily: 'monospace', fontSize: 12);
+    const dimGreen  = Color(0xFF3A7A3A);
+    const normGreen = Color(0xFF80FF80);
+
+    return Container(
+      color: const Color(0xFF0A2A0A),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Time / safe
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
+            child: Text(
+              'Time: ${game.tick}   Safe: ${game.safeExits}',
+              style: mono.copyWith(color: normGreen),
+            ),
+          ),
+          // Column header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 2),
+            child: Text('pl  dt   comm',
+                style: mono.copyWith(color: dimGreen, fontSize: 11)),
+          ),
+          const Divider(height: 1, color: Color(0xFF1A5C1A)),
+          // Airborne planes
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                ...airborne.map((p) => _buildPlaneRow(p)),
+                if (ground.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+                    child: Text('── ground ──',
+                        style: mono.copyWith(color: dimGreen, fontSize: 10)),
+                  ),
+                  ...ground.map((p) => _buildPlaneRow(p)),
+                ],
+              ],
+            ),
+          ),
+          // Command section (when a plane is selected)
+          if (_selectedLabel != null && game.planeByLabel(_selectedLabel!) != null) ...[
+            const Divider(height: 1, color: Color(0xFF1A5C1A)),
+            _buildSidebarCommands(game.planeByLabel(_selectedLabel!)!, game),
           ],
-        );
-      })),
+          // Keyboard status
+          const Divider(height: 1, color: Color(0xFF1A5C1A)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+            child: _kbdStatusLine(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlaneRow(Plane p) {
+    final isSelected = p.label == _selectedLabel;
+    final color = isSelected       ? const Color(0xFFFFFF00)
+                : p.isLowFuel      ? const Color(0xFFFFAA00)
+                :                    const Color(0xFF80FF80);
+
+    // "B9* E7: Circle" — fixed-width fields
+    final plField = '${p.displayLabel}${p.altitude}${p.isLowFuel ? "*" : " "}';
+    final dtField = '${p.destChar}${p.destNo + 1}';
+    final line    = '$plField $dtField: ${p.commandDesc}';
+
+    return GestureDetector(
+      onTap: () => _selectPlane(p.label),
+      child: Container(
+        color: isSelected ? const Color(0xFF1A1A00) : Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        child: Text(line,
+            style: TextStyle(
+                fontFamily: 'monospace', fontSize: 12, color: color)),
+      ),
+    );
+  }
+
+  Widget _buildSidebarCommands(Plane plane, AtcGame game) {
+    return Container(
+      color: const Color(0xFF070F07),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+      child: switch (_panelMode) {
+        _PanelMode.none || _PanelMode.top => _sidebarTopButtons(plane, game),
+        _PanelMode.altitude               => _sidebarAltButtons(plane),
+        _PanelMode.turn                   => _sidebarTurnButtons(plane),
+        _PanelMode.goTo                   => _sidebarGoToButtons(plane, game),
+      },
+    );
+  }
+
+  Widget _sidebarTopButtons(Plane plane, AtcGame game) => Wrap(
+    spacing: 6, runSpacing: 4,
+    children: [
+      _cmdBtn('Alt',    () => setState(() => _panelMode = _PanelMode.altitude)),
+      _cmdBtn('Turn',   () => setState(() => _panelMode = _PanelMode.turn)),
+      _cmdBtn('Go To',  () => setState(() => _panelMode = _PanelMode.goTo)),
+      _cmdBtn('Circ',   () => _sendCommand(CmdCircle(plane.label))),
+      _cmdBtn(plane.status == PlaneStatus.ignored ? 'Unmk' : 'Ign',
+              () => _sendCommand(plane.status == PlaneStatus.ignored
+                  ? CmdUnmark(plane.label) : CmdIgnore(plane.label))),
+      _cmdBtn('✕', _dismissPanel),
+    ],
+  );
+
+  Widget _sidebarAltButtons(Plane plane) {
+    final goalAlt = switch (plane.destType) {
+      DestType.airport => 0, DestType.exit => 9, DestType.beacon => null,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(children: [
+          Text('Altitude (goal: ${goalAlt ?? "—"})',
+              style: const TextStyle(color: Color(0xFF90FF90),
+                  fontFamily: 'monospace', fontSize: 11)),
+          const Spacer(), _backBtn(),
+        ]),
+        const SizedBox(height: 4),
+        Wrap(spacing: 4, runSpacing: 4,
+          children: List.generate(10, (alt) => _altBtn(
+            alt == 0 ? '▼' : '$alt',
+            alt == plane.altitude,
+            alt == goalAlt && alt != plane.altitude,
+            () => _sendCommand(CmdAltitude(plane.label, alt)),
+          )),
+        ),
+      ],
+    );
+  }
+
+  Widget _sidebarTurnButtons(Plane plane) {
+    const dirs = [('N',0),('NE',1),('E',2),('SE',3),('S',4),('SW',5),('W',6),('NW',7)];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(children: [
+          const Text('Turn', style: TextStyle(color: Color(0xFF90FF90),
+              fontFamily: 'monospace', fontSize: 11)),
+          const SizedBox(width: 8),
+          _cmdBtn('Circ', () => _sendCommand(CmdCircle(plane.label))),
+          const Spacer(), _backBtn(),
+        ]),
+        const SizedBox(height: 4),
+        Wrap(spacing: 4, runSpacing: 4,
+          children: dirs.map((d) => _dirBtn(d.$1, d.$2 == plane.dir,
+              () => _sendCommand(CmdTurnDir(plane.label, d.$2)))).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _sidebarGoToButtons(Plane plane, AtcGame game) {
+    final sc = game.scenario;
+    final items = <(String, DestType, int)>[
+      for (var i = 0; i < sc.exits.length;    i++) ('Ex${i+1}',  DestType.exit,    i),
+      for (var i = 0; i < sc.airports.length; i++) ('Ap${i+1}',  DestType.airport, i),
+      for (var i = 0; i < sc.beacons.length;  i++) ('Bc${i+1}',  DestType.beacon,  i),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(children: [
+          const Text('Go to', style: TextStyle(color: Color(0xFF90FF90),
+              fontFamily: 'monospace', fontSize: 11)),
+          const Spacer(), _backBtn(),
+        ]),
+        const SizedBox(height: 4),
+        Wrap(spacing: 4, runSpacing: 4,
+          children: items.map((item) {
+            final isDest = plane.destType == item.$2 && plane.destNo == item.$3;
+            return _cmdBtn(isDest ? '★${item.$1}' : item.$1,
+                () => _sendCommand(CmdTurnToward(plane.label, item.$2, item.$3)));
+          }).toList(),
+        ),
+      ],
     );
   }
 

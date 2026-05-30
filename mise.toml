@@ -1,3 +1,18 @@
+[tasks.build]
+description = "Build the Flutter app for macOS"
+run = "flutter build macos"
+dir = "app"
+
+[tasks.clean]
+description = "Clean Flutter build artifacts"
+run = "flutter clean"
+dir = "app"
+
+[tasks.dev]
+description = "Run the app with hot reload (macOS)"
+run = "flutter run -d macos"
+dir = "app"
+
 [tools]
 android-sdk = "latest"
 cocoapods = "latest"

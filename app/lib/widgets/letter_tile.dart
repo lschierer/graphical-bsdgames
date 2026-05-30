@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum LetterTileState { idle, correct, wrong, revealed }
+enum LetterTileState { idle, correct, wrong, revealed, selected }
 
 class LetterTile extends StatelessWidget {
   final String letter;
@@ -23,6 +23,7 @@ class LetterTile extends StatelessWidget {
       LetterTileState.correct  => const Color(0xFF4CAF50),
       LetterTileState.wrong    => const Color(0xFFE53935),
       LetterTileState.revealed => const Color(0xFFF5E6C8),
+      LetterTileState.selected => const Color(0xFFFFB300),
     };
 
     final fg = switch (state) {
@@ -30,6 +31,7 @@ class LetterTile extends StatelessWidget {
       LetterTileState.correct  => Colors.white,
       LetterTileState.wrong    => Colors.white,
       LetterTileState.revealed => Colors.black87,
+      LetterTileState.selected => Colors.black87,
     };
 
     final tile = Container(
@@ -48,13 +50,16 @@ class LetterTile extends StatelessWidget {
         ],
       ),
       child: Center(
-        child: Text(
-          letter.toUpperCase(),
-          style: TextStyle(
-            fontSize: size * 0.55,
-            fontWeight: FontWeight.bold,
-            color: fg,
-            letterSpacing: 0,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            letter.toUpperCase(),
+            style: TextStyle(
+              fontSize: size * 0.55,
+              fontWeight: FontWeight.bold,
+              color: fg,
+              letterSpacing: 0,
+            ),
           ),
         ),
       ),

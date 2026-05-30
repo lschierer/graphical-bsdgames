@@ -55,6 +55,12 @@ HANGMAN_MAX_WORDS = 3000
 # Regex: only plain lowercase a-z, no digits, hyphens, apostrophes, etc.
 VALID_WORD = re.compile(r'^[a-z]+$')
 
+# System word list used to cross-filter boggle candidates.
+# The ngrams corpus contains non-English text, OCR artifacts, and lowercased
+# proper nouns that clear the frequency threshold but are not English words.
+# Intersecting with a system dictionary removes most of this noise.
+SYSTEM_DICT = '/usr/share/dict/words'
+
 # ── Download + stream one ngram file ──────────────────────────────────────────
 
 def stream_file(url: str):
@@ -127,14 +133,28 @@ def main():
 
     print(f"\nTotal unique candidate words: {len(freq):,}")
 
+    # ── Load reference English word list for cross-filtering ──────────────────
+    ref_words: set[str] | None = None
+    if os.path.exists(SYSTEM_DICT):
+        ref_words = set()
+        with open(SYSTEM_DICT) as f:
+            for line in f:
+                w = line.strip().lower()
+                if VALID_WORD.match(w) and BOGGLE_MIN_LEN <= len(w) <= BOGGLE_MAX_LEN:
+                    ref_words.add(w)
+        print(f"Reference dict: {len(ref_words):,} words (from {SYSTEM_DICT})")
+    else:
+        print(f"Warning: {SYSTEM_DICT} not found; boggle dict will not be cross-filtered")
+
     # ── Build boggle dict ──────────────────────────────────────────────────────
-    boggle_words = sorted(
-        (w for w, c in freq.items()
-         if c >= BOGGLE_MIN_FREQ and BOGGLE_MIN_LEN <= len(w) <= BOGGLE_MAX_LEN),
-        key=lambda w: freq[w],
-        reverse=True,
+    boggle_candidates = (
+        w for w, c in freq.items()
+        if c >= BOGGLE_MIN_FREQ and BOGGLE_MIN_LEN <= len(w) <= BOGGLE_MAX_LEN
     )
-    print(f"Boggle dict: {len(boggle_words):,} words (freq >= {BOGGLE_MIN_FREQ:,})")
+    if ref_words is not None:
+        boggle_candidates = (w for w in boggle_candidates if w in ref_words)
+    boggle_words = sorted(boggle_candidates, key=lambda w: freq[w], reverse=True)
+    print(f"Boggle dict: {len(boggle_words):,} words (freq >= {BOGGLE_MIN_FREQ:,}, cross-filtered)")
 
     # ── Build hangman list ─────────────────────────────────────────────────────
     hangman_words = sorted(

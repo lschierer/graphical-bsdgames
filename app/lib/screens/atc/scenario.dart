@@ -24,7 +24,9 @@ int dirToward(int fx, int fy, int tx, int ty) {
   final angle = atan2(dy.toDouble(), dx.toDouble());
   // atan2: 0=E, π/2=S, ±π=W, -π/2=N
   // Map to our dir encoding: 0=N,1=NE,2=E,3=SE,4=S,5=SW,6=W,7=NW
-  final raw = (angle / (pi / 4) + 2.5 + 8).round() % 8;
+  // C's DIR_FROM_DXDY truncates via an (int) cast; the +0.5 baked into the 2.5
+  // term is what does the rounding, so we truncate here rather than round.
+  final raw = (angle / (pi / 4) + 2.5 + 8).truncate() % 8;
   return raw;
 }
 

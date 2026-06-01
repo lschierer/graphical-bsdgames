@@ -40,9 +40,10 @@ class Plane {
     required this.destNo,
     required this.origType,
     required this.origNo,
+    int? startFuel,
   })  : newAltitude = altitude,
         newDir = dir,
-        fuel = _startFuel,
+        fuel = startFuel ?? _startFuel,
         status = PlaneStatus.unmarked,
         circling = false,
         delayedAtBeacon = false,
@@ -160,7 +161,6 @@ class AtcGame {
   int _tick = 0;
   int _safeExits = 0;
   final List<Plane> planes = [];
-  final List<String> _usedLabels = [];
   AtcStatus status = AtcStatus.playing;
   String? lossReason;
   AtcCollision? collision;
@@ -225,7 +225,7 @@ class AtcGame {
 
       case CmdCircle():
         p.circling = true;
-        p.newDir = (p.dir + 1) % 8;
+        p.delayedAtBeacon = false;
 
       case CmdMark():
         p.status = PlaneStatus.marked;
@@ -237,15 +237,25 @@ class AtcGame {
         p.status = PlaneStatus.ignored;
 
       case CmdWithDelay(:final inner, :final beaconNo):
-        // Apply the inner command's effect (newDir, circling, etc.) then
-        // freeze direction changes until the plane reaches the beacon.
-        applyCommand(inner);
-        final p2 = planeByLabel(cmd.planeLabel);
-        if (p2 != null && p2.isAirborne &&
-            beaconNo >= 0 && beaconNo < scenario.beacons.length) {
-          p2.delayedAtBeacon = true;
-          p2.delayedBeaconNo = beaconNo;
+        if (beaconNo < 0 || beaconNo >= scenario.beacons.length) return;
+        final b = scenario.beacons[beaconNo];
+        // C delayb rejects the whole command unless the beacon lies directly
+        // ahead on the plane's current heading.
+        if ((b.x - p.x).sign != dirDx(p.dir) ||
+            (b.y - p.y).sign != dirDy(p.dir)) {
+          return;
         }
+        // Apply the inner command's effect, then freeze direction changes until
+        // the plane reaches the beacon.
+        applyCommand(inner);
+        // When the delay is combined with a "turn toward destination" command,
+        // C aims from the beacon to that destination, not from the current pos.
+        if (inner is CmdTurnToward) {
+          final (tx, ty) = _destPos(inner.destType, inner.destNo);
+          p.newDir = dirToward(b.x, b.y, tx, ty);
+        }
+        p.delayedAtBeacon = true;
+        p.delayedBeaconNo = beaconNo;
     }
   }
 
@@ -261,13 +271,13 @@ class AtcGame {
     if (status != AtcStatus.playing) return;
     _tick++;
 
-    _maybSpawnPlane();
-
-    // Move airborne planes
+    // Move airborne planes (and ground planes cleared for takeoff). C promotes
+    // any ground plane with new_altitude > 0 into the air before this loop, so
+    // a plane that has been told to climb begins moving on this tick.
     for (final p in planes) {
       if (p.status == PlaneStatus.gone) continue;
-      if (!p.isAirborne) continue;
-      // Props move every other tick
+      if (!p.isAirborne && p.newAltitude <= 0) continue; // still parked
+      // Props move every other tick.
       if (p.type == PlaneType.prop && _tick.isOdd) continue;
 
       p.fuel--;
@@ -276,27 +286,30 @@ class AtcGame {
         return;
       }
 
-      // Altitude step
+      // Altitude step (±1 toward target).
       if (p.altitude != p.newAltitude) {
         p.altitude += (p.newAltitude > p.altitude) ? 1 : -1;
       }
 
-      // Direction step — max ±2 dir-units per move
+      // Direction step — max ±2 dir-units per move, unless holding for a beacon.
       if (!p.delayedAtBeacon) {
+        int diff;
         if (p.circling) {
-          p.newDir = (p.dir + 1) % 8;
+          // C sets new_dir = MAXDIR, which clamps to +2 (90° clockwise) a tick.
+          diff = 2;
+        } else {
+          diff = (p.newDir - p.dir) % 8;
+          if (diff > 4) diff -= 8; // shortest arc
+          if (diff.abs() > 2) diff = diff.sign * 2;
         }
-        var diff = (p.newDir - p.dir) % 8;
-        if (diff > 4) diff -= 8; // shortest arc
-        if (diff.abs() > 2) diff = diff.sign * 2;
         p.dir = (p.dir + diff + 8) % 8;
       }
 
-      // Move
+      // Move one cell in the (now updated) heading.
       p.x += dirDx(p.dir);
       p.y += dirDy(p.dir);
 
-      // Reached delayed beacon?
+      // Reached the beacon we were holding for?
       if (p.delayedAtBeacon) {
         final b = scenario.beacons[p.delayedBeaconNo];
         if (p.x == b.x && p.y == b.y) {
@@ -305,62 +318,66 @@ class AtcGame {
         }
       }
 
-      // Check exit
-      if (_tryExit(p)) continue;
-
-      // Check landing
-      if (_tryLand(p)) continue;
-
-      // Altitude 0 away from any airport = crash (man page: "Planes flying at
-      // altitude 0 crash if they are not over an airport.")
-      if (p.altitude == 0) {
-        final atAirport = scenario.airports.any((a) => a.x == p.x && a.y == p.y);
-        if (!atAirport) {
-          _lose(p, 'crashed — altitude 0 away from airport');
-          return;
+      // ── Destination / crash checks (order mirrors update.c) ──
+      if (p.destType == DestType.airport) {
+        final a = scenario.airports[p.destNo];
+        if (p.x == a.x && p.y == a.y && p.altitude == 0) {
+          if (p.dir != a.dir) {
+            _lose(p, 'landed in the wrong direction');
+            return;
+          }
+          _safeExits++;
+          p.status = PlaneStatus.gone;
+          recentEvents.add('${p.label.toUpperCase()} landed safely');
+          continue;
+        }
+      } else if (p.destType == DestType.exit) {
+        final e = scenario.exits[p.destNo];
+        if (p.x == e.x && p.y == e.y) {
+          if (p.altitude != 9) {
+            _lose(p, 'exited at the wrong altitude (not 9000 ft)');
+            return;
+          }
+          _safeExits++;
+          p.status = PlaneStatus.gone;
+          recentEvents.add('${p.label.toUpperCase()} exited safely');
+          continue;
         }
       }
 
-      // Out of bounds?
-      if (p.x < 0 || p.x >= scenario.width ||
-          p.y < 0 || p.y >= scenario.height) {
-        _lose(p, 'flew out of bounds');
+      // Flight ceiling.
+      if (p.altitude > 9) {
+        _lose(p, 'exceeded the flight ceiling');
+        return;
+      }
+
+      // Altitude 0 without having landed at its destination = crash. Sitting on
+      // a non-destination airport counts as landing at the wrong one.
+      if (p.altitude <= 0) {
+        final atAirport =
+            scenario.airports.any((a) => a.x == p.x && a.y == p.y);
+        _lose(p, atAirport
+            ? 'landed at the wrong airport'
+            : 'crashed on the ground');
+        return;
+      }
+
+      // Left the flight arena. The whole frame (row/col 0 and the far edge) is
+      // fatal unless it was the plane's own exit, which is handled above.
+      if (p.x < 1 || p.x >= scenario.width - 1 ||
+          p.y < 1 || p.y >= scenario.height - 1) {
+        _lose(p, 'illegally left the flight arena');
         return;
       }
     }
 
-    // Collision detection
+    // Remove planes that have left, then test collisions (matches C order).
+    planes.removeWhere((p) => p.status == PlaneStatus.gone);
     if (_checkCollisions()) return;
 
-    planes.removeWhere((p) => p.status == PlaneStatus.gone);
-  }
-
-  // A plane is removed only when it reaches *its own* destination exit at alt 9.
-  // Any other border crossing is caught by the bounds check → loss.
-  bool _tryExit(Plane p) {
-    if (p.destType != DestType.exit) return false;
-    final e = scenario.exits[p.destNo];
-    if (p.x != e.x || p.y != e.y) return false;
-    if (p.altitude != 9) {
-      _lose(p, 'not at 9000 ft at exit ${p.destNo + 1}');
-      return true;
-    }
-    _safeExits++;
-    p.status = PlaneStatus.gone;
-    recentEvents.add('${p.label.toUpperCase()} exited safely');
-    return true;
-  }
-
-  // Landing: plane must be at its destination airport position with altitude 0.
-  bool _tryLand(Plane p) {
-    if (p.destType != DestType.airport) return false;
-    final a = scenario.airports[p.destNo];
-    if (p.x != a.x || p.y != a.y) return false;
-    if (p.altitude != 0) return false; // still overflying — let it pass
-    _safeExits++;
-    p.status = PlaneStatus.gone;
-    recentEvents.add('${p.label.toUpperCase()} landed safely');
-    return true;
+    // New planes enter at the END of the tick (C addplane is the last step of
+    // update), so they never advance on their entrance tick.
+    _maybSpawnPlane();
   }
 
   bool _checkCollisions() {
@@ -392,70 +409,77 @@ class AtcGame {
   // ── Plane spawning ─────────────────────────────────────────────────────────
 
   void _maybSpawnPlane() {
-    if (_usedLabels.length >= 26) return;
-    // Spawn with probability 1/newplaneTime each tick
+    // Spawn with probability 1/newplaneTime each tick.
     if (_rng.nextInt(scenario.newplaneTime) != 0) return;
 
     final label = _nextLabel();
-    if (label == null) return;
+    if (label == null) return; // all 26 slots are airborne/on the ground
 
     final isJet = _rng.nextBool();
     final type = isJet ? PlaneType.jet : PlaneType.prop;
-
-    // Pick random origin (exit or airport)
     final totalOrigins = scenario.exits.length + scenario.airports.length;
-    final origIdx = _rng.nextInt(totalOrigins);
-    final fromAirport = origIdx >= scenario.exits.length;
-    final origNo = fromAirport ? origIdx - scenario.exits.length : origIdx;
-    final origType = fromAirport ? DestType.airport : DestType.exit;
 
-    // Pick a different random destination
-    DestType destType;
-    int destNo;
-    do {
-      final di = _rng.nextInt(totalOrigins);
-      if (di < scenario.exits.length) {
-        destType = DestType.exit;
-        destNo = di;
-      } else {
-        destType = DestType.airport;
-        destNo = di - scenario.exits.length;
-      }
-    } while (destType == origType && destNo == origNo);
-
-    int sx, sy, sDir, sAlt;
-    if (fromAirport) {
-      final ap = scenario.airports[origNo];
-      sx = ap.x; sy = ap.y;
-      sDir = ap.dir;
-      sAlt = 0; // starts on ground
+    // C addplane picks the destination first, then searches for a start point.
+    final destIdx = _rng.nextInt(totalOrigins);
+    final DestType destType;
+    final int destNo;
+    if (destIdx < scenario.exits.length) {
+      destType = DestType.exit;
+      destNo = destIdx;
     } else {
-      final ex = scenario.exits[origNo];
-      sx = ex.x; sy = ex.y;
-      sDir = ex.dir;
-      sAlt = 7; // enters at altitude 7
+      destType = DestType.airport;
+      destNo = destIdx - scenario.exits.length;
     }
 
-    planes.add(Plane(
-      label: label,
-      type: type,
-      x: sx, y: sy,
-      altitude: sAlt,
-      dir: sDir,
-      destType: destType,
-      destNo: destNo,
-      origType: origType,
-      origNo: origNo,
-    ));
-    recentEvents.add('${label.toUpperCase()} appeared (${isJet ? "jet" : "prop"}) → ${destType == DestType.exit ? "Exit ${destNo + 1}" : "Airport ${destNo + 1}"}');
+    // Find an origin that differs from the destination and — for exit entries —
+    // is not within 4 cells of an airborne plane. Give up if none is clear.
+    for (var attempt = 0; attempt < totalOrigins; attempt++) {
+      int origIdx;
+      do {
+        origIdx = _rng.nextInt(totalOrigins);
+      } while (origIdx == destIdx);
+
+      final fromAirport = origIdx >= scenario.exits.length;
+      final origNo = fromAirport ? origIdx - scenario.exits.length : origIdx;
+      final origType = fromAirport ? DestType.airport : DestType.exit;
+
+      int sx, sy, sDir, sAlt;
+      if (fromAirport) {
+        final ap = scenario.airports[origNo];
+        sx = ap.x; sy = ap.y; sDir = ap.dir; sAlt = 0; // parked on the ground
+      } else {
+        final ex = scenario.exits[origNo];
+        sx = ex.x; sy = ex.y; sDir = ex.dir; sAlt = 7; // enters at altitude 7
+        final tooClose = planes.any((q) =>
+            q.status != PlaneStatus.gone && q.isAirborne &&
+            (q.altitude - sAlt).abs() <= 4 &&
+            (q.x - sx).abs() <= 4 && (q.y - sy).abs() <= 4);
+        if (tooClose) continue;
+      }
+
+      planes.add(Plane(
+        label: label,
+        type: type,
+        x: sx, y: sy,
+        altitude: sAlt,
+        dir: sDir,
+        destType: destType,
+        destNo: destNo,
+        origType: origType,
+        origNo: origNo,
+        startFuel: scenario.width + scenario.height,
+      ));
+      recentEvents.add('${label.toUpperCase()} appeared (${isJet ? "jet" : "prop"}) → ${destType == DestType.exit ? "Exit ${destNo + 1}" : "Airport ${destNo + 1}"}');
+      return;
+    }
   }
 
+  // First letter not currently used by an active plane (C reuses freed slots,
+  // so the cap is 26 *concurrent* planes, not 26 for the whole game).
   String? _nextLabel() {
     for (var code = 'a'.codeUnitAt(0); code <= 'z'.codeUnitAt(0); code++) {
       final label = String.fromCharCode(code);
-      if (!_usedLabels.contains(label) &&
-          planes.every((p) => p.label != label)) {
-        _usedLabels.add(label);
+      if (planes.every((p) => p.status == PlaneStatus.gone || p.label != label)) {
         return label;
       }
     }

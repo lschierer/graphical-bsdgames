@@ -45,7 +45,8 @@ Builds:
     versionCode: 1
     commit: v0.8.0
     subdir: app
-    flutter: stable
+    gradle:
+      - yes
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags v%v

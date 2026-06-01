@@ -1,0 +1,4 @@
+storePassword=YOURPASSWORD
+keyPassword=YOURPASSWORD
+keyAlias=bsdgames
+storeFile=/Users/luke/bsdgames-release.jks

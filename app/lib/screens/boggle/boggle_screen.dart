@@ -16,6 +16,7 @@ class BoggleScreen extends StatefulWidget {
 class _BoggleScreenState extends State<BoggleScreen> {
   Set<String>? _dictionary;
   BoggleGame? _game;
+  BoggleMode _mode = BoggleMode.classic;
   List<int> _path = [];
   SubmitResult? _feedback;
   Timer? _gameTimer;
@@ -40,7 +41,7 @@ class _BoggleScreenState extends State<BoggleScreen> {
     final dict = text.split('\n').where((w) => w.isNotEmpty).toSet();
     setState(() {
       _dictionary = dict;
-      _game = BoggleGame(dict);
+      _game = BoggleGame(dict, mode: _mode);
     });
     _startTimer();
   }
@@ -58,10 +59,11 @@ class _BoggleScreenState extends State<BoggleScreen> {
     });
   }
 
-  void _newGame() {
+  void _newGame({BoggleMode? mode}) {
     _gameTimer?.cancel();
+    if (mode != null) _mode = mode;
     setState(() {
-      _game = BoggleGame(_dictionary!);
+      _game = BoggleGame(_dictionary!, mode: _mode);
       _path = [];
       _feedback = null;
     });
@@ -74,17 +76,19 @@ class _BoggleScreenState extends State<BoggleScreen> {
   static const _tileGap = 3.0;
 
   int _cellAt(Offset pos, double cellSize) {
+    final game = _game;
+    if (game == null) return -1;
     final col = (pos.dx / cellSize).floor();
     final row = (pos.dy / cellSize).floor();
-    if (row < 0 || row >= BoggleGame.gridSize) return -1;
-    if (col < 0 || col >= BoggleGame.gridSize) return -1;
+    if (row < 0 || row >= game.gridSize) return -1;
+    if (col < 0 || col >= game.gridSize) return -1;
     // Treat the gap margin as dead space — not inside any tile.
     final localX = pos.dx - col * cellSize;
     final localY = pos.dy - row * cellSize;
     const half = _tileGap / 2;
     if (localX < half || localX > cellSize - half) return -1;
     if (localY < half || localY > cellSize - half) return -1;
-    return BoggleGame.cellIndex(row, col);
+    return game.cellIndex(row, col);
   }
 
   void _handlePanStart(DragStartDetails d, double cellSize) {
@@ -120,13 +124,15 @@ class _BoggleScreenState extends State<BoggleScreen> {
     final dc = cos(snapped).round(); // -1, 0, or 1
     final dr = sin(snapped).round(); // -1, 0, or 1
 
-    final targetRow = BoggleGame.cellRow(lastIdx) + dr;
-    final targetCol = BoggleGame.cellCol(lastIdx) + dc;
+    final game = _game;
+    if (game == null) return;
+    final targetRow = game.cellRow(lastIdx) + dr;
+    final targetCol = game.cellCol(lastIdx) + dc;
 
-    if (targetRow < 0 || targetRow >= BoggleGame.gridSize) return;
-    if (targetCol < 0 || targetCol >= BoggleGame.gridSize) return;
+    if (targetRow < 0 || targetRow >= game.gridSize) return;
+    if (targetCol < 0 || targetCol >= game.gridSize) return;
 
-    final targetIdx = BoggleGame.cellIndex(targetRow, targetCol);
+    final targetIdx = game.cellIndex(targetRow, targetCol);
 
     if (_path.contains(targetIdx)) {
       // Direction points back to an earlier tile → truncate path to there.
@@ -147,8 +153,10 @@ class _BoggleScreenState extends State<BoggleScreen> {
   }
 
   Offset _cellCenter(int idx, double cellSize) {
-    final r = BoggleGame.cellRow(idx);
-    final c = BoggleGame.cellCol(idx);
+    final game = _game;
+    if (game == null) return Offset.zero;
+    final r = game.cellRow(idx);
+    final c = game.cellCol(idx);
     return Offset((c + 0.5) * cellSize, (r + 0.5) * cellSize);
   }
 
@@ -248,8 +256,27 @@ class _BoggleScreenState extends State<BoggleScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Boggle'),
+        title: Text(_mode == BoggleMode.big ? 'Big Boggle' : 'Boggle'),
         actions: [
+          // Mode toggle — switches and starts a new game
+          Tooltip(
+            message: _mode == BoggleMode.classic
+                ? 'Switch to Big Boggle (5×5)'
+                : 'Switch to Classic Boggle (4×4)',
+            child: TextButton(
+              onPressed: () => _newGame(
+                  mode: _mode == BoggleMode.classic
+                      ? BoggleMode.big
+                      : BoggleMode.classic),
+              child: Text(
+                _mode == BoggleMode.classic ? '4×4' : '5×5',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Center(
@@ -266,7 +293,7 @@ class _BoggleScreenState extends State<BoggleScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.only(right: 4),
             child: Center(
               child: Text(
                 '${game.score} pts',
@@ -292,7 +319,7 @@ class _BoggleScreenState extends State<BoggleScreen> {
 
   Widget _buildNarrow(BoggleGame game, BoxConstraints constraints) {
     final gridSize = constraints.maxWidth.clamp(0.0, 400.0);
-    final cellSize = gridSize / BoggleGame.gridSize;
+    final cellSize = gridSize / game.gridSize;
     return Column(
       children: [
         const SizedBox(height: 8),
@@ -311,7 +338,7 @@ class _BoggleScreenState extends State<BoggleScreen> {
 
   Widget _buildWide(BoggleGame game, BoxConstraints constraints) {
     final gridSize = (constraints.maxHeight - 80).clamp(0.0, constraints.maxWidth * 0.55);
-    final cellSize = gridSize / BoggleGame.gridSize;
+    final cellSize = gridSize / game.gridSize;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -361,12 +388,13 @@ class _BoggleScreenState extends State<BoggleScreen> {
   }
 
   Widget _buildFeedback() {
+    final minLen = _game?.minWordLen ?? 3;
     final msg = switch (_feedback) {
-      SubmitResult.valid       => null, // word added to list — no inline message needed
-      SubmitResult.tooShort    => 'Need at least 3 letters',
+      SubmitResult.valid        => null,
+      SubmitResult.tooShort     => 'Need at least $minLen letters',
       SubmitResult.alreadyFound => 'Already found!',
-      SubmitResult.notAWord    => 'Not a word',
-      null                     => null,
+      SubmitResult.notAWord     => 'Not a word',
+      null                      => null,
     };
     final color = switch (_feedback) {
       SubmitResult.valid        => Colors.green,
@@ -396,10 +424,10 @@ class _BoggleScreenState extends State<BoggleScreen> {
             // between adjacent tiles.  This gives the cursor/finger a gap to
             // pass through so diagonal vs orthogonal intent is clear.
             Column(
-              children: List.generate(BoggleGame.gridSize, (row) {
+              children: List.generate(game.gridSize, (row) {
                 return Row(
-                  children: List.generate(BoggleGame.gridSize, (col) {
-                    final idx = BoggleGame.cellIndex(row, col);
+                  children: List.generate(game.gridSize, (col) {
+                    final idx = game.cellIndex(row, col);
                     final inPath = _path.contains(idx);
                     return SizedBox(
                       width: cellSize,
@@ -422,7 +450,7 @@ class _BoggleScreenState extends State<BoggleScreen> {
             // Path connector overlay
             CustomPaint(
               size: Size(gridSize, gridSize),
-              painter: _PathPainter(_path, cellSize),
+              painter: _PathPainter(_path, cellSize, game.gridSize),
             ),
           ],
         ),
@@ -494,8 +522,9 @@ class _BoggleScreenState extends State<BoggleScreen> {
 class _PathPainter extends CustomPainter {
   final List<int> path;
   final double cellSize;
+  final int gridSize;
 
-  const _PathPainter(this.path, this.cellSize);
+  const _PathPainter(this.path, this.cellSize, this.gridSize);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -507,8 +536,8 @@ class _PathPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final pts = path.map((idx) {
-      final r = BoggleGame.cellRow(idx);
-      final c = BoggleGame.cellCol(idx);
+      final r = idx ~/ gridSize;
+      final c = idx % gridSize;
       return Offset((c + 0.5) * cellSize, (r + 0.5) * cellSize);
     }).toList();
 
@@ -523,5 +552,6 @@ class _PathPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PathPainter old) => old.path != path || old.cellSize != cellSize;
+  bool shouldRepaint(_PathPainter old) =>
+      old.path != path || old.cellSize != cellSize || old.gridSize != gridSize;
 }

@@ -1,22 +1,36 @@
 import 'dart:math';
 
 enum BoggleStatus { playing, gameOver }
-
 enum SubmitResult { valid, tooShort, alreadyFound, notAWord }
+enum BoggleMode { classic, big }
 
 class BoggleGame {
-  static const gridSize = 4;
   static const gameDurationSeconds = 180;
 
-  // Classic Boggle 16-die set (one face per char; 'q' = "qu" tile)
-  static const _dice = [
+  // Classic 4×4 — 16 dice (one char per face; 'q' = "qu" tile)
+  static const _classicDice = [
     'aaeegn', 'elrtty', 'aoottw', 'abbjoo',
     'ehrtvw', 'cimotu', 'distty', 'eiosst',
     'delrvy', 'achops', 'himnqu', 'eeinsu',
     'eeghnw', 'affkps', 'hlnnrz', 'deilrx',
   ];
 
-  // 16 cells, row-major; 'a'–'z' or 'qu' for the Q die
+  // Big Boggle 5×5 — 25 dice (standard Boggle Deluxe set)
+  static const _bigDice = [
+    'aaafrs', 'aaeeee', 'aafirs', 'adennn', 'aeeeem',
+    'aeegmu', 'aegmnn', 'afirsy', 'bjkqxz', 'ccnstw',
+    'ceiilt', 'ceilpt', 'ceipst', 'ddlnor', 'dhhlor',
+    'dhhnot', 'dhlnor', 'eiiitt', 'emottt', 'ensssu',
+    'fiprsy', 'gorrvw', 'hiprry', 'nootuw', 'ooottu',
+  ];
+
+  final BoggleMode mode;
+
+  // Grid dimensions derived from mode
+  int get gridSize => mode == BoggleMode.big ? 5 : 4;
+  int get minWordLen => mode == BoggleMode.big ? 4 : 3;
+
+  // Board: gridSize² cells, row-major; 'a'–'z' or 'qu' for the Q die
   final List<String> board;
   final Set<String> dictionary;
   final Set<String> _foundSet = {};
@@ -25,20 +39,23 @@ class BoggleGame {
   int secondsLeft = gameDurationSeconds;
   BoggleStatus status = BoggleStatus.playing;
 
-  BoggleGame(this.dictionary) : board = _rollDice();
+  BoggleGame(this.dictionary, {this.mode = BoggleMode.classic})
+      : board = _rollDice(mode);
 
-  static List<String> _rollDice() {
+  static List<String> _rollDice(BoggleMode mode) {
     final rng = Random();
-    final shuffled = List<String>.from(_dice)..shuffle(rng);
+    final dice = mode == BoggleMode.big ? _bigDice : _classicDice;
+    final shuffled = List<String>.from(dice)..shuffle(rng);
     return shuffled.map((die) {
       final face = die[rng.nextInt(die.length)];
       return face == 'q' ? 'qu' : face;
     }).toList();
   }
 
-  static int cellIndex(int row, int col) => row * gridSize + col;
-  static int cellRow(int idx) => idx ~/ gridSize;
-  static int cellCol(int idx) => idx % gridSize;
+  // Instance helpers — depend on gridSize so cannot be static
+  int cellIndex(int row, int col) => row * gridSize + col;
+  int cellRow(int idx) => idx ~/ gridSize;
+  int cellCol(int idx) => idx % gridSize;
 
   bool areAdjacent(int a, int b) {
     final dr = (cellRow(a) - cellRow(b)).abs();
@@ -50,7 +67,7 @@ class BoggleGame {
 
   SubmitResult submit(List<int> path) {
     final word = pathToWord(path);
-    if (word.length < 3) return SubmitResult.tooShort;
+    if (word.length < minWordLen) return SubmitResult.tooShort;
     if (_foundSet.contains(word)) return SubmitResult.alreadyFound;
     if (!dictionary.contains(word)) return SubmitResult.notAWord;
     _foundSet.add(word);
@@ -59,13 +76,16 @@ class BoggleGame {
     return SubmitResult.valid;
   }
 
+  // Classic: 3–4=1  5=2  6=3  7=5  8+=11
+  // Big:       4=1  5=2  6=3  7=5  8+=11  (3-letter tier dropped)
   int wordScore(String word) {
     final len = word.length;
-    if (len <= 4) return 1;
-    if (len == 5) return 2;
-    if (len == 6) return 3;
-    if (len == 7) return 5;
-    return 11;
+    final base = mode == BoggleMode.big ? 4 : 3;
+    if (len <= base + 1) return 1;   // 3-4 classic / 4-5 big
+    if (len == base + 2) return 2;   // 5 classic  / 6 big
+    if (len == base + 3) return 3;   // 6 classic  / 7 big
+    if (len == base + 4) return 5;   // 7 classic  / 8 big
+    return 11;                        // 8+ classic / 9+ big
   }
 
   void tick() {

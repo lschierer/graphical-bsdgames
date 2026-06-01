@@ -6,3 +6,4 @@ build/
 # IDE
 .idea/
 *.sublime-workspace
+scripts/.enable_cache.txt

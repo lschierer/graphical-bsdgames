@@ -55,11 +55,14 @@ HANGMAN_MAX_WORDS = 3000
 # Regex: only plain lowercase a-z, no digits, hyphens, apostrophes, etc.
 VALID_WORD = re.compile(r'^[a-z]+$')
 
-# System word list used to cross-filter boggle candidates.
-# The ngrams corpus contains non-English text, OCR artifacts, and lowercased
-# proper nouns that clear the frequency threshold but are not English words.
-# Intersecting with a system dictionary removes most of this noise.
-SYSTEM_DICT = '/usr/share/dict/words'
+# Reference word list used to cross-filter boggle candidates.
+# ENABLE2k (public domain, ~173k words) is designed for word games and
+# includes all inflected forms (plurals, conjugations, etc.).  It is
+# preferred over /usr/share/dict/words which omits most inflections.
+# Falls back to the system dict if ENABLE is not cached locally.
+ENABLE_URL  = "https://raw.githubusercontent.com/dolph/dictionary/master/enable1.txt"
+ENABLE_CACHE = os.path.join(os.path.dirname(__file__), ".enable_cache.txt")
+SYSTEM_DICT  = '/usr/share/dict/words'
 
 # ── Download + stream one ngram file ──────────────────────────────────────────
 
@@ -134,17 +137,37 @@ def main():
     print(f"\nTotal unique candidate words: {len(freq):,}")
 
     # ── Load reference English word list for cross-filtering ──────────────────
+    # Prefer ENABLE2k (includes inflected forms like "teas", "cats", "runs").
+    # /usr/share/dict/words omits most plurals/conjugations — don't use it.
     ref_words: set[str] | None = None
-    if os.path.exists(SYSTEM_DICT):
+    try:
+        if os.path.exists(ENABLE_CACHE):
+            print(f"Loading ENABLE list from cache {ENABLE_CACHE} ...")
+            with open(ENABLE_CACHE) as f:
+                raw = f.read()
+        else:
+            print(f"Downloading ENABLE word list from {ENABLE_URL} ...")
+            with urllib.request.urlopen(ENABLE_URL) as resp:
+                raw = resp.read().decode("utf-8")
+            with open(ENABLE_CACHE, "w") as f:
+                f.write(raw)
+            print(f"Cached to {ENABLE_CACHE}")
         ref_words = set()
-        with open(SYSTEM_DICT) as f:
-            for line in f:
-                w = line.strip().lower()
-                if VALID_WORD.match(w) and BOGGLE_MIN_LEN <= len(w) <= BOGGLE_MAX_LEN:
-                    ref_words.add(w)
-        print(f"Reference dict: {len(ref_words):,} words (from {SYSTEM_DICT})")
-    else:
-        print(f"Warning: {SYSTEM_DICT} not found; boggle dict will not be cross-filtered")
+        for w in raw.split('\n'):
+            w = w.strip().lower()
+            if VALID_WORD.match(w) and BOGGLE_MIN_LEN <= len(w) <= BOGGLE_MAX_LEN:
+                ref_words.add(w)
+        print(f"Reference dict: {len(ref_words):,} words (ENABLE2k)")
+    except Exception as e:
+        print(f"Warning: could not load ENABLE list ({e}); falling back to {SYSTEM_DICT}")
+        if os.path.exists(SYSTEM_DICT):
+            ref_words = set()
+            with open(SYSTEM_DICT) as f:
+                for line in f:
+                    w = line.strip().lower()
+                    if VALID_WORD.match(w) and BOGGLE_MIN_LEN <= len(w) <= BOGGLE_MAX_LEN:
+                        ref_words.add(w)
+            print(f"Reference dict: {len(ref_words):,} words (system dict fallback)")
 
     # ── Build boggle dict ──────────────────────────────────────────────────────
     boggle_candidates = (

@@ -45,10 +45,13 @@ Builds:
     versionCode: 1
     commit: v0.8.0
     subdir: app
-    gradle:
-      - yes
     scandelete:
       - fortune/tools/do_sort
+    build:
+      - flutter pub get
+      - flutter build apk --release
+    output: build/app/outputs/flutter-apk/app-release.apk
+    novcheck: true
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags v(.+)

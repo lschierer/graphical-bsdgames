@@ -47,6 +47,8 @@ Builds:
     subdir: app
     gradle:
       - yes
+    scandelete:
+      - fortune/tools/do_sort
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags v(.+)

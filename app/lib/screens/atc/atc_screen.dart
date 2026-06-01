@@ -508,6 +508,41 @@ class _AtcScreenState extends State<AtcScreen> {
             const Divider(height: 1, color: Color(0xFF1A5C1A)),
             _buildSidebarCommands(game.planeByLabel(_selectedLabel!)!, game),
           ],
+          // Tick-advance button (touch equivalent of pressing Enter)
+          const Divider(height: 1, color: Color(0xFF1A5C1A)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(6, 4, 6, 2),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF60D060),
+                      side: const BorderSide(color: Color(0xFF2A5A2A)),
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: game.status == AtcStatus.playing
+                        ? () {
+                            setState(() {
+                              game.advance();
+                              game.recentEvents.clear();
+                            });
+                            if (game.status != AtcStatus.playing) {
+                              _timer?.cancel();
+                              WidgetsBinding.instance.addPostFrameCallback(
+                                  (_) => _showEndDialog());
+                            }
+                          }
+                        : null,
+                    child: const Text('⏩ Tick',
+                        style: TextStyle(fontFamily: 'monospace', fontSize: 11)),
+                  ),
+                ),
+              ],
+            ),
+          ),
           // Keyboard status
           const Divider(height: 1, color: Color(0xFF1A5C1A)),
           Padding(

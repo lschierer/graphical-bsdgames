@@ -19,7 +19,9 @@ class _TetrisScreenState extends State<TetrisScreen> {
 
   // Swipe tracking
   Offset? _dragStart;
-  static const _swipeThreshold = 20.0;
+  // Cell-size is set by the LayoutBuilder each frame and used as the
+  // movement threshold so every deliberate swipe moves exactly one cell.
+  double _cellSize = 30.0;
 
   @override
   void initState() {
@@ -126,10 +128,16 @@ class _TetrisScreenState extends State<TetrisScreen> {
     final dx = d.localPosition.dx - start.dx;
     final dy = d.localPosition.dy - start.dy;
 
-    if (dx.abs() > _swipeThreshold && dx.abs() > dy.abs()) {
+    // Require ~90% of a cell for horizontal moves so a slight finger wobble
+    // during a tap doesn't accidentally shift the piece.
+    final hThresh = _cellSize * 0.9;
+    // Vertical (soft drop) can be a bit easier to trigger.
+    final vThresh = _cellSize * 0.6;
+
+    if (dx.abs() > hThresh && dx.abs() > dy.abs()) {
       setState(() => dx > 0 ? _game.moveRight() : _game.moveLeft());
-      _dragStart = d.localPosition;
-    } else if (dy > _swipeThreshold && dy > dx.abs()) {
+      _dragStart = d.localPosition; // reset so next step needs another full cell
+    } else if (dy > vThresh && dy > dx.abs()) {
       setState(() => _game.softDrop());
       _dragStart = d.localPosition;
     }
@@ -231,19 +239,19 @@ class _TetrisScreenState extends State<TetrisScreen> {
       final boardW = cellSize * TetrisGame.cols;
       final boardH = cellSize * TetrisGame.rows;
 
+      // Store cell size so gesture handlers can use it as threshold.
+      _cellSize = cellSize;
+
       return Center(
         child: SizedBox(
           width: boardW,
           height: boardH,
           child: GestureDetector(
+            // Single tap = rotate.  No onDoubleTap — Flutter adds a ~300 ms
+            // delay on onTap when both are set, causing rotate to feel laggy
+            // and making it easy to accidentally hard-drop.  Hard drop lives
+            // on a dedicated button in the sidebar instead.
             onTap: () => setState(() => _game.rotate()),
-            onDoubleTap: () {
-              setState(() => _game.hardDrop());
-              if (_game.status == TetrisStatus.gameOver) {
-                _timer?.cancel();
-                _showGameOver();
-              }
-            },
             onPanStart: _onDragStart,
             onPanUpdate: _onDragUpdate,
             child: CustomPaint(
@@ -275,8 +283,30 @@ class _TetrisScreenState extends State<TetrisScreen> {
           child: CustomPaint(painter: TetrisPreviewPainter(_game)),
         ),
         const SizedBox(height: 16),
+        // Hard-drop button — safer than double-tap which conflicted with rotate
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blueGrey[800],
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            onPressed: _game.status == TetrisStatus.playing
+                ? () {
+                    setState(() => _game.hardDrop());
+                    if (_game.status == TetrisStatus.gameOver) {
+                      _timer?.cancel();
+                      _showGameOver();
+                    }
+                  }
+                : null,
+            child: const Text('DROP', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ),
+        const SizedBox(height: 10),
         Text(
-          'Tap: rotate\nDbl-tap: drop\nSwipe: move/fall',
+          'Tap: rotate\nSwipe ←→: move\nSwipe ↓: fall\nDROP: instant',
           style: style.labelSmall?.copyWith(color: Colors.white38, fontSize: 10),
         ),
       ],

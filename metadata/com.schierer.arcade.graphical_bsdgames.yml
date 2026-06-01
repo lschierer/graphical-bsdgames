@@ -1,5 +1,5 @@
 Categories:
-  - Games
+  - Casual Game
 
 License: BSD-3-Clause
 
@@ -49,6 +49,6 @@ Builds:
       - yes
 
 AutoUpdateMode: Version
-UpdateCheckMode: Tags v%v
+UpdateCheckMode: Tags v(.+)
 CurrentVersion: 0.8.0
 CurrentVersionCode: 1

@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:graphical_bsdgames/screens/boggle/boggle_game.dart';
+import 'package:graphical_bsdgames/screens/boggle/boggle_solver.dart';
 import 'package:graphical_bsdgames/widgets/letter_tile.dart';
 
 class BoggleScreen extends StatefulWidget {
@@ -15,8 +17,10 @@ class BoggleScreen extends StatefulWidget {
 
 class _BoggleScreenState extends State<BoggleScreen> {
   Set<String>? _dictionary;
+  List<String>? _sortedWords; // kept sorted for solver prefix pruning
   BoggleGame? _game;
   BoggleMode _mode = BoggleMode.classic;
+  ScoringMode _scoringMode = ScoringMode.netbsd;
   List<int> _path = [];
   SubmitResult? _feedback;
   Timer? _gameTimer;
@@ -38,10 +42,13 @@ class _BoggleScreenState extends State<BoggleScreen> {
 
   Future<void> _loadDictionary() async {
     final text = await rootBundle.loadString('assets/words/boggle_dict.txt');
-    final dict = text.split('\n').where((w) => w.isNotEmpty).toSet();
+    // Keep both a sorted list (for solver prefix pruning) and a set (O(1) lookup)
+    final sorted = text.split('\n').where((w) => w.isNotEmpty).toList();
+    final dict = sorted.toSet();
     setState(() {
+      _sortedWords = sorted;
       _dictionary = dict;
-      _game = BoggleGame(dict, mode: _mode);
+      _game = BoggleGame(dict, mode: _mode, scoringMode: _scoringMode);
     });
     _startTimer();
   }
@@ -59,11 +66,13 @@ class _BoggleScreenState extends State<BoggleScreen> {
     });
   }
 
-  void _newGame({BoggleMode? mode}) {
+  void _newGame({BoggleMode? mode, ScoringMode? scoringMode}) {
     _gameTimer?.cancel();
     if (mode != null) _mode = mode;
+    if (scoringMode != null) _scoringMode = scoringMode;
     setState(() {
-      _game = BoggleGame(_dictionary!, mode: _mode);
+      _game = BoggleGame(_dictionary!,
+          mode: _mode, scoringMode: _scoringMode);
       _path = [];
       _feedback = null;
     });
@@ -213,24 +222,85 @@ class _BoggleScreenState extends State<BoggleScreen> {
     });
   }
 
-  void _showGameOver() {
+  Future<void> _showGameOver() async {
     final game = _game;
     if (game == null || !mounted) return;
+
+    Set<String>? allWords;
+    if (_scoringMode == ScoringMode.netbsd && _sortedWords != null) {
+      // Run solver in a background isolate so the UI stays responsive
+      allWords = await compute(
+        solveBoard,
+        BoggleSolverParams(
+          board: game.board,
+          sortedDict: _sortedWords!,
+          wordSet: _dictionary!,
+          gridSize: game.gridSize,
+          minWordLen: game.minWordLen,
+        ),
+      );
+    }
+
+    if (!mounted) return;
+
+    final found = game.foundWords.toSet();
+    List<String>? missed;
+    if (allWords != null) {
+      missed = allWords.difference(found).toList()..sort();
+    }
+
+    final pct = allWords != null && allWords.isNotEmpty
+        ? (100 * found.intersection(allWords).length / allWords.length)
+            .toStringAsFixed(1)
+        : null;
+
     showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: const Text('Time\'s up!'),
-        content: Text(
-          'Score: ${game.score} points\n'
-          '${game.foundWords.length} word${game.foundWords.length == 1 ? "" : "s"} found',
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_scoringMode == ScoringMode.netbsd && pct != null)
+                Text('${found.intersection(allWords!).length} / ${allWords.length} words  ($pct%)',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              if (_scoringMode == ScoringMode.hasbro)
+                Text('${game.points} points  ·  ${game.foundWords.length} words',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              if (missed != null && missed.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text('Words you missed (${missed.length}):',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  child: SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: missed
+                          .map((w) => Chip(
+                                label: Text(w,
+                                    style: const TextStyle(fontSize: 11)),
+                                padding: EdgeInsets.zero,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _newGame();
-            },
+            onPressed: () { Navigator.pop(context); _newGame(); },
             child: const Text('Play again'),
           ),
           TextButton(
@@ -258,7 +328,7 @@ class _BoggleScreenState extends State<BoggleScreen> {
       appBar: AppBar(
         title: Text(_mode == BoggleMode.big ? 'Big Boggle' : 'Boggle'),
         actions: [
-          // Mode toggle — switches and starts a new game
+          // Grid-size toggle
           Tooltip(
             message: _mode == BoggleMode.classic
                 ? 'Switch to Big Boggle (5×5)'
@@ -277,6 +347,26 @@ class _BoggleScreenState extends State<BoggleScreen> {
               ),
             ),
           ),
+          // Scoring-mode toggle
+          Tooltip(
+            message: _scoringMode == ScoringMode.netbsd
+                ? 'Switch to Hasbro point scoring'
+                : 'Switch to BSD percentage scoring',
+            child: TextButton(
+              onPressed: () => _newGame(
+                  scoringMode: _scoringMode == ScoringMode.netbsd
+                      ? ScoringMode.hasbro
+                      : ScoringMode.netbsd),
+              child: Text(
+                _scoringMode == ScoringMode.netbsd ? 'BSD%' : 'Hasbro',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+              ),
+            ),
+          ),
+          // Timer
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Center(
@@ -292,12 +382,13 @@ class _BoggleScreenState extends State<BoggleScreen> {
               ),
             ),
           ),
+          // Score / word count
           Padding(
             padding: const EdgeInsets.only(right: 4),
             child: Center(
               child: Text(
-                '${game.score} pts',
-                style: const TextStyle(fontSize: 16),
+                game.scoreDisplay,
+                style: const TextStyle(fontSize: 14),
               ),
             ),
           ),
@@ -502,9 +593,10 @@ class _BoggleScreenState extends State<BoggleScreen> {
         runSpacing: 6,
         children: sorted.map((word) {
           final pts = _game!.wordScore(word);
+          final showPts = _scoringMode == ScoringMode.hasbro;
           return Chip(
             label: Text(
-              '${word.toUpperCase()} +$pts',
+              showPts ? '${word.toUpperCase()} +$pts' : word.toUpperCase(),
               style: const TextStyle(fontSize: 12),
             ),
             backgroundColor:

@@ -4,6 +4,11 @@ enum BoggleStatus { playing, gameOver }
 enum SubmitResult { valid, tooShort, alreadyFound, notAWord }
 enum BoggleMode { classic, big }
 
+/// How words are valued.
+/// netbsd — matches the original C game: percentage of possible words found.
+/// hasbro — standard board-game point table (3-4=1, 5=2, 6=3, 7=5, 8+=11).
+enum ScoringMode { netbsd, hasbro }
+
 class BoggleGame {
   static const gameDurationSeconds = 180;
 
@@ -25,6 +30,7 @@ class BoggleGame {
   ];
 
   final BoggleMode mode;
+  final ScoringMode scoringMode;
 
   // Grid dimensions derived from mode
   int get gridSize => mode == BoggleMode.big ? 5 : 4;
@@ -35,12 +41,19 @@ class BoggleGame {
   final Set<String> dictionary;
   final Set<String> _foundSet = {};
   final List<String> foundWords = [];
-  int score = 0;
+  int points = 0;  // Hasbro point total (always tracked, displayed only in hasbro mode)
+
+  // What to show in the AppBar / score chip
+  String get scoreDisplay => scoringMode == ScoringMode.hasbro
+      ? '${points} pts'
+      : '${foundWords.length} word${foundWords.length == 1 ? "" : "s"}';
   int secondsLeft = gameDurationSeconds;
   BoggleStatus status = BoggleStatus.playing;
 
-  BoggleGame(this.dictionary, {this.mode = BoggleMode.classic})
-      : board = _rollDice(mode);
+  BoggleGame(this.dictionary, {
+    this.mode = BoggleMode.classic,
+    this.scoringMode = ScoringMode.netbsd,
+  }) : board = _rollDice(mode);
 
   static List<String> _rollDice(BoggleMode mode) {
     final rng = Random();
@@ -72,7 +85,7 @@ class BoggleGame {
     if (!dictionary.contains(word)) return SubmitResult.notAWord;
     _foundSet.add(word);
     foundWords.add(word);
-    score += wordScore(word);
+    points += wordScore(word);
     return SubmitResult.valid;
   }
 

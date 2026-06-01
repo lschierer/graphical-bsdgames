@@ -1,17 +1,40 @@
-[tasks.build]
+[tasks."build:macos"]
 description = "Build the Flutter app for macOS"
 run = "flutter build macos"
 dir = "app"
+
+[tasks."build:apk"]
+description = "Build a release APK for Android"
+run = "flutter build apk --release"
+dir = "app"
+
+[tasks."build:aab"]
+description = "Build an Android App Bundle (for Play Store / F-Droid)"
+run = "flutter build appbundle --release"
+dir = "app"
+
+[tasks.build]
+description = "Build for all platforms (macOS + Android APK)"
+depends = ["build:macos", "build:apk"]
 
 [tasks.clean]
 description = "Clean Flutter build artifacts"
 run = "flutter clean"
 dir = "app"
 
-[tasks.dev]
-description = "Run the app with hot reload (macOS)"
+[tasks."dev:macos"]
+description = "Run with hot reload on macOS"
 run = "flutter run -d macos"
 dir = "app"
+
+[tasks."dev:android"]
+description = "Run with hot reload on a connected Android device"
+run = "flutter run -d android"
+dir = "app"
+
+[tasks.dev]
+description = "Run with hot reload (macOS)"
+depends = ["dev:macos"]
 
 [tools]
 android-sdk = "latest"

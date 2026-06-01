@@ -1,0 +1,53 @@
+Categories:
+  - Games
+
+License: BSD-3-Clause
+
+AuthorName: Luke Schierer
+AuthorEmail: luke.schierer@gmail.com
+
+SourceCode: https://github.com/lschierer/graphical-bsdgames
+IssueTracker: https://github.com/lschierer/graphical-bsdgames/issues
+Changelog: https://github.com/lschierer/graphical-bsdgames/releases
+
+AutoName: Graphical BSD Games
+
+Description: |-
+  Touch-friendly graphical frontends for four classic BSD games.
+
+  <b>ATC – Air Traffic Control</b>
+  Guide aircraft through your airspace to their destination exits and
+  airports without collisions. Full keyboard command set (identical to the
+  original NetBSD atc) plus a tap-to-select touch interface. Multiple
+  built-in scenarios from easy to Killer.
+
+  <b>Boggle</b>
+  Find words by connecting adjacent letter tiles on a 4×4 (Classic) or
+  5×5 (Big Boggle) board before the timer runs out. Drag or tap to build
+  words. Scoring follows the original BSD percentage model by default
+  (words found / total possible), with optional Hasbro point scoring.
+
+  <b>Hangman</b>
+  Guess the hidden word one letter at a time. Word list derived from
+  high-frequency English words so guesses feel fair.
+
+  <b>Tetris</b>
+  The classic falling-block game. Tap to rotate, swipe to move and soft-
+  drop, dedicated Drop button for hard drop.
+
+  No ads. No tracking. No network access required.
+
+RepoType: git
+Repo: https://github.com/lschierer/graphical-bsdgames
+
+Builds:
+  - versionName: 0.8.0
+    versionCode: 1
+    commit: v0.8.0
+    subdir: app
+    flutter: stable
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags v%v
+CurrentVersion: 0.8.0
+CurrentVersionCode: 1

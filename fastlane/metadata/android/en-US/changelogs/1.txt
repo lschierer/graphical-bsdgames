@@ -1,0 +1,6 @@
+Initial release.
+
+• ATC with full NetBSD keyboard command set and touch interface
+• Boggle in Classic 4×4 and Big Boggle 5×5 modes, BSD or Hasbro scoring
+• Hangman with corpus-derived word list
+• Tetris with touch-tuned controls

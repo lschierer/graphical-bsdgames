@@ -1,0 +1,23 @@
+Touch-friendly graphical frontends for four classic BSD games.
+
+<b>ATC – Air Traffic Control</b>
+Guide aircraft through your airspace to their destination exits and
+airports without collisions. Full keyboard command set (identical to the
+original NetBSD atc) plus a tap-to-select touch interface. Multiple
+built-in scenarios from easy to Killer.
+
+<b>Boggle</b>
+Find words by connecting adjacent letter tiles on a 4×4 (Classic) or
+5×5 (Big Boggle) board before the timer runs out. Drag or tap to build
+words. Scoring follows the original BSD percentage model by default
+(words found / total possible), with optional Hasbro point scoring.
+
+<b>Hangman</b>
+Guess the hidden word one letter at a time. Word list derived from
+high-frequency English words so guesses feel fair.
+
+<b>Tetris</b>
+The classic falling-block game. Tap to rotate, swipe to move and soft-
+drop, dedicated Drop button for hard drop.
+
+No ads. No tracking. No network access required.

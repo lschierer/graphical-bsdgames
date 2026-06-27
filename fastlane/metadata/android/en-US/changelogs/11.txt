@@ -1,0 +1,5 @@
+Packaging fixes for F-Droid.
+
+• Per-ABI APKs (armeabi-v7a, arm64-v8a, x86_64) for smaller downloads
+• Pinned and verified the Gradle distribution checksum
+• No gameplay changes

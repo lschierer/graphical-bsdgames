@@ -1,3 +1,4 @@
+import com.android.build.gradle.internal.api.ApkVariantOutputImpl
 import java.util.Properties
 import java.io.FileInputStream
 
@@ -57,6 +58,22 @@ android {
                 signingConfigs.getByName("release")
             else
                 signingConfigs.getByName("debug")
+        }
+    }
+}
+
+// ABI-split version-code scheme for F-Droid. When building with
+// `flutter build apk --split-per-abi`, each per-ABI APK needs a distinct
+// version code. F-Droid's metadata mirrors this with
+// `VercodeOperation: %c * 10 + N`, so the codes must match: baseCode * 10 + abi.
+val abiCodes = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86_64" to 3)
+android.applicationVariants.configureEach {
+    val variant = this
+    variant.outputs.forEach { output ->
+        val abiVersionCode = abiCodes[output.filters.find { it.filterType == "ABI" }?.identifier]
+        if (abiVersionCode != null) {
+            (output as ApkVariantOutputImpl).versionCodeOverride =
+                variant.versionCode * 10 + abiVersionCode
         }
     }
 }

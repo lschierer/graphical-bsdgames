@@ -41,19 +41,27 @@ RepoType: git
 Repo: https://github.com/lschierer/graphical-bsdgames
 
 Builds:
-  - versionName: 0.8.0
+  - versionName: 0.8.1
     versionCode: 1
-    commit: v0.8.0
+    commit: v0.8.1
     subdir: app
     scandelete:
       - fortune/tools/do_sort
     build:
       - flutter pub get
-      - flutter build apk --release
-    output: build/app/outputs/flutter-apk/app-release.apk
+      - flutter build apk --release --split-per-abi
+    output: build/app/outputs/flutter-apk/app-*-release.apk
     novcheck: true
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags v(.+)
-CurrentVersion: 0.8.0
-CurrentVersionCode: 1
+# ABI split: the gradle versionCodeOverride (app/android/app/build.gradle.kts)
+# assigns each per-ABI APK a code of `versionCode * 10 + abi`
+# (armeabi-v7a=1, arm64-v8a=2, x86_64=3). VercodeOperation must mirror that
+# so F-Droid registers all three APKs.
+VercodeOperation:
+  - '%c * 10 + 1'
+  - '%c * 10 + 2'
+  - '%c * 10 + 3'
+CurrentVersion: 0.8.1
+CurrentVersionCode: 13
